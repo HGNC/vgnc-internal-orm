@@ -1,0 +1,125 @@
+# Alembic Database Migrations
+
+This directory contains Alembic migration configurations and version history for the VGNC Internal ORM project.
+
+## Overview
+
+Alembic manages incremental database schema changes, allowing you to:
+
+- Track schema evolution over time
+- Apply/rollback migrations safely
+- Auto-generate migrations from model changes
+- Validate migration safety before deployment
+
+## Directory Structure
+
+```text
+alembic/
+├── versions/              # Migration scripts (timestamped)
+│   └── 2025_11_05_2253-2299f7d46a8d_initial_baseline.py
+├── env.py                 # Alembic runtime environment
+├── script.py.mako         # Template for new migrations
+└── README                 # This file
+```
+
+## Common Commands
+
+### View Current Version
+
+```bash
+alembic current
+```
+
+### View Migration History
+
+```bash
+alembic history --verbose
+```
+
+### Generate New Migration (Auto-detect)
+
+```bash
+alembic revision --autogenerate -m "Description of changes"
+```
+
+### Apply All Pending Migrations
+
+```bash
+alembic upgrade head
+```
+
+### Rollback One Migration
+
+```bash
+alembic downgrade -1
+```
+
+### Rollback to Specific Version
+
+```bash
+alembic downgrade <revision_id>
+```
+
+## Safety Validation
+
+**Always validate migrations before production deployment:**
+
+```bash
+python scripts/migration_workflow.py validate
+```
+
+This checks for:
+
+- Destructive operations (DROP TABLE, DROP COLUMN)
+- Data-loss risks
+- Index/constraint impacts
+- Recommended safeguards
+
+See `docs/migrations_safety.md` for comprehensive safety guidelines.
+
+## Migration Workflow
+
+For step-by-step guidance on creating, testing, and deploying migrations:
+
+1. Read `docs/migration_workflow.md` for the full process
+2. Use `scripts/migration_workflow.py` for interactive revision creation
+3. Run safety validation before deploying
+4. Test on staging environment first
+5. Back up production data before applying
+
+## Baseline Migration
+
+The initial baseline (`2025_11_05_2253-2299f7d46a8d_initial_baseline.py`) represents the complete current schema based on the production database. See `docs/alembic_baseline.md` for details.
+
+## Configuration
+
+Database connection settings are read from:
+
+- Environment variables (`.env` file)
+- `alembic.ini` configuration
+
+Default: SQLite (`sqlite:///./test.db`)
+
+For MySQL/PostgreSQL, set `DATABASE_URL`:
+
+```bash
+export DATABASE_URL="mysql+pymysql://user:pass@localhost/dbname"
+# or
+export DATABASE_URL="postgresql://user:pass@localhost/dbname"
+```
+
+## Best Practices
+
+1. **Review auto-generated migrations** - Always inspect before applying
+2. **Test migrations locally** - Use a copy of production data
+3. **Use transactions** - Most operations should be reversible
+4. **Document complex migrations** - Add comments explaining logic
+5. **Validate before deploy** - Run safety checks every time
+6. **Backup first** - Always backup production before migrations
+
+## Additional Resources
+
+- Alembic Documentation: <https://alembic.sqlalchemy.org/>
+- Project Migration Docs: `docs/migration_workflow.md`
+- Safety Validator: `docs/migrations_safety.md`
+- Baseline Details: `docs/alembic_baseline.md`
