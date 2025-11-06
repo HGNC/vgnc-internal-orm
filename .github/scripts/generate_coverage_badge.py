@@ -2,7 +2,7 @@
 """Generate coverage badge."""
 
 import json
-from coverage_badge import main as badge_main
+from coverage_badge import main as badge_main  # type: ignore[import-untyped]
 
 
 def main():
