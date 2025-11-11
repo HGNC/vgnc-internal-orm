@@ -1,21 +1,23 @@
 """Integration tests for session factory with real database connections."""
 
-import pytest
-import tempfile
 import os
-from pathlib import Path
+import tempfile
 
-from vgnc_internal_orm.config.settings import DatabaseConfig, DatabaseDriver, Environment
-from vgnc_internal_orm.sessions.factory import (
-    SessionFactory,
-    get_session_context,
-    get_async_session_context,
-    check_database_connection,
-    check_async_database_connection
+import pytest
+from sqlalchemy import Integer, String, Text, text
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+from vgnc_internal_orm.config.settings import (
+    DatabaseConfig,
+    DatabaseDriver,
+    Environment,
 )
 from vgnc_internal_orm.models.base import BaseModel
-from sqlalchemy import String, Text, Integer, text
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from vgnc_internal_orm.sessions.factory import (
+    SessionFactory,
+    check_database_connection,
+    get_session_context,
+)
 
 
 class TestSQLiteIntegration:
@@ -23,15 +25,12 @@ class TestSQLiteIntegration:
 
     def test_sqlite_session_creation_and_usage(self):
         """Test creating and using SQLite sessions."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
             db_path = tmp_file.name
 
         try:
-            config = DatabaseConfig(
-                driver=DatabaseDriver.SQLITE,
-                database=db_path
-            )
-            factory = SessionFactory(config)
+            config = DatabaseConfig(driver=DatabaseDriver.SQLITE, database=db_path)
+            SessionFactory(config)
 
             # Test session creation
             with get_session_context(config) as session:
@@ -44,7 +43,9 @@ class TestSQLiteIntegration:
                 assert result.fetchone()[0] == 1
 
                 # Test model operations
-                test_model = IntegrationTestModel(name="test", description="test description")
+                test_model = IntegrationTestModel(
+                    name="test", description="test description"
+                )
                 session.add(test_model)
                 session.flush()  # Get ID without committing
 
@@ -52,7 +53,11 @@ class TestSQLiteIntegration:
 
             # Verify persistence
             with get_session_context(config) as session:
-                retrieved = session.query(IntegrationTestModel).filter(IntegrationTestModel.name == "test").first()
+                retrieved = (
+                    session.query(IntegrationTestModel)
+                    .filter(IntegrationTestModel.name == "test")
+                    .first()
+                )
                 assert retrieved is not None
                 assert retrieved.name == "test"
                 assert retrieved.description == "test description"
@@ -64,14 +69,11 @@ class TestSQLiteIntegration:
 
     def test_sqlite_health_check(self):
         """Test SQLite health check."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
             db_path = tmp_file.name
 
         try:
-            config = DatabaseConfig(
-                driver=DatabaseDriver.SQLITE,
-                database=db_path
-            )
+            config = DatabaseConfig(driver=DatabaseDriver.SQLITE, database=db_path)
             factory = SessionFactory(config)
 
             # Test health check
@@ -88,14 +90,11 @@ class TestSQLiteIntegration:
 
     def test_sqlite_pool_status(self):
         """Test SQLite pool status reporting."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
             db_path = tmp_file.name
 
         try:
-            config = DatabaseConfig(
-                driver=DatabaseDriver.SQLITE,
-                database=db_path
-            )
+            config = DatabaseConfig(driver=DatabaseDriver.SQLITE, database=db_path)
             factory = SessionFactory(config)
 
             # Create engine to initialize pool
@@ -112,7 +111,7 @@ class TestSQLiteIntegration:
 
     def test_sqlite_environment_specific_config(self):
         """Test environment-specific configuration with SQLite."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
             db_path = tmp_file.name
 
         try:
@@ -120,7 +119,7 @@ class TestSQLiteIntegration:
             dev_config = DatabaseConfig(
                 driver=DatabaseDriver.SQLITE,
                 database=db_path,
-                environment=Environment.DEVELOPMENT
+                environment=Environment.DEVELOPMENT,
             )
             dev_factory = SessionFactory(dev_config)
 
@@ -131,7 +130,7 @@ class TestSQLiteIntegration:
             prod_config = DatabaseConfig(
                 driver=DatabaseDriver.SQLITE,
                 database=db_path,
-                environment=Environment.PRODUCTION
+                environment=Environment.PRODUCTION,
             )
             prod_factory = SessionFactory(prod_config)
 
@@ -149,14 +148,11 @@ class TestSessionFactoryLifecycle:
 
     def test_engine_disposal(self):
         """Test proper engine disposal."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
             db_path = tmp_file.name
 
         try:
-            config = DatabaseConfig(
-                driver=DatabaseDriver.SQLITE,
-                database=db_path
-            )
+            config = DatabaseConfig(driver=DatabaseDriver.SQLITE, database=db_path)
             factory = SessionFactory(config)
 
             # Create engine
@@ -174,15 +170,12 @@ class TestSessionFactoryLifecycle:
 
     def test_multiple_sessions_same_factory(self):
         """Test creating multiple sessions from the same factory."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
             db_path = tmp_file.name
 
         try:
-            config = DatabaseConfig(
-                driver=DatabaseDriver.SQLITE,
-                database=db_path
-            )
-            factory = SessionFactory(config)
+            config = DatabaseConfig(driver=DatabaseDriver.SQLITE, database=db_path)
+            SessionFactory(config)
 
             # Create multiple sessions
             with get_session_context(config) as session1:
@@ -200,21 +193,17 @@ class TestSessionFactoryLifecycle:
 
     def test_session_factory_with_different_configs(self):
         """Test session factory with different configurations."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file1:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file1:
             db_path1 = tmp_file1.name
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file2:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file2:
             db_path2 = tmp_file2.name
 
         try:
             config1 = DatabaseConfig(
-                driver=DatabaseDriver.SQLITE,
-                database=db_path1,
-                echo=False
+                driver=DatabaseDriver.SQLITE, database=db_path1, echo=False
             )
             config2 = DatabaseConfig(
-                driver=DatabaseDriver.SQLITE,
-                database=db_path2,
-                echo=True
+                driver=DatabaseDriver.SQLITE, database=db_path2, echo=True
             )
 
             factory1 = SessionFactory(config1)
@@ -241,10 +230,7 @@ class TestErrorHandling:
         # Use a path that doesn't exist and can't be created
         invalid_path = "/invalid/path/that/does/not/exist/test.db"
 
-        config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=invalid_path
-        )
+        config = DatabaseConfig(driver=DatabaseDriver.SQLITE, database=invalid_path)
         factory = SessionFactory(config)
 
         # Health check should fail
@@ -257,14 +243,11 @@ class TestErrorHandling:
 
     def test_connection_cleanup_on_error(self):
         """Test that connections are properly cleaned up even on errors."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
             db_path = tmp_file.name
 
         try:
-            config = DatabaseConfig(
-                driver=DatabaseDriver.SQLITE,
-                database=db_path
-            )
+            config = DatabaseConfig(driver=DatabaseDriver.SQLITE, database=db_path)
 
             # Test that session cleanup works even when an error occurs
             with pytest.raises(ValueError):
@@ -285,10 +268,13 @@ class TestErrorHandling:
 # Test model for integration tests
 class IntegrationTestBase(DeclarativeBase):
     """Base class for integration test models."""
+
     pass
+
 
 class IntegrationTestModel(IntegrationTestBase):
     """Simple test model for integration testing."""
+
     __tablename__ = "integration_test_models"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)

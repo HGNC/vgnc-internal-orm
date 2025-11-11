@@ -14,6 +14,7 @@ help:
 	@echo "  test-integration Run integration tests only"
 	@echo "  test-performance Run performance tests only"
 	@echo "  test-load    Run load tests only"
+	@echo "  test-mysql   Run integration tests with MySQL Docker container"
 	@echo ""
 	@echo "CI/CD:"
 	@echo "  ci           Run local CI pipeline"
@@ -32,48 +33,47 @@ help:
 
 # Installation
 install:
-	pip install -e ".[test,performance]"
+	uv pip install -e ".[test,performance]"
 
 install-dev:
-	pip install -e ".[test,performance,dev]"
-	pip install black isort flake8 mypy bandit twine build
+	uv pip install -e ".[test,performance,dev]"
+	uv pip install black ruff mypy bandit twine build
 
 # Testing
 test:
-	python -m pytest tests/unit/ tests/integration/ --tb=short --maxfail=5
+	uv run python -m pytest tests/unit/ tests/integration/ --tb=short --maxfail=5
 
 test-unit:
-	python -m pytest tests/unit/ --tb=short --maxfail=5
+	uv run python -m pytest tests/unit/ --tb=short --maxfail=5
 
 test-integration:
-	python -m pytest tests/integration/ --tb=short --maxfail=5
+	uv run python -m pytest tests/integration/ --tb=short --maxfail=5
 
 test-performance:
-	python -m pytest tests/performance/ --benchmark-only
+	uv run python -m pytest tests/performance/ --benchmark-only
 
 test-load:
-	python simple_load_test.py --test lookup --users 10 --duration 30
+	uv run python simple_load_test.py --test lookup --users 10 --duration 30
 
 # CI/CD
 ci:
-	python scripts/run_ci_locally.py
+	uv run python scripts/run_ci_locally.py
 
 coverage:
-	python -m pytest tests/ --cov=src/vgnc_internal_orm --cov-report=html --cov-report=term-missing
+	uv run python -m pytest tests/ --cov=src/vgnc_internal_orm --cov-report=html --cov-report=term-missing
 
 quality:
-	black --check src/ tests/
-	isort --check-only src/ tests/
-	flake8 src/ tests/ --max-line-length=120
-	bandit -r src/
+	uv run black --check src/ tests/
+	uv run ruff check src/ tests/
+	uv run bandit -r src/
 
 build:
-	python -m build
+	uv run python -m build
 	twine check dist/*
 
 # Development
 dev:
-	pip install -e ".[test,performance,dev]"
+	uv pip install -e ".[test,performance,dev]"
 	@echo "Development environment setup complete!"
 
 clean:
@@ -88,13 +88,13 @@ clean:
 
 # Code formatting
 format:
-	black src/ tests/
-	isort src/ tests/
+	uv run black src/ tests/
+	uv run ruff check --fix src/ tests/
 
 # Linting
 lint:
-	flake8 src/ tests/ --max-line-length=120
-	mypy src/ --ignore-missing-imports || true
+	uv run ruff check src/ tests/
+	uv run mypy src/ --ignore-missing-imports || true
 
 # Quick development check
 dev-check: format lint test-unit
@@ -111,8 +111,8 @@ docker-test:
 
 # Performance profiling
 profile:
-	python -m cProfile -o profile.stats -m pytest tests/unit/ --tb=short
-	python -c "import pstats; p=pstats.Stats('profile.stats'); p.sort_stats('cumulative'); p.print_stats(10)"
+	uv run python -m cProfile -o profile.stats -m pytest tests/unit/ --tb=short
+	uv run python -c "import pstats; p=pstats.Stats('profile.stats'); p.sort_stats('cumulative'); p.print_stats(10)"
 
 # Security audit
 security:
@@ -121,25 +121,25 @@ security:
 
 # Generate documentation
 docs:
-	pip install sphinx
+	uv add --dev sphinx
 	cd docs && make html
 
 # Build Sphinx HTML from root (Markdown via MyST)
 docs-html:
-	pip install sphinx myst-parser
-	cd docs && sphinx-build -b html . _build/html
+	uv add --dev sphinx myst-parser
+	cd docs && uv run sphinx-build -b html . _build/html
 	@echo "Open docs/_build/html/index.html in your browser."
 
 docs-live:
-	@command -v sphinx-autobuild >/dev/null 2>&1 || pip install sphinx-autobuild myst-parser
-	cd docs && sphinx-autobuild -b html . _build/html
+	@command -v sphinx-autobuild >/dev/null 2>&1 || uv add --dev sphinx-autobuild myst-parser
+	cd docs && uv run sphinx-autobuild -b html . _build/html
 
 # Run example scripts
 examples:
-	python examples/basic_sync.py
-	python examples/basic_async.py
-	python examples/full_text_search_demo.py || true
-	python examples/query_optimization_demo.py
+	uv run python examples/basic_sync.py
+	uv run python examples/basic_async.py
+	uv run python examples/full_text_search_demo.py || true
+	uv run python examples/query_optimization_demo.py
 
 # Release preparation
 release-check:
@@ -154,33 +154,24 @@ release-check:
 	$(MAKE) build
 	@echo "Release preparation complete!"
 
-# Database testing with Docker
+# Database testing with MySQL testcontainers
 test-mysql:
-	docker-compose up -d mysql
-	sleep 10
-	$(MAKE) test-integration
-	docker-compose down
-
-test-postgres:
-	docker-compose up -d postgres
-	sleep 10
-	$(MAKE) test-integration
-	docker-compose down
+	uv run python -m pytest tests/integration/test_mysql_integration.py tests/integration/test_mysql_integration_simple.py tests/integration/test_mysql_features.py --tb=short --maxfail=5
 
 # Performance profiling with memory analysis
 memory-profile:
-	python -m memory_profiler -o profile.mprof -m pytest tests/unit/ --tb=short
+	uv run python -m memory_profiler -o profile.mprof -m pytest tests/unit/ --tb=short
 	mprof2pdf profile.mprof
 
 # Load testing with different scenarios
 load-test-light:
-	python simple_load_test.py --test lookup --users 5 --duration 30
+	uv run python simple_load_test.py --test lookup --users 5 --duration 30
 
 load-test-medium:
-	python simple_load_test.py --test lookup --users 20 --duration 60
+	uv run python simple_load_test.py --test lookup --users 20 --duration 60
 
 load-test-heavy:
-	python simple_load_test.py --test lookup --users 50 --duration 30
+	uv run python simple_load_test.py --test lookup --users 50 --duration 30
 
 # Generate test reports
 reports:
@@ -200,13 +191,13 @@ pre-commit:
 
 # Benchmark comparison
 benchmark-compare:
-	python -m pytest tests/performance/ --benchmark-only --benchmark-compare=baseline
+	uv run python -m pytest tests/performance/ --benchmark-only --benchmark-compare=baseline
 
 # Save performance baseline
 benchmark-save:
-	python -m pytest tests/performance/ --benchmark-only --benchmark-save=baseline
+	uv run python -m pytest tests/performance/ --benchmark-only --benchmark-save=baseline
 
 # Check for memory leaks
 memory-leak-check:
-	python -m pytest tests/unit/ --tb=short --cov=src/vgnc_internal_orm
+	uv run python -m pytest tests/unit/ --tb=short --cov=src/vgnc_internal_orm
 	# This would need additional memory profiling setup

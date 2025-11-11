@@ -6,4 +6,4 @@ including querying, data export, health checks, and interactive shell.
 
 from .main import cli
 
-__all__ = ['cli']
+__all__ = ["cli"]

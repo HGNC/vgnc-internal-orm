@@ -9,10 +9,11 @@ from datetime import datetime
 
 import pytest
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
-from src.vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 from src.vgnc_internal_orm.models.assembly import Assembly
 from src.vgnc_internal_orm.models.chromosomes import Chromosomes
+from src.vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 
 
 class TestSpeciesBasic:
@@ -66,6 +67,7 @@ class TestSpeciesBasic:
         )
         test_db_session.add(species1)
         test_db_session.commit()
+        test_db_session.expunge_all()  # Clear session to avoid instance conflict
 
         # Try to create another species with same taxon_id
         species2 = Species(
@@ -76,9 +78,10 @@ class TestSpeciesBasic:
             created=datetime.now(),
         )
 
-        with pytest.raises(Exception):  # Should raise integrity error
+        with pytest.raises(IntegrityError):  # Should raise integrity error
             test_db_session.add(species2)
             test_db_session.commit()
+            test_db_session.expunge_all()  # Clean up after test
 
 
 class TestAssemblyBasic:
@@ -133,7 +136,7 @@ class TestAssemblyBasic:
         # This might not fail until commit depending on foreign key constraints
         test_db_session.add(assembly)
 
-        with pytest.raises(Exception):  # Should raise foreign key constraint error
+        with pytest.raises(IntegrityError):  # Should raise foreign key constraint error
             test_db_session.commit()
 
 
@@ -181,9 +184,11 @@ class TestChromosomesBasic:
         test_db_session.commit()
 
         # Verify count
-        count = test_db_session.query(Chromosomes).filter(
-            Chromosomes.taxon_id == sample_species.taxon_id
-        ).count()
+        count = (
+            test_db_session.query(Chromosomes)
+            .filter(Chromosomes.taxon_id == sample_species.taxon_id)
+            .count()
+        )
         assert count == len(chromosome_names)
 
 
@@ -193,19 +198,29 @@ class TestTableCreation:
     def test_species_table_exists(self, test_db_session):
         """Test that species table exists."""
         # Simple query to verify table exists
-        result = test_db_session.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='species'"))
+        result = test_db_session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='species'")
+        )
         tables = [row[0] for row in result]
         assert "species" in tables
 
     def test_assembly_table_exists(self, test_db_session):
         """Test that assembly table exists."""
-        result = test_db_session.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='assembly'"))
+        result = test_db_session.execute(
+            text(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='assembly'"
+            )
+        )
         tables = [row[0] for row in result]
         assert "assembly" in tables
 
     def test_chromosomes_table_exists(self, test_db_session):
         """Test that chromosomes table exists."""
-        result = test_db_session.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='chromosomes'"))
+        result = test_db_session.execute(
+            text(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='chromosomes'"
+            )
+        )
         tables = [row[0] for row in result]
         assert "chromosomes" in tables
 
@@ -216,7 +231,11 @@ class TestQueryOperations:
     def test_filter_by_enum(self, test_db_session):
         """Test filtering by enum values."""
         # Create species with different statuses
-        statuses = [SpeciesLiveStatus.YES, SpeciesLiveStatus.NO, SpeciesLiveStatus.TESTING]
+        statuses = [
+            SpeciesLiveStatus.YES,
+            SpeciesLiveStatus.NO,
+            SpeciesLiveStatus.TESTING,
+        ]
 
         for i, status in enumerate(statuses):
             species = Species(
@@ -231,9 +250,11 @@ class TestQueryOperations:
         test_db_session.commit()
 
         # Query by specific status
-        live_species = test_db_session.query(Species).filter(
-            Species.is_live == SpeciesLiveStatus.YES
-        ).all()
+        live_species = (
+            test_db_session.query(Species)
+            .filter(Species.is_live == SpeciesLiveStatus.YES)
+            .all()
+        )
         assert len(live_species) == 1
         assert live_species[0].is_live == SpeciesLiveStatus.YES
 
@@ -253,9 +274,11 @@ class TestQueryOperations:
         test_db_session.commit()
 
         # Query ordered by display_name
-        ordered = test_db_session.query(Chromosomes).order_by(
-            Chromosomes.display_name.asc()
-        ).all()
+        ordered = (
+            test_db_session.query(Chromosomes)
+            .order_by(Chromosomes.display_name.asc())
+            .all()
+        )
 
         # Verify order
         assert ordered[0].display_name == "chrA"
@@ -278,7 +301,10 @@ class TestQueryOperations:
 
         # Test count
         from sqlalchemy import func
-        count = test_db_session.query(func.count(Chromosomes.chr_id)).filter(
-            Chromosomes.taxon_id == sample_species.taxon_id
-        ).scalar()
+
+        count = (
+            test_db_session.query(func.count(Chromosomes.chr_id))
+            .filter(Chromosomes.taxon_id == sample_species.taxon_id)
+            .scalar()
+        )
         assert count == 5

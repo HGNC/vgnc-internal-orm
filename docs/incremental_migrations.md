@@ -140,7 +140,7 @@ python scripts/migration_workflow.py test
 python scripts/migration_workflow.py test-rollback --steps 2
 
 # Test with specific database
-DATABASE_URL="postgresql://user:pass@localhost:5432/test_db" python scripts/migration_workflow.py test
+DATABASE_URL="mysql://user:pass@localhost:3306/test_db" python scripts/migration_workflow.py test
 ```
 
 ### Staging Environment Testing

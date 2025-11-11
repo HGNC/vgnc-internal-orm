@@ -3,15 +3,15 @@
 This model represents the assembly table from the actual genefam_production database.
 """
 
-from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Integer, Boolean, ForeignKey
+from typing import TYPE_CHECKING, Any
+
+from sqlalchemy import Boolean, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import BaseCustomModel
 
 if TYPE_CHECKING:
     from .species import Species
-    from .chromosomes import Chromosomes
 
 
 class Assembly(BaseCustomModel):
@@ -28,61 +28,50 @@ class Assembly(BaseCustomModel):
         Integer,
         primary_key=True,
         nullable=False,
-        comment="Auto-increment primary key for assembly"
+        comment="Auto-increment primary key for assembly",
     )
 
     # Foreign key to species
     taxon_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("species.taxon_id"),
+        ForeignKey("species.taxon_id", ondelete="CASCADE"),
         nullable=False,
-        comment="Foreign key reference to species table"
+        comment="Foreign key reference to species table",
     )
 
     # Assembly source information
     source: Mapped[str] = mapped_column(
-        String(128),
-        nullable=False,
-        comment="Assembly source (e.g., Ensembl, NCBI)"
+        String(128), nullable=False, comment="Assembly source (e.g., Ensembl, NCBI)"
     )
 
     name: Mapped[str] = mapped_column(
-        String(128),
-        nullable=False,
-        comment="Assembly name"
+        String(128), nullable=False, comment="Assembly name"
     )
 
     # Accession numbers
     genbank_assembly_accession: Mapped[str] = mapped_column(
-        String(128),
-        nullable=False,
-        comment="GenBank assembly accession"
+        String(128), nullable=False, comment="GenBank assembly accession"
     )
 
     refseq_assembly_accession: Mapped[str] = mapped_column(
-        String(128),
-        nullable=False,
-        comment="RefSeq assembly accession"
+        String(128), nullable=False, comment="RefSeq assembly accession"
     )
 
     # Status flags
     is_current: Mapped[bool] = mapped_column(
-        Boolean,
-        nullable=False,
-        comment="Whether this is the current assembly"
+        Boolean, nullable=False, comment="Whether this is the current assembly"
     )
 
     is_vgnc_default: Mapped[bool] = mapped_column(
-        Boolean,
-        nullable=False,
-        comment="Whether this is the VGNC default assembly"
+        Boolean, nullable=False, comment="Whether this is the VGNC default assembly"
     )
 
     # Relationships
     species: Mapped["Species"] = relationship(
         "Species",
         back_populates="assemblies",
-        foreign_keys=[taxon_id]
+        foreign_keys=[taxon_id],
+        passive_deletes=True,
     )
 
     # Note: Chromosomes relationship disabled to avoid cross-metadata association table issues
@@ -124,19 +113,19 @@ class Assembly(BaseCustomModel):
             return f"{species_name} - {assembly_name}"
         return assembly_name or species_name
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
-            'id': self.id,
-            'taxon_id': self.taxon_id,
-            'source': self.source,
-            'name': self.name,
-            'genbank_assembly_accession': self.genbank_assembly_accession,
-            'refseq_assembly_accession': self.refseq_assembly_accession,
-            'is_current': self.is_current,
-            'is_vgnc_default': self.is_vgnc_default,
-            'accession': self.accession,
-            'species_name': self.species_name,
-            'is_active': self.is_active,
-            'full_name': self.full_name
+            "id": self.id,
+            "taxon_id": self.taxon_id,
+            "source": self.source,
+            "name": self.name,
+            "genbank_assembly_accession": self.genbank_assembly_accession,
+            "refseq_assembly_accession": self.refseq_assembly_accession,
+            "is_current": self.is_current,
+            "is_vgnc_default": self.is_vgnc_default,
+            "accession": self.accession,
+            "species_name": self.species_name,
+            "is_active": self.is_active,
+            "full_name": self.full_name,
         }

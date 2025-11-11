@@ -1,7 +1,6 @@
 """Unit tests for Genefam and Species models."""
 
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from src.vgnc_internal_orm.models.genefam import Genefam
 from src.vgnc_internal_orm.models.species import Species
@@ -18,7 +17,7 @@ class TestGenefamModel:
             assigned_symbol="HOX",
             assigned_name="Homeobox gene family",
             status_id=1,
-            editor_id=1
+            editor_id=1,
         )
 
         assert genefam.taxon_id == 9606
@@ -36,7 +35,7 @@ class TestGenefamModel:
             assigned_symbol="HOXA",
             assigned_name="Homeobox gene family",
             status_id=1,
-            editor_id=1
+            editor_id=1,
         )
 
         # Test field access
@@ -60,7 +59,7 @@ class TestGenefamModel:
             ("HOX", "HOXA", "Homeobox gene family"),
             ("KRAS", "KRAS", "KRAS proto-oncogene"),
             ("TP53", "TP53", "Tumor protein p53"),
-            ("MYC", "MYC", "MYC proto-oncogene")
+            ("MYC", "MYC", "MYC proto-oncogene"),
         ]
 
         for assigned_id, symbol, name in genefam_data:
@@ -70,7 +69,7 @@ class TestGenefamModel:
                 assigned_symbol=symbol,
                 assigned_name=name,
                 status_id=1,
-                editor_id=1
+                editor_id=1,
             )
             genefams.append(genefam)
 
@@ -89,7 +88,7 @@ class TestGenefamModel:
             assigned_symbol="HOX",
             assigned_name="Homeobox gene family",
             status_id=1,
-            editor_id=1
+            editor_id=1,
         )
         genefam.genefam_id = 1
 
@@ -106,16 +105,16 @@ class TestGenefamModel:
         assert Genefam.__tablename__ == "genefam"
 
         # Check that required columns exist
-        assert hasattr(Genefam, 'genefam_id')
-        assert hasattr(Genefam, 'taxon_id')
-        assert hasattr(Genefam, 'assigned_id')
-        assert hasattr(Genefam, 'assigned_symbol')
-        assert hasattr(Genefam, 'assigned_name')
-        assert hasattr(Genefam, 'status_id')
-        assert hasattr(Genefam, 'editor_id')
+        assert hasattr(Genefam, "genefam_id")
+        assert hasattr(Genefam, "taxon_id")
+        assert hasattr(Genefam, "assigned_id")
+        assert hasattr(Genefam, "assigned_symbol")
+        assert hasattr(Genefam, "assigned_name")
+        assert hasattr(Genefam, "status_id")
+        assert hasattr(Genefam, "editor_id")
 
         # Check primary key
-        assert hasattr(Genefam, 'genefam_id')  # Primary key field
+        assert hasattr(Genefam, "genefam_id")  # Primary key field
 
 
 class TestSpeciesModel:
@@ -128,7 +127,7 @@ class TestSpeciesModel:
             genefam_prefix="HSA",
             display_name="human (Homo sapiens)",
             is_live="YES",
-            created=datetime.now(timezone.utc)
+            created=datetime.now(UTC),
         )
 
         assert species.taxon_id == 9606
@@ -143,7 +142,7 @@ class TestSpeciesModel:
             genefam_prefix="MMU",
             display_name="mouse (Mus musculus)",
             is_live="YES",
-            created=datetime.now(timezone.utc)
+            created=datetime.now(UTC),
         )
 
         # Test field access
@@ -168,7 +167,7 @@ class TestSpeciesModel:
             (10090, "MMU", "mouse (Mus musculus)"),
             (10116, "RNO", "rat (Rattus norvegicus)"),
             (7955, "DRE", "zebrafish (Danio rerio)"),
-            (6239, "CEL", "nematode (Caenorhabditis elegans)")
+            (6239, "CEL", "nematode (Caenorhabditis elegans)"),
         ]
 
         for taxon_id, prefix, name in species_data:
@@ -177,7 +176,7 @@ class TestSpeciesModel:
                 genefam_prefix=prefix,
                 display_name=name,
                 is_live="YES",
-                created=datetime.now(timezone.utc)
+                created=datetime.now(UTC),
             )
             species_list.append(species)
 
@@ -196,7 +195,7 @@ class TestSpeciesModel:
             genefam_prefix="HSA",
             display_name="human (Homo sapiens)",
             is_live="YES",
-            created=datetime.now(timezone.utc)
+            created=datetime.now(UTC),
         )
 
         # __repr__ should contain class name and key info
@@ -212,17 +211,17 @@ class TestSpeciesModel:
         assert Species.__tablename__ == "species"
 
         # Check that required columns exist
-        assert hasattr(Species, 'taxon_id')
-        assert hasattr(Species, 'genefam_prefix')
-        assert hasattr(Species, 'display_name')
-        assert hasattr(Species, 'is_live')
-        assert hasattr(Species, 'created')
+        assert hasattr(Species, "taxon_id")
+        assert hasattr(Species, "genefam_prefix")
+        assert hasattr(Species, "display_name")
+        assert hasattr(Species, "is_live")
+        assert hasattr(Species, "created")
 
         # Check primary key
-        assert hasattr(Species, 'taxon_id')  # Primary key field
+        assert hasattr(Species, "taxon_id")  # Primary key field
 
         # Check that genefam_prefix field exists (unique constraint)
-        assert hasattr(Species, 'genefam_prefix')
+        assert hasattr(Species, "genefam_prefix")
 
 
 class TestModelRelationships:
@@ -237,7 +236,7 @@ class TestModelRelationships:
             assigned_symbol="HOX",
             assigned_name="Homeobox gene family",
             status_id=1,
-            editor_id=1
+            editor_id=1,
         )
 
         # Verify the taxon_id is set correctly
@@ -251,7 +250,7 @@ class TestModelRelationships:
             ("HOX", "HOXA", "Homeobox gene family"),
             ("KRAS", "KRAS", "KRAS proto-oncogene"),
             ("TP53", "TP53", "Tumor protein p53"),
-            ("MYC", "MYC", "MYC proto-oncogene")
+            ("MYC", "MYC", "MYC proto-oncogene"),
         ]
 
         for assigned_id, symbol, name in genefam_data:
@@ -261,7 +260,7 @@ class TestModelRelationships:
                 assigned_symbol=symbol,
                 assigned_name=name,
                 status_id=1,
-                editor_id=1
+                editor_id=1,
             )
             genefams.append(genefam)
 
@@ -277,13 +276,13 @@ class TestModelRelationships:
         # Human genefams
         human_genefams = [
             ("HOX", "HOXA", "Homeobox gene family"),
-            ("KRAS", "KRAS", "KRAS proto-oncogene")
+            ("KRAS", "KRAS", "KRAS proto-oncogene"),
         ]
 
         # Mouse genefams
         mouse_genefams = [
             ("Hox", "Hoxa", "Homeobox gene family"),
-            ("Kras", "Kras", "Kras proto-oncogene")
+            ("Kras", "Kras", "Kras proto-oncogene"),
         ]
 
         for assigned_id, symbol, name in human_genefams:
@@ -293,7 +292,7 @@ class TestModelRelationships:
                 assigned_symbol=symbol,
                 assigned_name=name,
                 status_id=1,
-                editor_id=1
+                editor_id=1,
             )
             genefams.append(genefam)
 
@@ -304,7 +303,7 @@ class TestModelRelationships:
                 assigned_symbol=symbol,
                 assigned_name=name,
                 status_id=1,
-                editor_id=1
+                editor_id=1,
             )
             genefams.append(genefam)
 

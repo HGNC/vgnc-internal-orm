@@ -208,7 +208,7 @@ The project follows a standard Python package structure with the following key d
     - **unit/**: Unit tests with SQLite
     - **integration/**: Integration tests with MySQL containers
     - **performance/**: Performance and load tests
-  - **migrations/**: Alembic migration files
+  - **alembic/versions/**: Alembic migration revision scripts
   - **pyproject.toml**: UV project configuration
   - **README.md**: Project documentation
 

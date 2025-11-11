@@ -1,5 +1,7 @@
 # Advanced Topics & Guides
 
+**VGNC Internal ORM v0.2.0** - MIT License
+
 This consolidated guide indexes the deeper documents in `docs/` and provides a navigation overview. Detailed original files remain for full reference; this page surfaces what each covers and when to consult them.
 
 ## Performance & Querying

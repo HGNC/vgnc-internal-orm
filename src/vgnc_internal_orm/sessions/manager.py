@@ -1,7 +1,7 @@
 """Database session manager for VGNC ORM."""
 
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator, Optional
 
 from sqlalchemy.orm import Session
 
@@ -11,7 +11,7 @@ from .factory import SessionFactory
 class SessionManager:
     """Manager for handling database sessions with context management."""
 
-    def __init__(self, session_factory: Optional[SessionFactory] = None):
+    def __init__(self, session_factory: SessionFactory | None = None):
         """Initialize session manager."""
         self.session_factory = session_factory or SessionFactory()
 
@@ -55,7 +55,8 @@ class SessionManager:
 
 
 # Global session manager instance will be initialized lazily
-session_manager: Optional[SessionManager] = None
+session_manager: SessionManager | None = None
+
 
 def get_session_manager() -> SessionManager:
     """Get or create global session manager instance."""

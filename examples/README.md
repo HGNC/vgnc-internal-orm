@@ -51,6 +51,20 @@ python examples/full_text_search_demo.py
 python examples/query_optimization_demo.py
 ```
 
+### 5) test_migration_safety.py
+
+- Purpose: Demonstrate migration safety validation using `vgnc_internal_orm.migrations.safety`.
+- Features:
+  - Validate migrations for destructive operations
+  - Risk level detection (CRITICAL, HIGH, MEDIUM, LOW)
+  - Production mode validation
+  - CI/CD integration patterns
+- Run:
+
+```bash
+python examples/test_migration_safety.py
+```
+
 ## Tips
 
 - Use `make examples` to run them all (errors on MySQL-only demo are ignored).

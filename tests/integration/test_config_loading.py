@@ -26,7 +26,9 @@ APP_NAME=EnvFile App
 DEBUG=true
 """
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.env', delete=False) as env_file:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".env", delete=False
+        ) as env_file:
             env_file.write(env_content.strip())
             env_file_path = env_file.name
 
@@ -34,7 +36,9 @@ DEBUG=true
             with patch.dict(os.environ, {"ENV_FILE": env_file_path}):
                 settings = Settings(_env_file=env_file_path)
                 assert settings.database.username == "envfile_user"
-                assert settings.database.password.get_secret_value() == "envfile_password"
+                assert (
+                    settings.database.password.get_secret_value() == "envfile_password"
+                )
                 assert settings.database.database == "envfile_db"
                 assert settings.database.host == "envfile_host"
                 assert settings.database.port == 5433
@@ -52,19 +56,23 @@ DATABASE__DATABASE=envfile_db
 APP_NAME=EnvFile App
 """
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.env', delete=False) as env_file:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".env", delete=False
+        ) as env_file:
             env_file.write(env_content.strip())
             env_file_path = env_file.name
 
         try:
             # Environment variables should override .env file
-            with patch.dict(os.environ, {
-                "DATABASE__USERNAME": "env_var_user",
-                "APP_NAME": "Env Var App"
-            }):
+            with patch.dict(
+                os.environ,
+                {"DATABASE__USERNAME": "env_var_user", "APP_NAME": "Env Var App"},
+            ):
                 settings = Settings(_env_file=env_file_path)
                 assert settings.database.username == "env_var_user"  # From env var
-                assert settings.database.password.get_secret_value() == "envfile_password"  # From .env
+                assert (
+                    settings.database.password.get_secret_value() == "envfile_password"
+                )  # From .env
                 assert settings.app_name == "Env Var App"  # From env var
         finally:
             os.unlink(env_file_path)
@@ -78,15 +86,18 @@ APP_NAME=EnvFile App
                 "database": "json_db",
                 "host": "json_host",
                 "port": 5433,
-                "ssl_mode": "require"
+                "ssl_mode": "require",
             },
             "app_name": "JSON App",
             "debug": True,
-            "environment": "staging"
+            "environment": "staging",
         }
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as json_file:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False
+        ) as json_file:
             import json
+
             json.dump(config_data, json_file)
             json_file_path = json_file.name
 
@@ -113,16 +124,15 @@ APP_NAME=EnvFile App
                 "password": "yaml_password",
                 "database": "yaml_db",
                 "driver": "sqlite",
-                "pool": {
-                    "pool_size": 10,
-                    "max_overflow": 20
-                }
+                "pool": {"pool_size": 10, "max_overflow": 20},
             },
             "app_name": "YAML App",
-            "log_level": "WARNING"
+            "log_level": "WARNING",
         }
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as yaml_file:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".yaml", delete=False
+        ) as yaml_file:
             yaml.dump(config_data, yaml_file)
             yaml_file_path = yaml_file.name
 
@@ -151,28 +161,35 @@ APP_NAME=EnvFile App
 DEBUG=false
 """
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.env', delete=False) as env_file:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".env", delete=False
+        ) as env_file:
             env_file.write(env_content.strip())
             env_file_path = env_file.name
 
         try:
-            with patch.dict(os.environ, {
-                "DATABASE__PASSWORD": "env_var_password",  # Override password
-                "APP_NAME": "Env Var App"  # Override app name
-            }):
+            with patch.dict(
+                os.environ,
+                {
+                    "DATABASE__PASSWORD": "env_var_password",  # Override password
+                    "APP_NAME": "Env Var App",  # Override app name
+                },
+            ):
                 # Direct parameters should override everything
                 settings = Settings(
                     database={
                         "username": "direct_user",  # Override all database settings
                         "password": "direct_password",
-                        "database": "direct_db"
+                        "database": "direct_db",
                     },
                     app_name="Direct App",  # Override app name
-                    _env_file=env_file_path
+                    _env_file=env_file_path,
                 )
 
                 assert settings.database.username == "direct_user"  # Direct param
-                assert settings.database.password.get_secret_value() == "direct_password"  # Direct param
+                assert (
+                    settings.database.password.get_secret_value() == "direct_password"
+                )  # Direct param
                 assert settings.database.database == "direct_db"  # Direct param
                 assert settings.app_name == "Direct App"  # Direct param
         finally:
@@ -183,10 +200,7 @@ DEBUG=false
         # Test invalid database driver
         with pytest.raises(ValueError):
             DatabaseConfig(
-                username="user",
-                password="pass",
-                database="db",
-                driver="invalid_driver"
+                username="user", password="pass", database="db", driver="invalid_driver"
             )
 
         # Test invalid port range
@@ -195,7 +209,7 @@ DEBUG=false
                 username="user",
                 password="pass",
                 database="db",
-                port=70000  # Invalid port
+                port=70000,  # Invalid port
             )
 
         # Test missing required fields
@@ -208,8 +222,10 @@ DEBUG=false
     def test_ssl_configuration_validation(self):
         """Test SSL configuration validation."""
         # Create a temporary certificate file
-        with tempfile.NamedTemporaryFile(suffix='.crt', delete=False) as cert_file:
-            cert_file.write(b"-----BEGIN CERTIFICATE-----\nMOCK CERT\n-----END CERTIFICATE-----")
+        with tempfile.NamedTemporaryFile(suffix=".crt", delete=False) as cert_file:
+            cert_file.write(
+                b"-----BEGIN CERTIFICATE-----\nMOCK CERT\n-----END CERTIFICATE-----"
+            )
             cert_path = cert_file.name
 
         try:
@@ -218,7 +234,7 @@ DEBUG=false
                 password="pass",
                 database="db",
                 ssl_mode="require",
-                ssl_cert=Path(cert_path)
+                ssl_cert=Path(cert_path),
             )
             assert config.ssl_mode == "require"
             assert config.ssl_cert == Path(cert_path)
@@ -231,7 +247,7 @@ DEBUG=false
                 username="user",
                 password="pass",
                 database="db",
-                ssl_cert=Path("/nonexistent/cert.crt")
+                ssl_cert=Path("/nonexistent/cert.crt"),
             )
 
     def test_pool_settings_validation(self):
@@ -245,8 +261,8 @@ DEBUG=false
                 "max_overflow": 20,
                 "pool_timeout": 60,
                 "pool_recycle": 7200,
-                "pool_pre_ping": True
-            }
+                "pool_pre_ping": True,
+            },
         )
 
         assert config.pool.pool_size == 10
@@ -261,5 +277,5 @@ DEBUG=false
                 username="user",
                 password="pass",
                 database="db",
-                pool={"pool_size": 0}  # Invalid pool size
+                pool={"pool_size": 0},  # Invalid pool size
             )

@@ -1,12 +1,10 @@
 """Unit tests for SQLAlchemy 2.0 integration."""
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
-import pytest
-from sqlalchemy import String, Boolean, Integer, Text, DateTime
+from sqlalchemy import Boolean, DateTime, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from src.vgnc_internal_orm.models.base import BaseModel
+
 
 # Create a minimal base for test models with required methods
 class TestMixin:
@@ -30,11 +28,11 @@ class TestMixin:
 
     def get_primary_key_value(self):
         """Get primary key value."""
-        return getattr(self, 'id', None)
+        return getattr(self, "id", None)
 
     def is_persisted(self):
         """Check if model is persisted."""
-        return getattr(self, 'id', None) is not None
+        return getattr(self, "id", None) is not None
 
     # Class methods
     @classmethod
@@ -67,6 +65,7 @@ class TestMixin:
 
 class _TestSQLModelBase(DeclarativeBase):
     """Base class for test SQL models only."""
+
     pass
 
 
@@ -79,13 +78,17 @@ class SQLTestModel(TestMixin, _TestSQLModelBase):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
 
     # Timestamp fields (from BaseModel)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
     # Test-specific fields
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    age: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 
@@ -100,33 +103,41 @@ class TestSQLAlchemyIntegration:
         """Test getting column names."""
         columns = SQLTestModel.get_column_names()
 
-        expected_columns = {'id', 'created_at', 'updated_at', 'name', 'description', 'age', 'is_active'}
+        expected_columns = {
+            "id",
+            "created_at",
+            "updated_at",
+            "name",
+            "description",
+            "age",
+            "is_active",
+        }
         assert set(columns).issuperset(expected_columns)
         assert len(columns) >= 7
 
     def test_primary_key_columns(self):
         """Test getting primary key columns."""
         pk_columns = SQLTestModel.get_primary_key_columns()
-        assert pk_columns == ['id']
+        assert pk_columns == ["id"]
 
     def test_has_column_method(self):
         """Test column existence checking."""
-        assert SQLTestModel.has_column('id')
-        assert SQLTestModel.has_column('name')
-        assert SQLTestModel.has_column('description')
-        assert not SQLTestModel.has_column('nonexistent')
+        assert SQLTestModel.has_column("id")
+        assert SQLTestModel.has_column("name")
+        assert SQLTestModel.has_column("description")
+        assert not SQLTestModel.has_column("nonexistent")
 
     def test_get_column_type(self):
         """Test getting column types."""
         # Test existing columns
-        id_type = SQLTestModel.get_column_type('id')
+        id_type = SQLTestModel.get_column_type("id")
         assert id_type is not None
 
-        name_type = SQLTestModel.get_column_type('name')
+        name_type = SQLTestModel.get_column_type("name")
         assert name_type is not None
 
         # Test non-existent column
-        nonexistent_type = SQLTestModel.get_column_type('nonexistent')
+        nonexistent_type = SQLTestModel.get_column_type("nonexistent")
         assert nonexistent_type is None
 
     def test_model_inheritance(self):
@@ -134,15 +145,15 @@ class TestSQLAlchemyIntegration:
         model = SQLTestModel()
 
         # Test that base fields exist
-        assert hasattr(model, 'id')
-        assert hasattr(model, 'created_at')
-        assert hasattr(model, 'updated_at')
+        assert hasattr(model, "id")
+        assert hasattr(model, "created_at")
+        assert hasattr(model, "updated_at")
 
         # Test that model-specific fields exist
-        assert hasattr(model, 'name')
-        assert hasattr(model, 'description')
-        assert hasattr(model, 'age')
-        assert hasattr(model, 'is_active')
+        assert hasattr(model, "name")
+        assert hasattr(model, "description")
+        assert hasattr(model, "age")
+        assert hasattr(model, "is_active")
 
     def test_table_metadata(self):
         """Test table metadata is correctly set up."""
@@ -153,34 +164,33 @@ class TestSQLAlchemyIntegration:
         # Check primary key
         primary_keys = list(table.primary_key.columns)
         assert len(primary_keys) == 1
-        assert primary_keys[0].name == 'id'
+        assert primary_keys[0].name == "id"
 
         # Check column constraints
-        name_column = table.columns['name']
+        name_column = table.columns["name"]
         assert not name_column.nullable
-        assert str(name_column.type) == 'VARCHAR(100)'
+        assert str(name_column.type) == "VARCHAR(100)"
 
-        description_column = table.columns['description']
+        description_column = table.columns["description"]
         assert description_column.nullable
-        assert str(description_column.type) == 'TEXT'
+        assert str(description_column.type) == "TEXT"
 
     def test_field_type_annotations(self):
         """Test that type annotations are properly set."""
-        import inspect
 
         # Get type annotations from the class
         annotations = SQLTestModel.__annotations__
 
         # Check that model-specific fields are annotated
-        assert 'name' in annotations
-        assert 'description' in annotations
-        assert 'age' in annotations
-        assert 'is_active' in annotations
+        assert "name" in annotations
+        assert "description" in annotations
+        assert "age" in annotations
+        assert "is_active" in annotations
 
         # Check annotation types (basic verification)
-        from typing import get_origin, get_args
+        from typing import get_origin
 
-        name_annotation = annotations['name']
+        name_annotation = annotations["name"]
         # Should be annotated with Mapped type
         assert get_origin(name_annotation) is not None
 
@@ -194,7 +204,9 @@ class TestSQLAlchemyIntegration:
         model.name = "Test"
         model.description = "Test description"
         model.age = 25
-        model.is_active = True  # Set explicitly since defaults aren't applied on instance creation
+        model.is_active = (
+            True  # Set explicitly since defaults aren't applied on instance creation
+        )
 
         assert model.name == "Test"
         assert model.description == "Test description"
@@ -206,12 +218,12 @@ class TestSQLAlchemyIntegration:
         table = SQLTestModel.__table__
 
         # Check string column
-        name_column = table.columns['name']
-        assert hasattr(name_column.type, 'length')
+        name_column = table.columns["name"]
+        assert hasattr(name_column.type, "length")
         assert name_column.type.length == 100
 
         # Check boolean column with default
-        is_active_column = table.columns['is_active']
+        is_active_column = table.columns["is_active"]
         assert is_active_column.default is not None
         assert is_active_column.default.arg is True
 
@@ -223,17 +235,17 @@ class TestSQLAlchemyIntegration:
         model.name = "Test"
 
         # Test field access methods
-        assert model.get_field_value('name') == "Test"
-        assert model.get_field_value('nonexistent', 'default') == 'default'
+        assert model.get_field_value("name") == "Test"
+        assert model.get_field_value("nonexistent", "default") == "default"
 
-        assert model.set_field_value('name', 'Updated')
-        assert model.name == 'Updated'
+        assert model.set_field_value("name", "Updated")
+        assert model.name == "Updated"
 
-        assert not model.set_field_value('nonexistent', 'value')
+        assert not model.set_field_value("nonexistent", "value")
 
-        assert model.has_field('id')
-        assert model.has_field('name')
-        assert not model.has_field('nonexistent')
+        assert model.has_field("id")
+        assert model.has_field("name")
+        assert not model.has_field("nonexistent")
 
         # Test primary key method
         assert model.get_primary_key_value() == 1
@@ -249,17 +261,17 @@ class TestSQLAlchemyIntegration:
         model = SQLTestModel()
 
         # Create timezone-aware datetime
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         model.created_at = now
         model.updated_at = now
 
         assert model.created_at.tzinfo is not None
         assert model.updated_at.tzinfo is not None
-        assert model.created_at.tzinfo == timezone.utc
+        assert model.created_at.tzinfo == UTC
 
     def test_model_instantiation_with_kwargs(self):
         """Test model instantiation with keyword arguments."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         model = SQLTestModel(
             name="Test Model",
@@ -267,7 +279,7 @@ class TestSQLAlchemyIntegration:
             age=30,
             is_active=False,
             created_at=now,
-            updated_at=now
+            updated_at=now,
         )
 
         assert model.name == "Test Model"
@@ -281,19 +293,21 @@ class TestSQLAlchemyIntegration:
         """Test various class inspection methods."""
         # Test column count
         columns = SQLTestModel.get_column_names()
-        assert len(columns) >= 7  # id, created_at, updated_at, name, description, age, is_active
+        assert (
+            len(columns) >= 7
+        )  # id, created_at, updated_at, name, description, age, is_active
 
         # Test primary key count
         pk_columns = SQLTestModel.get_primary_key_columns()
         assert len(pk_columns) == 1
-        assert 'id' in pk_columns
+        assert "id" in pk_columns
 
         # Test specific column checks
-        assert SQLTestModel.has_column('id')
-        assert SQLTestModel.has_column('name')
-        assert SQLTestModel.has_column('description')
-        assert SQLTestModel.has_column('age')
-        assert SQLTestModel.has_column('is_active')
-        assert SQLTestModel.has_column('created_at')
-        assert SQLTestModel.has_column('updated_at')
-        assert not SQLTestModel.has_column('fake_column')
+        assert SQLTestModel.has_column("id")
+        assert SQLTestModel.has_column("name")
+        assert SQLTestModel.has_column("description")
+        assert SQLTestModel.has_column("age")
+        assert SQLTestModel.has_column("is_active")
+        assert SQLTestModel.has_column("created_at")
+        assert SQLTestModel.has_column("updated_at")
+        assert not SQLTestModel.has_column("fake_column")

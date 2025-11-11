@@ -15,15 +15,21 @@ def test_mysql_framework_availability():
 
     # Import testcontainers to check availability
     try:
-        from testcontainers.mysql import MySqlContainer
-        testcontainers_available = True
+        import importlib.util
+
+        testcontainers_available = (
+            importlib.util.find_spec("testcontainers.mysql") is not None
+        )
     except ImportError:
         testcontainers_available = False
 
     # Check if we can import our fixtures
     from tests.integration.conftest import (
-        mysql_container, mysql_engine, mysql_session,
-        mysql_connection_info, sample_species_mysql
+        mysql_connection_info,
+        mysql_container,
+        mysql_engine,
+        mysql_session,
+        sample_species_mysql,
     )
 
     # Verify fixtures exist

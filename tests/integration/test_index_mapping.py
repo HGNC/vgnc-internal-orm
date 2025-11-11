@@ -4,26 +4,20 @@ These tests validate that indexes and constraints are properly mapped,
 applied correctly, and provide the expected performance improvements.
 """
 
-import pytest
 from datetime import datetime
-from sqlalchemy import create_engine, text, select, Index, UniqueConstraint
-from sqlalchemy.orm import sessionmaker, Session
+
+import pytest
+from sqlalchemy import create_engine, select, text
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from vgnc_internal_orm.models.base import BaseModel
-from vgnc_internal_orm.models.species import Species
-from vgnc_internal_orm.models.genefam import Genefam
 from vgnc_internal_orm.models.chromosomes import Chromosomes
-from vgnc_internal_orm.models.assembly import Assembly
-from vgnc_internal_orm.models.orthology import (
-    GeneFamilySpeciesEnhanced, GeneOrthologyGroup,
-    GeneFamilyGroupMember, SpeciesRelationship
-)
-
-from vgnc_internal_orm.utils.index_mapper import IndexMapper
+from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 from vgnc_internal_orm.utils.index_manager import IndexManager
-from vgnc_internal_orm.utils.specialized_indexes import SpecializedIndexManager
+from vgnc_internal_orm.utils.index_mapper import IndexMapper
 from vgnc_internal_orm.utils.mysql_features import FullTextSearch, MySQLQueryOptimizer
+from vgnc_internal_orm.utils.specialized_indexes import SpecializedIndexManager
 
 
 @pytest.fixture(scope="function")
@@ -33,16 +27,15 @@ def test_db():
         "sqlite:///:memory:",
         poolclass=StaticPool,
         connect_args={"check_same_thread": False},
-        echo=False
+        echo=False,
     )
 
     # Create unified metadata to handle cross-metadata foreign key references
     from sqlalchemy.schema import MetaData
-    from sqlalchemy import text
+
     unified_metadata = MetaData()
 
     # Add all tables from both metadata registries
-    from vgnc_internal_orm.models.base import BaseModel
     from vgnc_internal_orm.models.species import BaseCustomModel
 
     for table in BaseModel.metadata.tables.values():
@@ -72,96 +65,121 @@ def test_data(test_db):
     session = test_db
 
     from datetime import datetime
-    from sqlalchemy import text
 
     # Insert mock data for foreign key references
-    session.execute(text("INSERT OR IGNORE INTO gene_status (id, status, display) VALUES (1, 'Active', 'Active Status')"))
-    session.execute(text("INSERT OR IGNORE INTO editor (id, display_name, current, connected) VALUES (1, 'Test Editor', 1, 1)"))
+    session.execute(
+        text(
+            "INSERT OR IGNORE INTO gene_status (id, status, display) VALUES (1, 'Active', 'Active Status')"
+        )
+    )
+    session.execute(
+        text(
+            "INSERT OR IGNORE INTO editor (id, display_name, current, connected) VALUES (1, 'Test Editor', 1, 1)"
+        )
+    )
     session.commit()
 
     # Create test species using raw SQL with correct field names
     species_data = [
         {
-            'taxon_id': 9606,
-            'genefam_prefix': 'HSA',
-            'display_name': 'Human (Homo sapiens)',
-            'primary_db_table': 'species',
-            'ensembl_species_name': 'homo_sapiens',
-            'is_live': 'YES',
-            'created': datetime.now()
+            "taxon_id": 9606,
+            "genefam_prefix": "HSA",
+            "display_name": "Human (Homo sapiens)",
+            "primary_db_table": "species",
+            "ensembl_species_name": "homo_sapiens",
+            "is_live": "YES",
+            "created": datetime.now(),
         },
         {
-            'taxon_id': 10090,
-            'genefam_prefix': 'MMU',
-            'display_name': 'Mouse (Mus musculus)',
-            'primary_db_table': 'species',
-            'ensembl_species_name': 'mus_musculus',
-            'is_live': 'YES',
-            'created': datetime.now()
+            "taxon_id": 10090,
+            "genefam_prefix": "MMU",
+            "display_name": "Mouse (Mus musculus)",
+            "primary_db_table": "species",
+            "ensembl_species_name": "mus_musculus",
+            "is_live": "YES",
+            "created": datetime.now(),
         },
         {
-            'taxon_id': 7227,
-            'genefam_prefix': 'DME',
-            'display_name': 'Fruit fly (Drosophila melanogaster)',
-            'primary_db_table': 'species',
-            'ensembl_species_name': 'drosophila_melanogaster',
-            'is_live': 'YES',
-            'created': datetime.now()
-        }
+            "taxon_id": 7227,
+            "genefam_prefix": "DME",
+            "display_name": "Fruit fly (Drosophila melanogaster)",
+            "primary_db_table": "species",
+            "ensembl_species_name": "drosophila_melanogaster",
+            "is_live": "YES",
+            "created": datetime.now(),
+        },
     ]
 
     species_list = []
     for data in species_data:
-        session.execute(text("""
+        session.execute(
+            text(
+                """
             INSERT INTO species (taxon_id, genefam_prefix, display_name, primary_db_table, ensembl_species_name, is_live, created)
             VALUES (:taxon_id, :genefam_prefix, :display_name, :primary_db_table, :ensembl_species_name, :is_live, :created)
-        """), data)
+        """
+            ),
+            data,
+        )
         species_list.append(data)
 
     # Create test gene families using raw SQL with correct fields
     genefam_data = [
         {
-            'taxon_id': 9606,
-            'assigned_id': 'VGNC_HOX_FAMILY',
-            'assigned_symbol': 'HOX',
-            'assigned_name': 'Homeobox gene family involved in developmental patterning',
-            'status_id': 1,
-            'editor_id': 1,
-            'hcop_support_level': 3
+            "taxon_id": 9606,
+            "assigned_id": "VGNC_HOX_FAMILY",
+            "assigned_symbol": "HOX",
+            "assigned_name": "Homeobox gene family involved in developmental patterning",
+            "status_id": 1,
+            "editor_id": 1,
+            "hcop_support_level": 3,
         },
         {
-            'taxon_id': 9606,
-            'assigned_id': 'VGNC_GLOBIN_FAMILY',
-            'assigned_symbol': 'GLOBIN',
-            'assigned_name': 'Globin gene family for oxygen transport',
-            'status_id': 1,
-            'editor_id': 1,
-            'hcop_support_level': 2
+            "taxon_id": 9606,
+            "assigned_id": "VGNC_GLOBIN_FAMILY",
+            "assigned_symbol": "GLOBIN",
+            "assigned_name": "Globin gene family for oxygen transport",
+            "status_id": 1,
+            "editor_id": 1,
+            "hcop_support_level": 2,
         },
         {
-            'taxon_id': 10090,
-            'assigned_id': 'VGNC_CYTOKINE_FAMILY',
-            'assigned_symbol': 'CYTOKINE',
-            'assigned_name': 'Cytokine signaling molecules',
-            'status_id': 1,
-            'editor_id': 1,
-            'hcop_support_level': 2
-        }
+            "taxon_id": 10090,
+            "assigned_id": "VGNC_CYTOKINE_FAMILY",
+            "assigned_symbol": "CYTOKINE",
+            "assigned_name": "Cytokine signaling molecules",
+            "status_id": 1,
+            "editor_id": 1,
+            "hcop_support_level": 2,
+        },
     ]
 
     genefam_list = []
     for data in genefam_data:
-        session.execute(text("""
+        session.execute(
+            text(
+                """
             INSERT INTO genefam (taxon_id, assigned_id, assigned_symbol, assigned_name, status_id, editor_id, hcop_support_level)
             VALUES (:taxon_id, :assigned_id, :assigned_symbol, :assigned_name, :status_id, :editor_id, :hcop_support_level)
-        """), data)
+        """
+            ),
+            data,
+        )
         genefam_list.append(data)
 
     session.commit()
+
+    # Query actual ORM instances to return
+    from src.vgnc_internal_orm.models.genefam import Genefam
+    from src.vgnc_internal_orm.models.species import Species
+
+    species_instances = session.query(Species).all()
+    genefam_instances = session.query(Genefam).all()
+
     return {
-        'species': species_list,
-        'genefams': genefam_list,
-        'session': session
+        "species": species_instances,
+        "genefams": genefam_instances,
+        "session": session,
     }
 
 
@@ -181,17 +199,21 @@ class TestIndexMapper:
         core_tables = ["species", "genefams", "chromosomes", "assemblies"]
         for table in core_tables:
             if table in analysis.indexes:
-                assert len(analysis.indexes[table]) >= 0, f"Should have analysis for table {table}"
+                assert (
+                    len(analysis.indexes[table]) >= 0
+                ), f"Should have analysis for table {table}"
 
         # Validate constraint analysis
         for table in core_tables:
             if table in analysis.constraints:
-                assert len(analysis.constraints[table]) >= 0, f"Should have constraint analysis for table {table}"
+                assert (
+                    len(analysis.constraints[table]) >= 0
+                ), f"Should have constraint analysis for table {table}"
 
     def test_index_mapper_missing_indexes(self):
         """Test identification of missing performance-critical indexes."""
         mapper = IndexMapper()
-        analysis = mapper.analyze_current_indexes()
+        mapper.analyze_current_indexes()
         missing = mapper.create_missing_index_definitions()
 
         # Should identify critical missing indexes
@@ -199,16 +221,17 @@ class TestIndexMapper:
 
         # Check for species and genefams table indexes (which are actually returned)
         species_missing = [
-            idx for idx in missing
-            if idx.table_name in ["species", "genefams"]
+            idx for idx in missing if idx.table_name in ["species", "genefams"]
         ]
-        assert len(species_missing) > 0, "Should identify species/genefams missing indexes"
+        assert (
+            len(species_missing) > 0
+        ), "Should identify species/genefams missing indexes"
 
         # Validate index structure
         for missing_idx in missing:
-            assert hasattr(missing_idx, 'table_name')
-            assert hasattr(missing_idx, 'columns')
-            assert hasattr(missing_idx, 'comment')
+            assert hasattr(missing_idx, "table_name")
+            assert hasattr(missing_idx, "columns")
+            assert hasattr(missing_idx, "comment")
 
     def test_index_mapper_fulltext_opportunities(self):
         """Test identification of full-text search opportunities."""
@@ -216,12 +239,18 @@ class TestIndexMapper:
         analysis = mapper.analyze_current_indexes()
 
         # Should identify full-text opportunities
-        assert len(analysis.fulltext_opportunities) > 0, "Should identify full-text opportunities"
+        assert (
+            len(analysis.fulltext_opportunities) > 0
+        ), "Should identify full-text opportunities"
 
         # Check for text-heavy tables
         text_tables = [opp["table"] for opp in analysis.fulltext_opportunities]
-        assert "species" in text_tables, "Should identify species table for full-text search"
-        assert "genefam" in text_tables, "Should identify genefam table for full-text search"
+        assert (
+            "species" in text_tables
+        ), "Should identify species table for full-text search"
+        assert (
+            "genefam" in text_tables
+        ), "Should identify genefam table for full-text search"
 
         # Validate opportunity structure
         for opportunity in analysis.fulltext_opportunities:
@@ -238,13 +267,15 @@ class TestIndexMapper:
         core_tables = ["species", "genefams", "chromosomes", "assemblies"]
         for table in core_tables:
             if table in sqlalchemy_indexes:
-                assert len(sqlalchemy_indexes[table]) >= 0, f"No indexes generated for {table}"
+                assert (
+                    len(sqlalchemy_indexes[table]) >= 0
+                ), f"No indexes generated for {table}"
 
         # Validate index structure
-        for table_name, indexes in sqlalchemy_indexes.items():
+        for _table_name, indexes in sqlalchemy_indexes.items():
             for idx in indexes:
-                assert hasattr(idx, 'name'), f"Index {idx} missing name attribute"
-                assert hasattr(idx, 'columns'), f"Index {idx} missing columns attribute"
+                assert hasattr(idx, "name"), f"Index {idx} missing name attribute"
+                assert hasattr(idx, "columns"), f"Index {idx} missing columns attribute"
 
 
 class TestIndexManager:
@@ -263,7 +294,9 @@ class TestIndexManager:
         # Should have definitions for core tables
         core_tables = ["species", "genefams", "chromosomes", "assembly"]
         for table in core_tables:
-            assert table in manager.index_definitions, f"Missing index definitions for {table}"
+            assert (
+                table in manager.index_definitions
+            ), f"Missing index definitions for {table}"
 
     def test_index_application_to_models(self):
         """Test application of indexes to SQLAlchemy models."""
@@ -278,7 +311,9 @@ class TestIndexManager:
 
         # Validate applied objects
         for table_name, indexes in result.applied_indexes.items():
-            assert isinstance(indexes, list), f"Indexes for {table_name} should be a list"
+            assert isinstance(
+                indexes, list
+            ), f"Indexes for {table_name} should be a list"
             assert len(indexes) > 0, f"Should have at least one index for {table_name}"
 
     def test_index_validation(self):
@@ -290,7 +325,7 @@ class TestIndexManager:
         assert len(result.validation_results) > 0
 
         # Validate validation structure
-        for table_name, validation in result.validation_results.items():
+        for _table_name, validation in result.validation_results.items():
             assert "total_indexes" in validation
             assert isinstance(validation["total_indexes"], int)
 
@@ -318,8 +353,10 @@ class TestIndexManager:
 
         # Should have all DDL categories
         expected_categories = [
-            "create_indexes", "create_constraints",
-            "drop_indexes", "drop_constraints"
+            "create_indexes",
+            "create_constraints",
+            "drop_indexes",
+            "drop_constraints",
         ]
         for category in expected_categories:
             assert category in ddl_statements, f"Missing {category} DDL statements"
@@ -336,9 +373,11 @@ class TestIndexManager:
 
         # Should have all migration files
         expected_files = [
-            "create_indexes.sql", "create_constraints.sql",
-            "drop_indexes.sql", "drop_constraints.sql",
-            "performance_analysis.sql"
+            "create_indexes.sql",
+            "create_constraints.sql",
+            "drop_indexes.sql",
+            "drop_constraints.sql",
+            "performance_analysis.sql",
         ]
         for filename in expected_files:
             assert filename in migrations, f"Missing {filename} migration file"
@@ -377,14 +416,20 @@ class TestSpecializedIndexes:
 
         # Validate index structure
         for ft_index in species_ft:
-            assert hasattr(ft_index, 'name'), "Full-text index should have name"
-            assert hasattr(ft_index, 'table_name'), "Full-text index should have table name"
-            assert hasattr(ft_index, 'columns'), "Full-text index should have columns"
-            assert len(ft_index.columns) > 0, "Full-text index should have at least one column"
+            assert hasattr(ft_index, "name"), "Full-text index should have name"
+            assert hasattr(
+                ft_index, "table_name"
+            ), "Full-text index should have table name"
+            assert hasattr(ft_index, "columns"), "Full-text index should have columns"
+            assert (
+                len(ft_index.columns) > 0
+            ), "Full-text index should have at least one column"
 
         # Validate ngram parser
         for ft_index in species_ft:
-            assert ft_index.parser == "ngram", "Should use ngram parser for full-text search"
+            assert (
+                ft_index.parser == "ngram"
+            ), "Should use ngram parser for full-text search"
 
     def test_unique_composite_index_creation(self):
         """Test creation of unique composite indexes."""
@@ -392,13 +437,17 @@ class TestSpecializedIndexes:
 
         # Test species unique indexes
         species_unique = manager.create_unique_composite_indexes("species")
-        assert len(species_unique) > 0, "Should create unique composite indexes for species"
+        assert (
+            len(species_unique) > 0
+        ), "Should create unique composite indexes for species"
 
         # Validate index structure
         for unique_idx in species_unique:
-            assert hasattr(unique_idx, 'name'), "Unique index should have name"
-            assert hasattr(unique_idx, 'columns'), "Unique index should have columns"
-            assert len(unique_idx.columns) >= 2, "Composite index should have at least 2 columns"
+            assert hasattr(unique_idx, "name"), "Unique index should have name"
+            assert hasattr(unique_idx, "columns"), "Unique index should have columns"
+            assert (
+                len(unique_idx.columns) >= 2
+            ), "Composite index should have at least 2 columns"
             assert unique_idx.table_name == "species", "Should be for species table"
 
     def test_partial_index_creation(self):
@@ -411,14 +460,20 @@ class TestSpecializedIndexes:
 
         # Validate index structure
         for partial_idx in species_partial:
-            assert hasattr(partial_idx, 'name'), "Partial index should have name"
-            assert hasattr(partial_idx, 'where_condition'), "Partial index should have WHERE condition"
+            assert hasattr(partial_idx, "name"), "Partial index should have name"
+            assert hasattr(
+                partial_idx, "where_condition"
+            ), "Partial index should have WHERE condition"
             assert partial_idx.table_name == "species", "Should be for species table"
 
         # Validate WHERE conditions
         for partial_idx in species_partial:
-            assert "is_live" in partial_idx.where_condition, "Should filter on live status"
-            assert len(partial_idx.where_condition) > 10, "WHERE condition should be meaningful"
+            assert (
+                "is_live" in partial_idx.where_condition
+            ), "Should filter on live status"
+            assert (
+                len(partial_idx.where_condition) > 10
+            ), "WHERE condition should be meaningful"
 
     def test_functional_index_creation(self):
         """Test creation of functional indexes."""
@@ -430,13 +485,17 @@ class TestSpecializedIndexes:
 
         # Validate index structure
         for func_idx in species_func:
-            assert hasattr(func_idx, 'name'), "Functional index should have name"
-            assert hasattr(func_idx, 'expression'), "Functional index should have expression"
+            assert hasattr(func_idx, "name"), "Functional index should have name"
+            assert hasattr(
+                func_idx, "expression"
+            ), "Functional index should have expression"
             assert func_idx.table_name == "species", "Should be for species table"
 
         # Validate expressions
         for func_idx in species_func:
-            assert any(func in func_idx.expression for func in ["UPPER", "LOWER"]), "Should use case functions"
+            assert any(
+                func in func_idx.expression for func in ["UPPER", "LOWER"]
+            ), "Should use case functions"
 
     def test_mysql_ddl_generation(self):
         """Test MySQL DDL generation for specialized indexes."""
@@ -454,17 +513,19 @@ class TestSpecializedIndexes:
         constraint_ddls = [ddl for ddl in mysql_ddl if "ADD CONSTRAINT" in ddl]
         assert len(constraint_ddls) > 0, "Should generate constraint DDL"
 
-    def test_postgresql_ddl_generation(self):
-        """Test PostgreSQL DDL generation for specialized indexes."""
+    def test_mysql_ddl_generation_genefams(self):
+        """Test MySQL DDL generation for specialized indexes on genefams table."""
         manager = SpecializedIndexManager()
 
-        # Test PostgreSQL DDL generation
-        pg_ddl = manager.generate_postgresql_ddl("genefams")
-        assert len(pg_ddl) > 0, "Should generate PostgreSQL DDL statements"
+        # Test MySQL DDL generation
+        mysql_ddl = manager.generate_mysql_ddl("genefams")
+        assert len(mysql_ddl) > 0, "Should generate MySQL DDL statements"
 
-        # Validate GIN index syntax for full-text
-        gin_indexes = [ddl for ddl in pg_ddl if "USING gin" in ddl and "to_tsvector" in ddl]
-        assert len(gin_indexes) > 0, "Should generate GIN indexes for full-text search"
+        # Validate FULLTEXT index syntax for full-text search
+        fulltext_indexes = [ddl for ddl in mysql_ddl if "FULLTEXT" in ddl]
+        assert (
+            len(fulltext_indexes) > 0
+        ), "Should generate FULLTEXT indexes for full-text search"
 
     def test_query_pattern_analysis(self):
         """Test query pattern analysis and index recommendations."""
@@ -474,7 +535,7 @@ class TestSpecializedIndexes:
         query_patterns = [
             "SELECT * FROM species WHERE scientific_name LIKE '%Homo%'",
             "SELECT DISTINCT family_type FROM genefams WHERE is_active = true",
-            "SELECT * FROM chromosomes WHERE length > 1000000 AND is_complete = true"
+            "SELECT * FROM chromosomes WHERE length > 1000000 AND is_complete = true",
         ]
 
         analysis = manager.analyze_index_usage("species", query_patterns)
@@ -485,7 +546,7 @@ class TestSpecializedIndexes:
         assert analysis["available_indexes"]["unique_composite"] > 0
 
         # Validate scoring system
-        for query, support in analysis["query_support"].items():
+        for _query, support in analysis["query_support"].items():
             assert "support_score" in support
             assert isinstance(support["support_score"], int)
             assert 0 <= support["support_score"] <= 5
@@ -514,7 +575,7 @@ class TestIndexConstraintIntegration:
 
     def test_constraint_enforcement(self, test_data):
         """Test that constraints are properly enforced."""
-        session = test_data['session']
+        session = test_data["session"]
 
         # Test unique constraint on display_name
         species1 = Species(
@@ -523,7 +584,7 @@ class TestIndexConstraintIntegration:
             primary_db_table="species",
             ensembl_species_name="testus_species",
             is_live="YES",
-            created=datetime.now()
+            created=datetime.now(),
         )
         session.add(species1)
         session.commit()
@@ -536,7 +597,7 @@ class TestIndexConstraintIntegration:
                 primary_db_table="species",
                 ensembl_species_name="testus_species2",
                 is_live="YES",
-                created=datetime.now()
+                created=datetime.now(),
             )
             session.add(species2)
             session.commit()
@@ -547,15 +608,15 @@ class TestIndexConstraintIntegration:
 
     def test_foreign_key_constraints(self, test_data):
         """Test that foreign key constraints work properly."""
-        session = test_data['session']
+        session = test_data["session"]
 
         # Create a chromosome without valid species_id
         try:
-            chromosome = Chromosome(
+            chromosome = Chromosomes(
                 species_id=999999,  # Non-existent species
                 chromosome_name="chr1",
                 chromosome_type="autosome",
-                length=1000000
+                length=1000000,
             )
             session.add(chromosome)
             session.commit()
@@ -566,13 +627,15 @@ class TestIndexConstraintIntegration:
 
     def test_query_performance_with_indexes(self, test_data):
         """Test that indexes improve query performance."""
-        session = test_data['session']
+        session = test_data["session"]
 
         # Test that indexed columns can be used efficiently
         # This is a simplified performance test using available fields
-        species_with_indexes = session.execute(
-            select(Species).where(Species.is_live == 'YES')
-        ).scalars().all()
+        species_with_indexes = (
+            session.execute(select(Species).where(Species.is_live == "YES"))
+            .scalars()
+            .all()
+        )
 
         # Should find live species efficiently
         assert len(species_with_indexes) >= 1, "Should find live species with indexes"
@@ -593,23 +656,22 @@ class TestIndexConstraintIntegration:
             if table_name == "species":
                 # Should have taxon_id positive constraint
                 has_taxon_constraint = any(
-                    "taxon_id_positive" in name
-                    for name in constraints
+                    "taxon_id_positive" in name for name in constraints
                 )
-                assert has_taxon_constraint, "Should have taxon_id validation constraint"
+                assert (
+                    has_taxon_constraint
+                ), "Should have taxon_id validation constraint"
 
                 # Should have VGNC prefix format constraint
                 has_prefix_constraint = any(
-                    "vgnc_prefix_format" in name
-                    for name in constraints
+                    "vgnc_prefix_format" in name for name in constraints
                 )
-                assert has_prefix_constraint, "Should have VGNC prefix format validation"
+                assert (
+                    has_prefix_constraint
+                ), "Should have VGNC prefix format validation"
 
                 # Check if gene count constraint exists (may or may not be present)
-                gene_count_constraint = any(
-                    "gene_count" in name.lower()
-                    for name in constraints
-                )
+                any("gene_count" in name.lower() for name in constraints)
                 # Note: This test validates constraint application rather than specific constraints
 
 
@@ -618,12 +680,11 @@ class TestMySQLSpecificFeatures:
 
     def test_fulltext_search_integration(self, test_data):
         """Test integration with MySQL full-text search features."""
-        session = test_data['session']
+        test_data["session"]
 
         # Test FullTextSearch utility
         search_query = FullTextSearch.build_match_query(
-            columns=["scientific_name", "common_name"],
-            search_query="Homo sapiens"
+            columns=["scientific_name", "common_name"], search_query="Homo sapiens"
         )
 
         # Should create valid MATCH clause
@@ -633,7 +694,7 @@ class TestMySQLSpecificFeatures:
 
     def test_query_optimization_with_indexes(self, test_data):
         """Test query optimization with MySQL hints."""
-        session = test_data['session']
+        test_data["session"]
 
         # Test MySQLQueryOptimizer
         optimizer = MySQLQueryOptimizer()
@@ -641,8 +702,7 @@ class TestMySQLSpecificFeatures:
         # Test hint injection
         original_query = "SELECT * FROM species WHERE scientific_name LIKE '%Homo%'"
         optimized_query = optimizer.inject_hints(
-            original_query,
-            [MySQLQueryOptimizer.HintType.SQL_CACHE]
+            original_query, [MySQLQueryOptimizer.HintType.SQL_CACHE]
         )
 
         # Should add SQL_CACHE hint
@@ -650,14 +710,14 @@ class TestMySQLSpecificFeatures:
 
     def test_charset_aware_indexing(self, test_data):
         """Test charset-aware indexing functionality."""
-        session = test_data['session']
+        test_data["session"]
 
         # Test species with international characters
-        species = test_data['species'][0]
-        validation = species.validate_utf8mb4_fields('scientific_name', 'common_name')
+        species = test_data["species"][0]
+        validation = species.validate_utf8mb4_fields("scientific_name", "common_name")
 
         # Should validate UTF8MB4 fields
-        assert 'scientific_name' in validation
+        assert "scientific_name" in validation
         assert isinstance(validation, dict)
 
 
@@ -687,8 +747,11 @@ class TestPerformanceValidation:
 
         # Should have appropriate check constraints
         tables_with_checks = [
-            table for table in analysis.constraints.keys()
-            if any("ck_" in constraint.name for constraint in analysis.constraints[table])
+            table
+            for table in analysis.constraints.keys()
+            if any(
+                "ck_" in constraint.name for constraint in analysis.constraints[table]
+            )
         ]
         assert len(tables_with_checks) > 0, "Should have check constraints"
 
@@ -705,12 +768,14 @@ class TestPerformanceValidation:
 
         # Should provide actionable insights
         recommendations = impact.get("recommendations", [])
-        assert isinstance(recommendations, list), "Should provide performance recommendations"
+        assert isinstance(
+            recommendations, list
+        ), "Should provide performance recommendations"
 
     def test_database_consistency_validation(self, test_data):
         """Test validation against database schema consistency."""
         manager = IndexManager()
-        validation = manager.validate_index_consistency(test_data.get('session').bind)
+        validation = manager.validate_index_consistency(test_data.get("session").bind)
 
         # Should validate database state
         assert isinstance(validation, dict), "Should return validation dictionary"
@@ -754,11 +819,13 @@ class TestEdgeCases:
         # Should have detected duplicate indexes during validation
         for table_name, validation in result.validation_results.items():
             if validation.get("duplicate_indexes"):
-                assert len(validation["duplicate_indexes"]) >= 0, f"Should detect duplicates in {table_name}"
+                assert (
+                    len(validation["duplicate_indexes"]) >= 0
+                ), f"Should detect duplicates in {table_name}"
 
     def test_large_dataset_indexing(self, test_data):
         """Test indexing behavior with large datasets."""
-        session = test_data['session']
+        session = test_data["session"]
 
         # Create additional test data to simulate larger dataset
         for i in range(10, 20):
@@ -767,9 +834,11 @@ class TestEdgeCases:
                 vgnc_prefix=f"TST{i:03d}",
                 common_name=f"Test Common Name {i}",
                 taxon_id=10000 + i,
-                class_name="Mammalia",
-                order_name="Primates",
-                family_name="Testidae"
+                display_name=f"Test Common Name {i} (Testus{i:03d} species)",
+                genefam_prefix=f"TST{i:03d}",
+                ensembl_species_name=f"testus_{i:03d}_species",
+                is_live=SpeciesLiveStatus.YES,
+                created=datetime.now(),
             )
             session.add(species)
 
@@ -780,10 +849,14 @@ class TestEdgeCases:
         assert len(all_species) > 10, "Should handle larger datasets"
 
         # Test that queries still work with indexes applied
-        model_organisms = session.execute(
-            select(Species).where(Species.is_model_organism == True)
-        ).scalars().all()
-        assert len(model_organisms) >= 1, "Should still find model organisms with indexes"
+        active_species = (
+            session.execute(
+                select(Species).where(Species.is_live == SpeciesLiveStatus.YES)
+            )
+            .scalars()
+            .all()
+        )
+        assert len(active_species) >= 1, "Should still find active species with indexes"
 
     def test_concurrent_index_application(self, test_data):
         """Test concurrent index application (simulated)."""
@@ -794,5 +867,11 @@ class TestEdgeCases:
         result2 = manager.apply_indexes_to_models()
 
         # Should handle concurrent access
-        assert result1.performance_impact["total_indexes_applied"] == result2.performance_impact["total_indexes_applied"]
-        assert result1.performance_impact["total_constraints_applied"] == result2.performance_impact["total_constraints_applied"]
+        assert (
+            result1.performance_impact["total_indexes_applied"]
+            == result2.performance_impact["total_indexes_applied"]
+        )
+        assert (
+            result1.performance_impact["total_constraints_applied"]
+            == result2.performance_impact["total_constraints_applied"]
+        )

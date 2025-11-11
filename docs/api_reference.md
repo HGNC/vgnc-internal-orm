@@ -2,6 +2,8 @@
 
 This page catalogs key modules, classes, and helpers with links to conceptual docs. For full details, consult source files under `src/vgnc_internal_orm/`.
 
+**Version:** 0.2.0
+
 ## Configuration (`config`)
 
 - `DatabaseConfig` (in `config/settings.py`): driver, credentials, pooling, SSL, charset; builds `database_url` and `async_database_url`.
@@ -51,8 +53,9 @@ Examples: see `cli.md`.
 
 ## Migrations & Safety
 
-- `migrations/safety.py`: `validate_migration_safety()`, `print_safety_report()`
-- `scripts/migration_workflow.py`: `MigrationWorkflow` (create/test/rollback/validate/status)
+- `vgnc_internal_orm.migrations.safety`: `validate_migration_safety()`, `print_safety_report()`, `MigrationSafetyValidator`
+- `scripts/migration_workflow.py`: `MigrationWorkflow` (create/test/rollback/validate/status, integrates safety module)
+- Alembic revision scripts: `alembic/versions/*`
 
 Examples: see `migration_workflow.md`, `migrations_safety.md`.
 

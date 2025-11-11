@@ -1,11 +1,7 @@
 """Unit tests for Chromosomes and Assembly models."""
 
-import pytest
-from datetime import datetime, timezone
-
-from src.vgnc_internal_orm.models.chromosomes import Chromosomes
 from src.vgnc_internal_orm.models.assembly import Assembly
-from src.vgnc_internal_orm.models.species import Species
+from src.vgnc_internal_orm.models.chromosomes import Chromosomes
 
 
 class TestChromosomesModel:
@@ -13,11 +9,7 @@ class TestChromosomesModel:
 
     def test_chromosome_creation(self):
         """Test basic Chromosomes model creation."""
-        chromosome = Chromosomes(
-            taxon_id=1,
-            display_name="1",
-            coord_system="GRCh38"
-        )
+        chromosome = Chromosomes(taxon_id=1, display_name="1", coord_system="GRCh38")
 
         assert chromosome.taxon_id == 1
         assert chromosome.display_name == "1"
@@ -25,11 +17,7 @@ class TestChromosomesModel:
 
     def test_chromosome_basic_fields(self):
         """Test basic chromosome field access."""
-        chromosome = Chromosomes(
-            taxon_id=9606,
-            display_name="X",
-            coord_system="GRCh38"
-        )
+        chromosome = Chromosomes(taxon_id=9606, display_name="X", coord_system="GRCh38")
 
         # Test field access
         assert chromosome.taxon_id == 9606
@@ -49,19 +37,13 @@ class TestChromosomesModel:
 
         for name in names:
             chromosome = Chromosomes(
-                taxon_id=1,
-                display_name=name,
-                coord_system="GRCh38"
+                taxon_id=1, display_name=name, coord_system="GRCh38"
             )
             assert chromosome.display_name == name
 
     def test_chromosome_string_representation(self):
         """Test string representation."""
-        chromosome = Chromosomes(
-            taxon_id=1,
-            display_name="1",
-            coord_system="GRCh38"
-        )
+        chromosome = Chromosomes(taxon_id=1, display_name="1", coord_system="GRCh38")
         chromosome.chr_id = 1
 
         # __repr__ should contain class name and key info
@@ -77,13 +59,13 @@ class TestChromosomesModel:
         assert Chromosomes.__tablename__ == "chromosomes"
 
         # Check that required columns exist
-        assert hasattr(Chromosomes, 'taxon_id')
-        assert hasattr(Chromosomes, 'display_name')
-        assert hasattr(Chromosomes, 'coord_system')
-        assert hasattr(Chromosomes, 'chr_id')
+        assert hasattr(Chromosomes, "taxon_id")
+        assert hasattr(Chromosomes, "display_name")
+        assert hasattr(Chromosomes, "coord_system")
+        assert hasattr(Chromosomes, "chr_id")
 
         # Check primary key
-        assert hasattr(Chromosomes, 'chr_id')  # Primary key field
+        assert hasattr(Chromosomes, "chr_id")  # Primary key field
 
 
 class TestAssemblyModel:
@@ -98,7 +80,7 @@ class TestAssemblyModel:
             genbank_assembly_accession="GCA_000001405.40",
             refseq_assembly_accession="GCF_000001405.26",
             is_current=True,
-            is_vgnc_default=True
+            is_vgnc_default=True,
         )
 
         assert assembly.taxon_id == 1
@@ -116,7 +98,7 @@ class TestAssemblyModel:
             name="GRCh38",
             source="Ensembl",
             genbank_assembly_accession="GCA_000001405.40",
-            refseq_assembly_accession="GCF_000001405.26"
+            refseq_assembly_accession="GCF_000001405.26",
         )
 
         # Test field access
@@ -133,7 +115,7 @@ class TestAssemblyModel:
         accessions = [
             ("GCA_000001405.40", "GCF_000001405.26"),
             ("GCA_000001405.28", "GCF_000001405.38"),
-            ("GCA_900123456.1", "GCF_900123456.1")
+            ("GCA_900123456.1", "GCF_900123456.1"),
         ]
 
         for genbank, refseq in accessions:
@@ -142,7 +124,7 @@ class TestAssemblyModel:
                 name="test_assembly",
                 source="Test",
                 genbank_assembly_accession=genbank,
-                refseq_assembly_accession=refseq
+                refseq_assembly_accession=refseq,
             )
             assert assembly.genbank_assembly_accession == genbank
             assert assembly.refseq_assembly_accession == refseq
@@ -154,7 +136,7 @@ class TestAssemblyModel:
             name="GRCh38",
             source="Ensembl",
             genbank_assembly_accession="GCA_000001405.40",
-            refseq_assembly_accession="GCF_000001405.26"
+            refseq_assembly_accession="GCF_000001405.26",
         )
         assembly.id = 1
 
@@ -171,15 +153,15 @@ class TestAssemblyModel:
         assert Assembly.__tablename__ == "assembly"
 
         # Check that required columns exist
-        assert hasattr(Assembly, 'taxon_id')
-        assert hasattr(Assembly, 'name')
-        assert hasattr(Assembly, 'source')
-        assert hasattr(Assembly, 'genbank_assembly_accession')
-        assert hasattr(Assembly, 'refseq_assembly_accession')
-        assert hasattr(Assembly, 'id')
+        assert hasattr(Assembly, "taxon_id")
+        assert hasattr(Assembly, "name")
+        assert hasattr(Assembly, "source")
+        assert hasattr(Assembly, "genbank_assembly_accession")
+        assert hasattr(Assembly, "refseq_assembly_accession")
+        assert hasattr(Assembly, "id")
 
         # Check primary key
-        assert hasattr(Assembly, 'id')  # Primary key field
+        assert hasattr(Assembly, "id")  # Primary key field
 
 
 class TestModelRelationships:
@@ -189,9 +171,7 @@ class TestModelRelationships:
         """Test species-chromosome relationship structure."""
         # Create a chromosome with species reference
         chromosome = Chromosomes(
-            taxon_id=9606,  # Human taxon ID
-            display_name="1",
-            coord_system="GRCh38"
+            taxon_id=9606, display_name="1", coord_system="GRCh38"  # Human taxon ID
         )
 
         # Verify the taxon_id is set correctly
@@ -206,7 +186,7 @@ class TestModelRelationships:
             name="GRCh38",
             source="Ensembl",
             genbank_assembly_accession="GCA_000001405.40",
-            refseq_assembly_accession="GCF_000001405.26"
+            refseq_assembly_accession="GCF_000001405.26",
         )
 
         # Verify the taxon_id is set correctly
@@ -219,7 +199,7 @@ class TestModelRelationships:
         assembly_data = [
             ("GRCh38", "GCA_000001405.40", "GCF_000001405.26"),
             ("GRCh37", "GCA_000001405.14", "GCF_000001405.13"),
-            ("T2T-CHM13", "GCA_009914755.1", "GCF_009914755.1")
+            ("T2T-CHM13", "GCA_009914755.1", "GCF_009914755.1"),
         ]
 
         for name, genbank, refseq in assembly_data:
@@ -230,7 +210,7 @@ class TestModelRelationships:
                 genbank_assembly_accession=genbank,
                 refseq_assembly_accession=refseq,
                 is_current=(name == "GRCh38"),
-                is_vgnc_default=(name == "GRCh38")
+                is_vgnc_default=(name == "GRCh38"),
             )
             assemblies.append(assembly)
 
@@ -247,9 +227,7 @@ class TestModelRelationships:
 
         for name in chromosome_names:
             chromosome = Chromosomes(
-                taxon_id=9606,
-                display_name=name,
-                coord_system="GRCh38"
+                taxon_id=9606, display_name=name, coord_system="GRCh38"
             )
             chromosomes.append(chromosome)
 

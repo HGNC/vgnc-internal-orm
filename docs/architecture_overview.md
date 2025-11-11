@@ -2,6 +2,9 @@
 
 This library implements a SQLAlchemy 2.0 ORM for VGNC domain data with strong typing, environment-aware configuration, optimized session handling, performance/index utilities, and migration safety tooling.
 
+**Version:** 0.2.0
+**License:** MIT
+
 ## High-Level Components
 
 | Layer | Purpose |
@@ -11,7 +14,7 @@ This library implements a SQLAlchemy 2.0 ORM for VGNC domain data with strong ty
 | Models | Domain entities + helpers (`models/*`, `BaseModel`) |
 | Utilities | Index / performance / charset / schema analysis (`utils/*`) |
 | CLI | Operational querying & export (`cli/main.py`) |
-| Migrations | Safety validation & workflow (`migrations/safety.py`, `scripts/migration_workflow.py`) |
+| Migrations | Workflow orchestration (`scripts/migration_workflow.py`) & Alembic revisions (`alembic/versions/*`) |
 
 ## Module Map
 
@@ -24,7 +27,7 @@ This library implements a SQLAlchemy 2.0 ORM for VGNC domain data with strong ty
 - Supporting & association tables: `supporting.py`, `associations.py`.
 - Performance & indexing: `index_definitions.py`, `index_mapper.py`, `index_manager.py`, `schema_analyzer.py`, `specialized_indexes.py`.
 - MySQL / query optimization: `mysql_features.py`, `query_optimizer.py`.
-- Migration safety: `migrations/safety.py` (risk scanning, downgrade checks).
+- Migration safety: `src/vgnc_internal_orm/migrations/safety.py` (risk scanning, downgrade checks) integrated into `scripts/migration_workflow.py`.
 - Workflow scripting: `scripts/migration_workflow.py` (create/test/rollback/validate/status).
 - CLI interface: `cli/main.py` (query/export commands; table/JSON/CSV/XML).
 

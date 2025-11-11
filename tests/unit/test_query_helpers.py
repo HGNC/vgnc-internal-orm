@@ -1,16 +1,17 @@
 """Unit tests for query and relationship helper methods."""
 
-from datetime import datetime, timezone
-from typing import Optional
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+import asyncio
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from sqlalchemy import String, Boolean, Integer, Text
+from sqlalchemy import Boolean, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
 
 # Create a separate base for test models to avoid relationship conflicts
 class _TestQueryModelBase(DeclarativeBase):  # Private to avoid pytest collection
     """Base class for test query models only."""
+
     pass
 
 
@@ -21,15 +22,15 @@ class QueryTestModel(_TestQueryModelBase):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    age: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     # Query helper methods (mocked for testing)
     @classmethod
     def find_by_id(cls, session, model_id):
         """Find a model by ID."""
-        if session and hasattr(session, 'query'):
+        if session and hasattr(session, "query"):
             # Use the session-based approach when a session is provided
             # Actually call query() and filter() to satisfy test assertions
             mock_query = session.query(cls)
@@ -38,20 +39,22 @@ class QueryTestModel(_TestQueryModelBase):
         else:
             # Fallback to simple mock when no session
             mock_result = Mock()
-            mock_result.configure_mock(**{
-                'id': model_id,
-                'name': f'Model {model_id}',
-                'description': f'Description for model {model_id}',
-                'age': 25,
-                'is_active': True
-            })
+            mock_result.configure_mock(
+                **{
+                    "id": model_id,
+                    "name": f"Model {model_id}",
+                    "description": f"Description for model {model_id}",
+                    "age": 25,
+                    "is_active": True,
+                }
+            )
             return mock_result
 
     @classmethod
     async def afind_by_id(cls, session, model_id):
         """Async find a model by ID."""
         # Check if this is an AsyncMock session
-        if hasattr(session, 'execute') and hasattr(session.execute, 'return_value'):
+        if hasattr(session, "execute") and hasattr(session.execute, "return_value"):
             # Handle AsyncMock session with execute() pattern
             mock_result = await session.execute()
             return await mock_result.scalar_one_or_none()
@@ -62,7 +65,7 @@ class QueryTestModel(_TestQueryModelBase):
     @classmethod
     def find_all(cls, session=None, **filters):
         """Find all models matching filters."""
-        if session and hasattr(session, 'query'):
+        if session and hasattr(session, "query"):
             # Use the configured mock chain from the test
             mock_query = session.query(cls)
             mock_filtered_query1 = mock_query.filter()
@@ -70,15 +73,17 @@ class QueryTestModel(_TestQueryModelBase):
             return mock_filtered_query2.all()
         else:
             return [
-                Mock(id=1, name='Test 1', description='Desc 1', age=25, is_active=True),
-                Mock(id=2, name='Test 2', description='Desc 2', age=30, is_active=False)
+                Mock(id=1, name="Test 1", description="Desc 1", age=25, is_active=True),
+                Mock(
+                    id=2, name="Test 2", description="Desc 2", age=30, is_active=False
+                ),
             ]
 
     @classmethod
     async def afind_all(cls, session=None, **filters):
         """Async find all models matching filters."""
         # Check if this is an AsyncMock session
-        if hasattr(session, 'execute') and hasattr(session.execute, 'return_value'):
+        if hasattr(session, "execute") and hasattr(session.execute, "return_value"):
             # Handle AsyncMock session with execute() pattern
             mock_result = await session.execute()
             mock_scalars = await mock_result.scalars()
@@ -91,7 +96,7 @@ class QueryTestModel(_TestQueryModelBase):
     async def afind_one(cls, session=None, **filters):
         """Async find one model matching filters."""
         # Check if this is an AsyncMock session
-        if hasattr(session, 'execute') and hasattr(session.execute, 'return_value'):
+        if hasattr(session, "execute") and hasattr(session.execute, "return_value"):
             # Handle AsyncMock session with execute() pattern
             mock_result = await session.execute()
             return await mock_result.scalar_one_or_none()
@@ -102,20 +107,22 @@ class QueryTestModel(_TestQueryModelBase):
     @classmethod
     def find_one(cls, session=None, **filters):
         """Find one model matching filters."""
-        if session and hasattr(session, 'query'):
+        if session and hasattr(session, "query"):
             # Use the configured mock chain from the test
             mock_query = session.query(cls)
             mock_filtered_query = mock_query.filter()
             return mock_filtered_query.first()
         else:
             mock_result = Mock()
-            mock_result.configure_mock(**{
-                'id': 1,
-                'name': 'Test Model',
-                'description': 'Test Description',
-                'age': 25,
-                'is_active': True
-            })
+            mock_result.configure_mock(
+                **{
+                    "id": 1,
+                    "name": "Test Model",
+                    "description": "Test Description",
+                    "age": 25,
+                    "is_active": True,
+                }
+            )
             return mock_result
 
     @classmethod
@@ -124,7 +131,7 @@ class QueryTestModel(_TestQueryModelBase):
         # Create a new instance with the provided kwargs
         instance = cls(**kwargs)
         # Add to session if provided
-        if session and hasattr(session, 'add'):
+        if session and hasattr(session, "add"):
             session.add(instance)
             session.commit()
             session.refresh(instance)
@@ -137,19 +144,19 @@ class QueryTestModel(_TestQueryModelBase):
         instance = cls(**kwargs)
 
         # Handle async session operations
-        if session and hasattr(session, 'add'):
+        if session and hasattr(session, "add"):
             # Check if session methods are coroutines (AsyncMock) or regular methods
-            if hasattr(session.add, '__await__'):
+            if hasattr(session.add, "__await__"):
                 await session.add(instance)
             else:
                 session.add(instance)
 
-            if hasattr(session.commit, '__await__'):
+            if hasattr(session.commit, "__await__"):
                 await session.commit()
             else:
                 session.commit()
 
-            if hasattr(session.refresh, '__await__'):
+            if hasattr(session.refresh, "__await__"):
                 await session.refresh(instance)
             else:
                 session.refresh(instance)
@@ -197,7 +204,7 @@ class QueryTestModel(_TestQueryModelBase):
             setattr(instance, key, value)
 
         # Commit changes if session provided
-        if session and hasattr(session, 'commit'):
+        if session and hasattr(session, "commit"):
             session.commit()
             session.refresh(instance)
 
@@ -212,7 +219,7 @@ class QueryTestModel(_TestQueryModelBase):
             return False
 
         # Delete the instance
-        if session and hasattr(session, 'delete'):
+        if session and hasattr(session, "delete"):
             session.delete(instance)
             session.commit()
 
@@ -221,7 +228,7 @@ class QueryTestModel(_TestQueryModelBase):
     @classmethod
     def count(cls, session=None, **filters):
         """Count models matching filters."""
-        if session and hasattr(session, 'query'):
+        if session and hasattr(session, "query"):
             # Use the configured mock chain from the test
             mock_query = session.query(cls)
             mock_filtered_query = mock_query.filter()
@@ -233,7 +240,7 @@ class QueryTestModel(_TestQueryModelBase):
     async def acount(cls, session=None, **filters):
         """Async count models matching filters."""
         # Check if this is an AsyncMock session
-        if hasattr(session, 'execute') and hasattr(session.execute, 'return_value'):
+        if hasattr(session, "execute") and hasattr(session.execute, "return_value"):
             # Handle AsyncMock session with execute() pattern
             mock_result = await session.execute()
             return await mock_result.scalar()
@@ -259,24 +266,26 @@ class QueryTestModel(_TestQueryModelBase):
             return None
 
         # If it's a plain value (not a collection and no to_dict method)
-        if not hasattr(relationship_value, '__iter__') or isinstance(relationship_value, (str, bytes)):
-            if hasattr(relationship_value, 'to_dict'):
+        if not hasattr(relationship_value, "__iter__") or isinstance(
+            relationship_value, (str, bytes)
+        ):
+            if hasattr(relationship_value, "to_dict"):
                 return relationship_value.to_dict(datetime_format=datetime_format)
             else:
                 return relationship_value
 
         # If it's a collection of objects
-        if hasattr(relationship_value, '__iter__'):
+        if hasattr(relationship_value, "__iter__"):
             result = []
             for item in relationship_value:
-                if hasattr(item, 'to_dict'):
+                if hasattr(item, "to_dict"):
                     result.append(item.to_dict(datetime_format=datetime_format))
                 else:
                     result.append(item)
             return result
 
         # Single object with to_dict method
-        if hasattr(relationship_value, 'to_dict'):
+        if hasattr(relationship_value, "to_dict"):
             return relationship_value.to_dict(datetime_format=datetime_format)
 
         # Fallback - return as-is
@@ -288,92 +297,92 @@ class TestQueryHelpers:
 
     def test_find_by_id_method_exists(self):
         """Test that find_by_id class method exists."""
-        assert hasattr(QueryTestModel, 'find_by_id')
+        assert hasattr(QueryTestModel, "find_by_id")
         assert callable(QueryTestModel.find_by_id)
 
     def test_afind_by_id_method_exists(self):
         """Test that afind_by_id async class method exists."""
-        assert hasattr(QueryTestModel, 'afind_by_id')
+        assert hasattr(QueryTestModel, "afind_by_id")
         assert callable(QueryTestModel.afind_by_id)
 
     def test_find_all_method_exists(self):
         """Test that find_all class method exists."""
-        assert hasattr(QueryTestModel, 'find_all')
+        assert hasattr(QueryTestModel, "find_all")
         assert callable(QueryTestModel.find_all)
 
     def test_afind_all_method_exists(self):
         """Test that afind_all async class method exists."""
-        assert hasattr(QueryTestModel, 'afind_all')
+        assert hasattr(QueryTestModel, "afind_all")
         assert callable(QueryTestModel.afind_all)
 
     def test_find_one_method_exists(self):
         """Test that find_one class method exists."""
-        assert hasattr(QueryTestModel, 'find_one')
+        assert hasattr(QueryTestModel, "find_one")
         assert callable(QueryTestModel.find_one)
 
     def test_afind_one_method_exists(self):
         """Test that afind_one async class method exists."""
-        assert hasattr(QueryTestModel, 'afind_one')
+        assert hasattr(QueryTestModel, "afind_one")
         assert callable(QueryTestModel.afind_one)
 
     def test_create_method_exists(self):
         """Test that create class method exists."""
-        assert hasattr(QueryTestModel, 'create')
+        assert hasattr(QueryTestModel, "create")
         assert callable(QueryTestModel.create)
 
     def test_acreate_method_exists(self):
         """Test that acreate async class method exists."""
-        assert hasattr(QueryTestModel, 'acreate')
+        assert hasattr(QueryTestModel, "acreate")
         assert callable(QueryTestModel.acreate)
 
     def test_get_or_create_method_exists(self):
         """Test that get_or_create class method exists."""
-        assert hasattr(QueryTestModel, 'get_or_create')
+        assert hasattr(QueryTestModel, "get_or_create")
         assert callable(QueryTestModel.get_or_create)
 
     def test_aget_or_create_method_exists(self):
         """Test that aget_or_create async class method exists."""
-        assert hasattr(QueryTestModel, 'aget_or_create')
+        assert hasattr(QueryTestModel, "aget_or_create")
         assert callable(QueryTestModel.aget_or_create)
 
     def test_update_by_id_method_exists(self):
         """Test that update_by_id class method exists."""
-        assert hasattr(QueryTestModel, 'update_by_id')
+        assert hasattr(QueryTestModel, "update_by_id")
         assert callable(QueryTestModel.update_by_id)
 
     def test_aupdate_by_id_method_exists(self):
         """Test that aupdate_by_id async class method exists."""
-        assert hasattr(QueryTestModel, 'aupdate_by_id')
+        assert hasattr(QueryTestModel, "aupdate_by_id")
         assert callable(QueryTestModel.aupdate_by_id)
 
     def test_delete_by_id_method_exists(self):
         """Test that delete_by_id class method exists."""
-        assert hasattr(QueryTestModel, 'delete_by_id')
+        assert hasattr(QueryTestModel, "delete_by_id")
         assert callable(QueryTestModel.delete_by_id)
 
     def test_adelete_by_id_method_exists(self):
         """Test that adelete_by_id async class method exists."""
-        assert hasattr(QueryTestModel, 'adelete_by_id')
+        assert hasattr(QueryTestModel, "adelete_by_id")
         assert callable(QueryTestModel.adelete_by_id)
 
     def test_count_method_exists(self):
         """Test that count class method exists."""
-        assert hasattr(QueryTestModel, 'count')
+        assert hasattr(QueryTestModel, "count")
         assert callable(QueryTestModel.count)
 
     def test_acount_method_exists(self):
         """Test that acount async class method exists."""
-        assert hasattr(QueryTestModel, 'acount')
+        assert hasattr(QueryTestModel, "acount")
         assert callable(QueryTestModel.acount)
 
     def test_exists_method_exists(self):
         """Test that exists class method exists."""
-        assert hasattr(QueryTestModel, 'exists')
+        assert hasattr(QueryTestModel, "exists")
         assert callable(QueryTestModel.exists)
 
     def test_aexists_method_exists(self):
         """Test that aexists async class method exists."""
-        assert hasattr(QueryTestModel, 'aexists')
+        assert hasattr(QueryTestModel, "aexists")
         assert callable(QueryTestModel.aexists)
 
 
@@ -453,7 +462,7 @@ class TestQueryMethodBehavior:
         test_instance.name = "Test"
         test_instance.age = 25
 
-        with patch.object(QueryTestModel, '__new__', return_value=test_instance):
+        with patch.object(QueryTestModel, "__new__", return_value=test_instance):
             result = QueryTestModel.create(mock_session, name="Test", age=25)
 
             assert result == test_instance
@@ -467,7 +476,7 @@ class TestQueryMethodBehavior:
         existing_instance = QueryTestModel()
         existing_instance.id = 1
 
-        with patch.object(QueryTestModel, 'find_one', return_value=existing_instance):
+        with patch.object(QueryTestModel, "find_one", return_value=existing_instance):
             result, created = QueryTestModel.get_or_create(mock_session, name="Test")
 
             assert result == existing_instance
@@ -479,9 +488,11 @@ class TestQueryMethodBehavior:
         new_instance = QueryTestModel()
         new_instance.id = 1
 
-        with patch.object(QueryTestModel, 'find_one', return_value=None):
-            with patch.object(QueryTestModel, 'create', return_value=new_instance):
-                result, created = QueryTestModel.get_or_create(mock_session, name="Test")
+        with patch.object(QueryTestModel, "find_one", return_value=None):
+            with patch.object(QueryTestModel, "create", return_value=new_instance):
+                result, created = QueryTestModel.get_or_create(
+                    mock_session, name="Test"
+                )
 
                 assert result == new_instance
                 assert created is True
@@ -493,7 +504,7 @@ class TestQueryMethodBehavior:
         existing_instance.id = 1
         existing_instance.name = "Old Name"
 
-        with patch.object(QueryTestModel, 'find_by_id', return_value=existing_instance):
+        with patch.object(QueryTestModel, "find_by_id", return_value=existing_instance):
             result = QueryTestModel.update_by_id(mock_session, 1, name="New Name")
 
             assert result == existing_instance
@@ -505,7 +516,7 @@ class TestQueryMethodBehavior:
         """Test update_by_id when record doesn't exist."""
         mock_session = Mock()
 
-        with patch.object(QueryTestModel, 'find_by_id', return_value=None):
+        with patch.object(QueryTestModel, "find_by_id", return_value=None):
             result = QueryTestModel.update_by_id(mock_session, 999, name="New Name")
 
             assert result is None
@@ -517,7 +528,7 @@ class TestQueryMethodBehavior:
         existing_instance = QueryTestModel()
         existing_instance.id = 1
 
-        with patch.object(QueryTestModel, 'find_by_id', return_value=existing_instance):
+        with patch.object(QueryTestModel, "find_by_id", return_value=existing_instance):
             result = QueryTestModel.delete_by_id(mock_session, 1)
 
             assert result is True
@@ -528,7 +539,7 @@ class TestQueryMethodBehavior:
         """Test delete_by_id when record doesn't exist."""
         mock_session = Mock()
 
-        with patch.object(QueryTestModel, 'find_by_id', return_value=None):
+        with patch.object(QueryTestModel, "find_by_id", return_value=None):
             result = QueryTestModel.delete_by_id(mock_session, 999)
 
             assert result is False
@@ -551,14 +562,14 @@ class TestQueryMethodBehavior:
 
     def test_exists_true(self):
         """Test exists method when records exist."""
-        with patch.object(QueryTestModel, 'count', return_value=5):
+        with patch.object(QueryTestModel, "count", return_value=5):
             result = QueryTestModel.exists(Mock(), name="Test")
 
             assert result is True
 
     def test_exists_false(self):
         """Test exists method when no records exist."""
-        with patch.object(QueryTestModel, 'count', return_value=0):
+        with patch.object(QueryTestModel, "count", return_value=0):
             result = QueryTestModel.exists(Mock(), name="Nonexistent")
 
             assert result is False
@@ -603,13 +614,16 @@ class TestAsyncQueryMethods:
     @pytest.mark.asyncio
     async def test_acreate_with_session(self):
         """Test acreate method with async session."""
+
         # Create isolated model class to avoid registry conflicts
         class IsolatedQueryModel(_TestQueryModelBase):
             __tablename__ = "isolated_query_test_models"
             id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
             name: Mapped[str] = mapped_column(String(100), nullable=False)
-            age: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-            is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+            age: Mapped[int | None] = mapped_column(Integer, nullable=True)
+            is_active: Mapped[bool] = mapped_column(
+                Boolean, nullable=False, default=True
+            )
 
             @classmethod
             async def acreate(cls, session, **kwargs):
@@ -618,19 +632,26 @@ class TestAsyncQueryMethods:
                 instance = cls(**kwargs)
 
                 # Handle async session operations
-                if session and hasattr(session, 'add'):
-                    # Check if session methods are coroutines (AsyncMock) or regular methods
-                    if hasattr(session.add, '__await__'):
+                if session and hasattr(session, "add"):
+                    # Check if session methods are AsyncMock (which return coroutines) or regular methods
+                    # AsyncMock methods return coroutines, so we should always await them
+                    if isinstance(session, AsyncMock) or asyncio.iscoroutinefunction(
+                        session.add
+                    ):
                         await session.add(instance)
                     else:
                         session.add(instance)
 
-                    if hasattr(session.commit, '__await__'):
+                    if isinstance(session, AsyncMock) or asyncio.iscoroutinefunction(
+                        session.commit
+                    ):
                         await session.commit()
                     else:
                         session.commit()
 
-                    if hasattr(session.refresh, '__await__'):
+                    if isinstance(session, AsyncMock) or asyncio.iscoroutinefunction(
+                        session.refresh
+                    ):
                         await session.refresh(instance)
                     else:
                         session.refresh(instance)
@@ -638,6 +659,8 @@ class TestAsyncQueryMethods:
                 return instance
 
         mock_session = AsyncMock()
+        # AsyncMock methods automatically return awaitable mocks, so no need to configure manually
+        # The mock will handle the async calls properly
 
         # Call the actual acreate method
         result = await IsolatedQueryModel.acreate(mock_session, name="Test", age=25)
@@ -668,7 +691,7 @@ class TestAsyncQueryMethods:
     @pytest.mark.asyncio
     async def test_aexists_true(self):
         """Test aexists method when records exist."""
-        with patch.object(QueryTestModel, 'acount', return_value=5):
+        with patch.object(QueryTestModel, "acount", return_value=5):
             result = await QueryTestModel.aexists(AsyncMock(), name="Test")
 
             assert result is True
@@ -676,7 +699,7 @@ class TestAsyncQueryMethods:
     @pytest.mark.asyncio
     async def test_aexists_false(self):
         """Test aexists method when no records exist."""
-        with patch.object(QueryTestModel, 'acount', return_value=0):
+        with patch.object(QueryTestModel, "acount", return_value=0):
             result = await QueryTestModel.aexists(AsyncMock(), name="Nonexistent")
 
             assert result is False
@@ -688,46 +711,40 @@ class TestRelationshipHelpers:
     def test_serialize_relationship_single_object(self):
         """Test serialization of single related object."""
         related_obj = Mock()
-        related_obj.to_dict.return_value = {'id': 1, 'name': 'Related'}
+        related_obj.to_dict.return_value = {"id": 1, "name": "Related"}
 
         model = QueryTestModel()
         result = model._serialize_relationship(related_obj, "iso")
 
-        assert result == {'id': 1, 'name': 'Related'}
+        assert result == {"id": 1, "name": "Related"}
         related_obj.to_dict.assert_called_once_with(datetime_format="iso")
 
     def test_serialize_relationship_collection(self):
         """Test serialization of collection of related objects."""
         related1 = Mock()
-        related1.to_dict.return_value = {'id': 1, 'name': 'Related1'}
+        related1.to_dict.return_value = {"id": 1, "name": "Related1"}
         related2 = Mock()
-        related2.to_dict.return_value = {'id': 2, 'name': 'Related2'}
+        related2.to_dict.return_value = {"id": 2, "name": "Related2"}
 
         model = QueryTestModel()
         result = model._serialize_relationship([related1, related2], "iso")
 
-        expected = [
-            {'id': 1, 'name': 'Related1'},
-            {'id': 2, 'name': 'Related2'}
-        ]
+        expected = [{"id": 1, "name": "Related1"}, {"id": 2, "name": "Related2"}]
         assert result == expected
 
     def test_serialize_relationship_sqlalchemy_collection(self):
         """Test serialization of SQLAlchemy relationship collection."""
         # Test with a simple list that simulates the result of collection.all()
         related1 = Mock()
-        related1.to_dict.return_value = {'id': 1, 'name': 'Related1'}
+        related1.to_dict.return_value = {"id": 1, "name": "Related1"}
         related2 = Mock()
-        related2.to_dict.return_value = {'id': 2, 'name': 'Related2'}
+        related2.to_dict.return_value = {"id": 2, "name": "Related2"}
         collection_result = [related1, related2]
 
         model = QueryTestModel()
         result = model._serialize_relationship(collection_result, "iso")
 
-        expected = [
-            {'id': 1, 'name': 'Related1'},
-            {'id': 2, 'name': 'Related2'}
-        ]
+        expected = [{"id": 1, "name": "Related1"}, {"id": 2, "name": "Related2"}]
         assert result == expected
 
     def test_serialize_relationship_none(self):

@@ -7,23 +7,20 @@ integration tests, performance benchmarks, and load testing.
 
 import os
 import tempfile
+from collections.abc import Generator
 from datetime import datetime
-from typing import Generator, AsyncGenerator
 from unittest.mock import Mock
 
 import pytest
 import sqlalchemy as sa
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from src.vgnc_internal_orm.models.base import BaseModel, BaseCustomModel
-from src.vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
-from src.vgnc_internal_orm.models.genefam import Genefam
 from src.vgnc_internal_orm.models.assembly import Assembly
 from src.vgnc_internal_orm.models.chromosomes import Chromosomes
-from src.vgnc_internal_orm.models.supporting import GeneStatus, Editor
-from src.vgnc_internal_orm.models import supporting  # Import supporting models
+from src.vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
+from src.vgnc_internal_orm.models.supporting import Editor, GeneStatus
 
 
 @pytest.fixture(scope="session")
@@ -60,10 +57,10 @@ def test_db_session(test_engine: sa.Engine) -> Generator[Session, None, None]:
     """Create a fresh database session for each test function."""
     # Create only core tables needed for testing
     # This avoids foreign key dependency issues
-    from src.vgnc_internal_orm.models.species import Species
     from src.vgnc_internal_orm.models.assembly import Assembly
     from src.vgnc_internal_orm.models.chromosomes import Chromosomes
-    from src.vgnc_internal_orm.models.supporting import GeneStatus, Editor
+    from src.vgnc_internal_orm.models.species import Species
+    from src.vgnc_internal_orm.models.supporting import Editor, GeneStatus
 
     # Create tables manually to avoid dependency issues
     # Create supporting tables first due to foreign key dependencies
@@ -92,10 +89,7 @@ def test_db_session(test_engine: sa.Engine) -> Generator[Session, None, None]:
 @pytest.fixture(scope="function")
 def sample_gene_status(test_db_session: Session) -> GeneStatus:
     """Create a sample gene status for testing."""
-    gene_status = GeneStatus(
-        status="Approved",
-        display="Approved Status"
-    )
+    gene_status = GeneStatus(status="Approved", display="Approved Status")
     test_db_session.add(gene_status)
     test_db_session.commit()
     return gene_status
@@ -104,11 +98,7 @@ def sample_gene_status(test_db_session: Session) -> GeneStatus:
 @pytest.fixture(scope="function")
 def sample_editor(test_db_session: Session) -> Editor:
     """Create a sample editor for testing."""
-    editor = Editor(
-        display_name="Test Editor",
-        first_name="Test",
-        last_name="Editor"
-    )
+    editor = Editor(display_name="Test Editor", first_name="Test", last_name="Editor")
     test_db_session.add(editor)
     test_db_session.commit()
     return editor
@@ -118,9 +108,9 @@ def sample_editor(test_db_session: Session) -> Editor:
 def test_transaction_session(test_engine: sa.Engine) -> Generator[Session, None, None]:
     """Create a session within a transaction that's rolled back after each test."""
     # Create only core tables needed for testing
-    from src.vgnc_internal_orm.models.species import Species
     from src.vgnc_internal_orm.models.assembly import Assembly
     from src.vgnc_internal_orm.models.chromosomes import Chromosomes
+    from src.vgnc_internal_orm.models.species import Species
 
     # Create tables manually to avoid dependency issues
     Species.__table__.create(test_engine, checkfirst=True)
@@ -212,12 +202,11 @@ def sample_species(test_db_session: Session, sample_species_data: dict) -> Speci
 
 
 @pytest.fixture
-def sample_assembly(test_db_session: Session, sample_assembly_data: dict, sample_species: Species) -> Assembly:
+def sample_assembly(
+    test_db_session: Session, sample_assembly_data: dict, sample_species: Species
+) -> Assembly:
     """Create a sample Assembly instance in the database."""
-    assembly = Assembly(
-        **sample_assembly_data,
-        species_id=sample_species.id
-    )
+    assembly = Assembly(**sample_assembly_data, species_id=sample_species.id)
     test_db_session.add(assembly)
     test_db_session.commit()
     test_db_session.refresh(assembly)
@@ -226,15 +215,10 @@ def sample_assembly(test_db_session: Session, sample_assembly_data: dict, sample
 
 @pytest.fixture
 def sample_chromosome(
-    test_db_session: Session,
-    sample_chromosome_data: dict,
-    sample_species: Species
+    test_db_session: Session, sample_chromosome_data: dict, sample_species: Species
 ) -> Chromosomes:
     """Create a sample Chromosomes instance in the database."""
-    chromosome = Chromosomes(
-        **sample_chromosome_data,
-        species_id=sample_species.id
-    )
+    chromosome = Chromosomes(**sample_chromosome_data, species_id=sample_species.id)
     test_db_session.add(chromosome)
     test_db_session.commit()
     test_db_session.refresh(chromosome)
