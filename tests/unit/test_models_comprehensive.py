@@ -5,17 +5,15 @@ Tests cover model creation, validation, CRUD operations, serialization,
 and database table structure for all core models.
 """
 
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
-from tests.unit.base_test import BaseUnitTest, ModelTestMixin, DatabaseTestMixin
-from src.vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 from src.vgnc_internal_orm.models.assembly import Assembly
 from src.vgnc_internal_orm.models.chromosomes import Chromosomes
-from src.vgnc_internal_orm.models.genefam import Genefam
-from src.vgnc_internal_orm.models.supporting import GeneStatus, Editor
+from src.vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
+from tests.unit.base_test import BaseUnitTest, DatabaseTestMixin, ModelTestMixin
 
 
 class TestSpecies(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
@@ -27,7 +25,7 @@ class TestSpecies(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
         "genefam_prefix": "HSA",
         "display_name": "human (Homo sapiens)",
         "is_live": SpeciesLiveStatus.YES,
-        "created": datetime.now(timezone.utc),
+        "created": datetime.now(UTC),
     }
     required_fields = ["taxon_id", "genefam_prefix", "display_name", "is_live"]
 
@@ -38,7 +36,7 @@ class TestSpecies(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
             "genefam_prefix": "MMU",
             "display_name": "mouse (Mus musculus)",
             "is_live": SpeciesLiveStatus.YES,
-            "created": datetime.now(timezone.utc),
+            "created": datetime.now(UTC),
         }
 
         species = self.create_instance(**minimal_data)
@@ -68,7 +66,7 @@ class TestSpecies(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
                 genefam_prefix=prefix,
                 display_name=f"test species {i}",
                 is_live=SpeciesLiveStatus.YES,
-                created=datetime.now(timezone.utc)
+                created=datetime.now(UTC),
             )
             assert species.genefam_prefix == prefix
 
@@ -83,27 +81,30 @@ class TestSpecies(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
                 genefam_prefix="TST",
                 display_name=f"test species {i}",
                 is_live=status,
-                created=datetime.now(timezone.utc)
+                created=datetime.now(UTC),
             )
             assert species.is_live == status
 
     def test_species_unique_taxon_id(self):
         """Test that taxon_id must be unique."""
-        species1 = self.save_instance(
+        self.save_instance(
             taxon_id=9606,
             genefam_prefix="HSA",
             display_name="human",
             is_live=SpeciesLiveStatus.YES,
-            created=datetime.now(timezone.utc)
+            created=datetime.now(UTC),
         )
 
-        with pytest.raises(Exception):  # Should raise integrity error
+        # Clear session to avoid instance conflict warnings when creating duplicate
+        self.session.expunge_all()
+
+        with pytest.raises(IntegrityError):  # Should raise integrity error
             self.save_instance(
                 taxon_id=9606,
                 genefam_prefix="HSA2",
                 display_name="human2",
                 is_live=SpeciesLiveStatus.YES,
-                created=datetime.now(timezone.utc)
+                created=datetime.now(UTC),
             )
 
     def test_species_query_by_taxon_id(self):
@@ -113,7 +114,7 @@ class TestSpecies(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
             genefam_prefix="TST",
             display_name="test species",
             is_live=SpeciesLiveStatus.YES,
-            created=datetime.now(timezone.utc)
+            created=datetime.now(UTC),
         )
 
         found = self.session.query(Species).filter(Species.taxon_id == 12345).first()
@@ -139,13 +140,13 @@ class TestSpecies(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
             genbank_assembly_accession="GCA_000001405.1",
             refseq_assembly_accession="GCF_000001405.1",
             is_current=True,
-            is_vgnc_default=False
+            is_vgnc_default=False,
         )
         self.session.add(assembly)
         self.session.commit()
 
         # Test relationship
-        assert hasattr(species, 'assemblies')
+        assert hasattr(species, "assemblies")
         # Note: Relationship testing depends on the actual model definition
 
 
@@ -162,7 +163,6 @@ class TestSpecies(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
 #     required_fields = ["genefam_id", "created"]
 
 
-
 class TestAssembly(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
     """Comprehensive tests for Assembly model."""
 
@@ -176,7 +176,15 @@ class TestAssembly(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
         "is_vgnc_default": True,
         # taxon_id will be provided in save_instance override
     }
-    required_fields = ["name", "taxon_id", "genbank_assembly_accession", "refseq_assembly_accession", "source", "is_current", "is_vgnc_default"]
+    required_fields = [
+        "name",
+        "taxon_id",
+        "genbank_assembly_accession",
+        "refseq_assembly_accession",
+        "source",
+        "is_current",
+        "is_vgnc_default",
+    ]
 
     @pytest.fixture(autouse=True)
     def setup_species(self, sample_species):
@@ -186,8 +194,8 @@ class TestAssembly(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
     def save_instance(self, **overrides):
         """Override save_instance to include taxon_id from species if not provided."""
         # Include the taxon_id from the sample species only if not overridden
-        if 'taxon_id' not in overrides:
-            overrides['taxon_id'] = self.species.taxon_id
+        if "taxon_id" not in overrides:
+            overrides["taxon_id"] = self.species.taxon_id
         return super().save_instance(**overrides)
 
     def test_assembly_creation_with_minimal_data(self):
@@ -218,20 +226,18 @@ class TestAssembly(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
     def test_assembly_invalid_species_id(self):
         """Test assembly with invalid species_id should fail foreign key constraint."""
         # Now that foreign key constraints are enabled, this should fail
-        with pytest.raises(Exception):  # Foreign key constraint error
-            assembly = self.save_instance(taxon_id=99999, name="test_invalid_species")
+        with pytest.raises(IntegrityError):  # Foreign key constraint error
+            self.save_instance(taxon_id=99999, name="test_invalid_species")
 
     def test_assembly_unique_name_per_species(self):
         """Test creating multiple assemblies with different names."""
         assembly1 = self.save_instance(
-            name="test_assembly_1",
-            taxon_id=self.species.taxon_id
+            name="test_assembly_1", taxon_id=self.species.taxon_id
         )
 
         # Create another assembly with different name
         assembly2 = self.save_instance(
-            name="test_assembly_2",
-            taxon_id=self.species.taxon_id
+            name="test_assembly_2", taxon_id=self.species.taxon_id
         )
 
         # Verify both assemblies exist
@@ -258,15 +264,16 @@ class TestAssembly(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
         assemblies = []
         for i in range(3):
             assembly = self.save_instance(
-                name=f"assembly_{i}",
-                taxon_id=self.species.taxon_id
+                name=f"assembly_{i}", taxon_id=self.species.taxon_id
             )
             assemblies.append(assembly)
 
         # Query by species
-        found_assemblies = self.session.query(Assembly).filter(
-            Assembly.taxon_id == self.species.taxon_id
-        ).all()
+        found_assemblies = (
+            self.session.query(Assembly)
+            .filter(Assembly.taxon_id == self.species.taxon_id)
+            .all()
+        )
 
         assert len(found_assemblies) == len(assemblies)
         found_ids = [a.id for a in found_assemblies]
@@ -300,8 +307,8 @@ class TestChromosomes(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
     def save_instance(self, **overrides):
         """Override save_instance to include taxon_id from species if not provided."""
         # Include the taxon_id from the sample species only if not overridden
-        if 'taxon_id' not in overrides:
-            overrides['taxon_id'] = self.species.taxon_id
+        if "taxon_id" not in overrides:
+            overrides["taxon_id"] = self.species.taxon_id
         return super().save_instance(**overrides)
 
     def test_chromosome_creation_with_minimal_data(self):
@@ -327,9 +334,19 @@ class TestChromosomes(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
     def test_display_name_formats(self):
         """Test various chromosome name formats."""
         valid_names = [
-            "chr1", "chr2", "chr3", "chrX", "chrY", "chrM",
-            "1", "2", "X", "Y", "MT",  # Alternative formats
-            "scaffold_1", "contig_1",  # Assembly specific formats
+            "chr1",
+            "chr2",
+            "chr3",
+            "chrX",
+            "chrY",
+            "chrM",
+            "1",
+            "2",
+            "X",
+            "Y",
+            "MT",  # Alternative formats
+            "scaffold_1",
+            "contig_1",  # Assembly specific formats
         ]
 
         for name in valid_names:
@@ -347,16 +364,10 @@ class TestChromosomes(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
 
     def test_chromosome_unique_name_per_species(self):
         """Test creating multiple chromosomes with different names."""
-        chr1_1 = self.save_instance(
-            display_name="chr1",
-            taxon_id=self.species.taxon_id
-        )
+        chr1_1 = self.save_instance(display_name="chr1", taxon_id=self.species.taxon_id)
 
         # Create another chromosome with different name
-        chr2_1 = self.save_instance(
-            display_name="chr2",
-            taxon_id=self.species.taxon_id
-        )
+        chr2_1 = self.save_instance(display_name="chr2", taxon_id=self.species.taxon_id)
 
         # Verify both chromosomes exist
         assert chr1_1.display_name == "chr1"
@@ -371,21 +382,15 @@ class TestChromosomes(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
             genefam_prefix="MMU",
             display_name="mouse (Mus musculus)",
             is_live=SpeciesLiveStatus.YES,
-            created=datetime.now(timezone.utc),
+            created=datetime.now(UTC),
         )
         self.session.add(mouse_species)
         self.session.commit()
 
         # Create chromosomes with different species (different taxon_id)
-        chr1_human = self.save_instance(
-            display_name="chr1",
-            taxon_id=9606  # Human
-        )
+        chr1_human = self.save_instance(display_name="chr1", taxon_id=9606)  # Human
 
-        chr1_mouse = Chromosomes(
-            display_name="chr1",
-            taxon_id=10090  # Mouse
-        )
+        chr1_mouse = Chromosomes(display_name="chr1", taxon_id=10090)  # Mouse
         self.session.add(chr1_mouse)
         self.session.commit()
 
@@ -402,15 +407,16 @@ class TestChromosomes(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
 
         for coord_system in coord_systems:
             chr_obj = self.save_instance(
-                display_name=f"chr_{coord_system}",
-                coord_system=coord_system
+                display_name=f"chr_{coord_system}", coord_system=coord_system
             )
             chromosomes.append(chr_obj)
 
         # Query by coordinate system pattern
-        found = self.session.query(Chromosomes).filter(
-            Chromosomes.coord_system.like("GRCh%")
-        ).all()
+        found = (
+            self.session.query(Chromosomes)
+            .filter(Chromosomes.coord_system.like("GRCh%"))
+            .all()
+        )
 
         assert len(found) >= 1  # Should find at least GRCh38
 
@@ -422,9 +428,11 @@ class TestChromosomes(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
             self.save_instance(display_name=name)
 
         # Query ordered by display name
-        ordered = self.session.query(Chromosomes).order_by(
-            Chromosomes.display_name.asc()
-        ).all()
+        ordered = (
+            self.session.query(Chromosomes)
+            .order_by(Chromosomes.display_name.asc())
+            .all()
+        )
 
         # Verify alphabetical order
         assert ordered[0].display_name == "chr1"
@@ -477,9 +485,11 @@ class TestModelInteractions:
         test_db_session.commit()
 
         # Verify count
-        count = test_db_session.query(Chromosomes).filter(
-            Chromosomes.taxon_id == sample_species.taxon_id
-        ).count()
+        count = (
+            test_db_session.query(Chromosomes)
+            .filter(Chromosomes.taxon_id == sample_species.taxon_id)
+            .count()
+        )
         assert count == len(display_names)
 
     def test_model_cascade_operations(self, test_db_session, sample_species):
@@ -515,7 +525,7 @@ class TestModelConstraints:
     def test_null_constraints(self, test_db_session):
         """Test NOT NULL constraints on required fields."""
         # Test Species required fields
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             species = Species(taxon_id=None)  # Should fail
             test_db_session.add(species)
             test_db_session.commit()
@@ -523,7 +533,7 @@ class TestModelConstraints:
     def test_foreign_key_constraints(self, test_db_session):
         """Test foreign key constraints."""
         # Test assembly with non-existent species
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             assembly = Assembly(
                 name="test",
                 source="Test Source",
@@ -536,7 +546,9 @@ class TestModelConstraints:
             test_db_session.add(assembly)
             test_db_session.commit()
 
-    @pytest.mark.skip(reason="Circular import issue with GeneStatus/Genefam relationships - architectural limitation")
+    @pytest.mark.skip(
+        reason="Circular import issue with GeneStatus/Genefam relationships - architectural limitation"
+    )
     def test_unique_constraints(self, test_db_session, sample_species):
         """Test unique constraints."""
         # Test duplicate genefam ID
@@ -591,16 +603,20 @@ class TestModelQueries:
         from sqlalchemy import func
 
         # Count chromosomes for species
-        count = test_db_session.query(func.count(Chromosomes.chr_id)).filter(
-            Chromosomes.taxon_id == sample_species.taxon_id
-        ).scalar()
+        count = (
+            test_db_session.query(func.count(Chromosomes.chr_id))
+            .filter(Chromosomes.taxon_id == sample_species.taxon_id)
+            .scalar()
+        )
 
         assert count == 5
 
         # Sum of lengths
-        total_length = test_db_session.query(func.sum(Chromosomes.coord_system)).filter(
-            Chromosomes.taxon_id == sample_species.taxon_id
-        ).scalar()
+        total_length = (
+            test_db_session.query(func.sum(Chromosomes.coord_system))
+            .filter(Chromosomes.taxon_id == sample_species.taxon_id)
+            .scalar()
+        )
 
         expected_total = sum(1000000 * (i + 1) for i in range(5))
         assert total_length == expected_total
@@ -618,7 +634,7 @@ class TestModelQueries:
             species = Species(
                 **data,
                 is_live=SpeciesLiveStatus.YES,
-                created=datetime.now(timezone.utc),
+                created=datetime.now(UTC),
             )
             test_db_session.add(species)
 
@@ -626,19 +642,25 @@ class TestModelQueries:
 
         # Test various filters
         # Filter by genefam prefix
-        hsa_species = test_db_session.query(Species).filter(
-            Species.genefam_prefix == "HSA"
-        ).first()
+        hsa_species = (
+            test_db_session.query(Species)
+            .filter(Species.genefam_prefix == "HSA")
+            .first()
+        )
         assert hsa_species.display_name == "human"
 
         # Filter by taxon_id range
-        mammals = test_db_session.query(Species).filter(
-            Species.taxon_id.between(9000, 11000)
-        ).all()
+        mammals = (
+            test_db_session.query(Species)
+            .filter(Species.taxon_id.between(9000, 11000))
+            .all()
+        )
         assert len(mammals) == 3
 
         # Filter by display name pattern (case-sensitive)
-        species_with_m = test_db_session.query(Species).filter(
-            Species.display_name.like("m%")  # Starts with 'm'
-        ).all()
+        species_with_m = (
+            test_db_session.query(Species)
+            .filter(Species.display_name.like("m%"))  # Starts with 'm'
+            .all()
+        )
         assert len(species_with_m) == 1  # Only "mouse" starts with 'm'

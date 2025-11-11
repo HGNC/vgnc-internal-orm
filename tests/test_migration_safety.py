@@ -1,17 +1,16 @@
 """Tests for migration safety validation system."""
 
-import pytest
-import tempfile
 import os
+import tempfile
 from pathlib import Path
 
 from src.vgnc_internal_orm.migrations.safety import (
     MigrationSafetyValidator,
     ProductionSafetyValidator,
-    validate_migration_safety,
-    print_safety_report,
     RiskLevel,
-    SafetyIssue
+    SafetyIssue,
+    print_safety_report,
+    validate_migration_safety,
 )
 
 
@@ -23,8 +22,9 @@ class TestMigrationSafetyValidator:
         validator = MigrationSafetyValidator()
 
         # Create temporary migration with dangerous operations
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tmp:
-            tmp.write('''
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
+            tmp.write(
+                """
 def upgrade():
     op.drop_table('old_table')
     op.drop_column('users', 'password')
@@ -33,7 +33,8 @@ def upgrade():
 
 def downgrade():
     pass
-''')
+"""
+            )
             tmp_path = tmp.name
 
         try:
@@ -41,15 +42,25 @@ def downgrade():
 
             # Should detect multiple dangerous operations
             risk_levels = [issue.risk_level for issue in issues]
-            assert RiskLevel.CRITICAL in risk_levels, "Should detect CRITICAL risk operations"
+            assert (
+                RiskLevel.CRITICAL in risk_levels
+            ), "Should detect CRITICAL risk operations"
             assert RiskLevel.HIGH in risk_levels, "Should detect HIGH risk operations"
 
             # Check for specific issues
             messages = [issue.message for issue in issues]
-            assert any('Dropping entire table' in msg for msg in messages), "Should detect table dropping"
-            assert any('Dropping column' in msg for msg in messages), "Should detect column dropping"
-            assert any('Direct DELETE operation' in msg for msg in messages), "Should detect DELETE operations"
-            assert any('Truncating table data' in msg for msg in messages), "Should detect TRUNCATE operations"
+            assert any(
+                "Dropping entire table" in msg for msg in messages
+            ), "Should detect table dropping"
+            assert any(
+                "Dropping column" in msg for msg in messages
+            ), "Should detect column dropping"
+            assert any(
+                "Direct DELETE operation" in msg for msg in messages
+            ), "Should detect DELETE operations"
+            assert any(
+                "Truncating table data" in msg for msg in messages
+            ), "Should detect TRUNCATE operations"
 
         finally:
             os.unlink(tmp_path)
@@ -58,25 +69,33 @@ def downgrade():
         """Test detection of missing downgrade function."""
         validator = MigrationSafetyValidator()
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tmp:
-            tmp.write('''
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
+            tmp.write(
+                """
 def upgrade():
     op.create_table('new_table', sa.Column('id', sa.Integer(), nullable=False))
 
 # Missing downgrade function
-''')
+"""
+            )
             tmp_path = tmp.name
 
         try:
             issues = validator.validate_migration_file(tmp_path)
 
             # Should detect missing downgrade
-            downgrade_issues = [issue for issue in issues if 'Missing downgrade function' in issue.message]
+            downgrade_issues = [
+                issue
+                for issue in issues
+                if "Missing downgrade function" in issue.message
+            ]
             assert len(downgrade_issues) > 0, "Should detect missing downgrade function"
 
             # Check risk level
             if downgrade_issues:
-                assert downgrade_issues[0].risk_level == RiskLevel.HIGH, "Missing downgrade should be HIGH risk"
+                assert (
+                    downgrade_issues[0].risk_level == RiskLevel.HIGH
+                ), "Missing downgrade should be HIGH risk"
 
         finally:
             os.unlink(tmp_path)
@@ -85,21 +104,25 @@ def upgrade():
         """Test detection of empty downgrade function."""
         validator = MigrationSafetyValidator()
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tmp:
-            tmp.write('''
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
+            tmp.write(
+                """
 def upgrade():
     op.create_table('new_table', sa.Column('id', sa.Integer(), nullable=False))
 
 def downgrade():
     pass
-''')
+"""
+            )
             tmp_path = tmp.name
 
         try:
             issues = validator.validate_migration_file(tmp_path)
 
             # Should detect empty downgrade
-            downgrade_issues = [issue for issue in issues if 'contains only \'pass\'' in issue.message]
+            downgrade_issues = [
+                issue for issue in issues if "contains only 'pass'" in issue.message
+            ]
             assert len(downgrade_issues) > 0, "Should detect empty downgrade function"
 
         finally:
@@ -109,8 +132,9 @@ def downgrade():
         """Test detection of broad data operations."""
         validator = MigrationSafetyValidator()
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tmp:
-            tmp.write('''
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
+            tmp.write(
+                """
 def upgrade():
     # Broad UPDATE without LIMIT
     connection = op.get_bind()
@@ -121,14 +145,19 @@ def upgrade():
 
 def downgrade():
     pass
-''')
+"""
+            )
             tmp_path = tmp.name
 
         try:
             issues = validator.validate_migration_file(tmp_path)
 
             # Should detect broad data operations
-            broad_issues = [issue for issue in issues if 'Broad data operation detected' in issue.message]
+            broad_issues = [
+                issue
+                for issue in issues
+                if "Broad data operation detected" in issue.message
+            ]
             assert len(broad_issues) > 0, "Should detect broad data operations"
 
         finally:
@@ -138,8 +167,9 @@ def downgrade():
         """Test validation of safe migrations."""
         validator = MigrationSafetyValidator()
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tmp:
-            tmp.write('''
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
+            tmp.write(
+                """
 def upgrade():
     # Safe operations
     op.add_column('users', sa.Column('email', sa.String(255), nullable=True))
@@ -148,15 +178,20 @@ def upgrade():
 def downgrade():
     op.drop_index('idx_users_email', table_name='users')
     op.drop_column('users', 'email')
-''')
+"""
+            )
             tmp_path = tmp.name
 
         try:
             issues = validator.validate_migration_file(tmp_path)
 
             # Should have no critical issues
-            critical_issues = [issue for issue in issues if issue.risk_level == RiskLevel.CRITICAL]
-            assert len(critical_issues) == 0, "Safe migration should have no critical issues"
+            critical_issues = [
+                issue for issue in issues if issue.risk_level == RiskLevel.CRITICAL
+            ]
+            assert (
+                len(critical_issues) == 0
+            ), "Safe migration should have no critical issues"
 
             # May have low/medium risk issues (like recommendations)
             assert len(issues) <= 2, "Safe migration should have minimal issues"
@@ -169,8 +204,9 @@ def downgrade():
         validator = MigrationSafetyValidator()
 
         # Test with production keywords
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tmp:
-            tmp.write('''
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
+            tmp.write(
+                """
 def upgrade():
     # Dangerous operation in production context
     op.drop_column('users', 'old_password', schema='PROD')
@@ -178,15 +214,20 @@ def upgrade():
 
 def downgrade():
     pass
-''')
+"""
+            )
             tmp_path = tmp.name
 
         try:
             issues = validator.validate_migration_file(tmp_path)
 
             # Should have critical risk due to production keywords
-            critical_issues = [issue for issue in issues if issue.risk_level == RiskLevel.CRITICAL]
-            assert len(critical_issues) > 0, "Production context should raise risk to CRITICAL"
+            critical_issues = [
+                issue for issue in issues if issue.risk_level == RiskLevel.CRITICAL
+            ]
+            assert (
+                len(critical_issues) > 0
+            ), "Production context should raise risk to CRITICAL"
 
         finally:
             os.unlink(tmp_path)
@@ -195,26 +236,36 @@ def downgrade():
         """Test generation of safety recommendations."""
         validator = MigrationSafetyValidator()
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tmp:
-            tmp.write('''
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
+            tmp.write(
+                """
 def upgrade():
     op.drop_table('legacy_data')
 
 def downgrade():
     pass
-''')
+"""
+            )
             tmp_path = tmp.name
 
         try:
             issues = validator.validate_migration_file(tmp_path)
 
             # Should provide recommendations for dangerous operations
-            issues_with_recommendations = [issue for issue in issues if issue.recommendation]
-            assert len(issues_with_recommendations) > 0, "Should provide recommendations for safety issues"
+            issues_with_recommendations = [
+                issue for issue in issues if issue.recommendation
+            ]
+            assert (
+                len(issues_with_recommendations) > 0
+            ), "Should provide recommendations for safety issues"
 
             # Check recommendation content
-            recommendations = [issue.recommendation for issue in issues_with_recommendations]
-            assert any('archive' in rec.lower() for rec in recommendations), "Should suggest archiving for table drops"
+            recommendations = [
+                issue.recommendation for issue in issues_with_recommendations
+            ]
+            assert any(
+                "archive" in rec.lower() for rec in recommendations
+            ), "Should suggest archiving for table drops"
 
         finally:
             os.unlink(tmp_path)
@@ -223,8 +274,9 @@ def downgrade():
         """Test that line numbers are correctly tracked."""
         validator = MigrationSafetyValidator()
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tmp:
-            tmp.write('''
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
+            tmp.write(
+                """
 
 def upgrade():
     # Line 5 - dangerous operation
@@ -235,20 +287,27 @@ def upgrade():
 
 def downgrade():
     pass
-''')
+"""
+            )
             tmp_path = tmp.name
 
         try:
             issues = validator.validate_migration_file(tmp_path)
 
             # Should track line numbers
-            issues_with_lines = [issue for issue in issues if issue.line_number is not None]
+            issues_with_lines = [
+                issue for issue in issues if issue.line_number is not None
+            ]
             assert len(issues_with_lines) > 0, "Should track line numbers for issues"
 
             # Check specific line number
-            drop_issues = [issue for issue in issues if 'Dropping table' in issue.message]
+            drop_issues = [
+                issue for issue in issues if "Dropping table" in issue.message
+            ]
             if drop_issues:
-                assert drop_issues[0].line_number == 5, "Should correctly identify line 5"
+                assert (
+                    drop_issues[0].line_number == 5
+                ), "Should correctly identify line 5"
 
         finally:
             os.unlink(tmp_path)
@@ -260,97 +319,113 @@ class TestProductionSafetyValidator:
     def test_production_approval_requirements(self):
         """Test production approval requirements."""
         # Set up environment for testing
-        old_approvals = os.environ.get('MIGRATION_APPROVALS')
-        os.environ['MIGRATION_APPROVALS'] = 'dba,lead,architect'
+        old_approvals = os.environ.get("MIGRATION_APPROVALS")
+        os.environ["MIGRATION_APPROVALS"] = "dba,lead,architect"
 
         try:
             validator = ProductionSafetyValidator()
-            is_ready, issues = validator.validate_production_readiness('dummy_file.py')
+            is_ready, issues = validator.validate_production_readiness("dummy_file.py")
 
             # Should require approvals
             assert not is_ready, "Should not be ready without approvals"
-            assert any('dba' in issue for issue in issues), "Should require DBA approval"
-            assert any('lead' in issue for issue in issues), "Should require lead approval"
-            assert any('architect' in issue for issue in issues), "Should require architect approval"
+            assert any(
+                "dba" in issue for issue in issues
+            ), "Should require DBA approval"
+            assert any(
+                "lead" in issue for issue in issues
+            ), "Should require lead approval"
+            assert any(
+                "architect" in issue for issue in issues
+            ), "Should require architect approval"
 
         finally:
             # Restore environment
             if old_approvals:
-                os.environ['MIGRATION_APPROVALS'] = old_approvals
+                os.environ["MIGRATION_APPROVALS"] = old_approvals
             else:
-                os.environ.pop('MIGRATION_APPROVALS', None)
+                os.environ.pop("MIGRATION_APPROVALS", None)
 
     def test_backup_requirement(self):
         """Test backup requirement validation."""
         # Set up environment
-        old_backup = os.environ.get('MIGRATION_BACKUP_REQUIRED')
-        os.environ['MIGRATION_BACKUP_REQUIRED'] = 'true'
+        old_backup = os.environ.get("MIGRATION_BACKUP_REQUIRED")
+        os.environ["MIGRATION_BACKUP_REQUIRED"] = "true"
 
         try:
             validator = ProductionSafetyValidator()
-            is_ready, issues = validator.validate_production_readiness('dummy_file.py')
+            is_ready, issues = validator.validate_production_readiness("dummy_file.py")
 
             # Should require backup
             assert not is_ready, "Should not be ready without backup confirmation"
-            assert any('backup' in issue.lower() for issue in issues), "Should require backup"
+            assert any(
+                "backup" in issue.lower() for issue in issues
+            ), "Should require backup"
 
         finally:
             # Restore environment
             if old_backup:
-                os.environ['MIGRATION_BACKUP_REQUIRED'] = old_backup
+                os.environ["MIGRATION_BACKUP_REQUIRED"] = old_backup
             else:
-                os.environ.pop('MIGRATION_BACKUP_REQUIRED', None)
+                os.environ.pop("MIGRATION_BACKUP_REQUIRED", None)
 
     def test_environment_variable_validation(self):
         """Test environment variable validation."""
         # Remove required environment variables
-        old_db_url = os.environ.get('DATABASE_URL')
-        old_maintenance = os.environ.get('MAINTENANCE_WINDOW')
+        old_db_url = os.environ.get("DATABASE_URL")
+        old_maintenance = os.environ.get("MAINTENANCE_WINDOW")
 
-        if 'DATABASE_URL' in os.environ:
-            del os.environ['DATABASE_URL']
-        if 'MAINTENANCE_WINDOW' in os.environ:
-            del os.environ['MAINTENANCE_WINDOW']
+        if "DATABASE_URL" in os.environ:
+            del os.environ["DATABASE_URL"]
+        if "MAINTENANCE_WINDOW" in os.environ:
+            del os.environ["MAINTENANCE_WINDOW"]
 
         try:
             validator = ProductionSafetyValidator()
-            is_ready, issues = validator.validate_production_readiness('dummy_file.py')
+            is_ready, issues = validator.validate_production_readiness("dummy_file.py")
 
             # Should fail without environment variables
             assert not is_ready, "Should not be ready without environment setup"
-            assert len(issues) >= 2, "Should detect multiple missing environment variables"
+            assert (
+                len(issues) >= 2
+            ), "Should detect multiple missing environment variables"
 
         finally:
             # Restore environment
             if old_db_url:
-                os.environ['DATABASE_URL'] = old_db_url
+                os.environ["DATABASE_URL"] = old_db_url
             if old_maintenance:
-                os.environ['MAINTENANCE_WINDOW'] = old_maintenance
+                os.environ["MAINTENANCE_WINDOW"] = old_maintenance
 
     def test_production_mode_validation(self):
         """Test production mode validation integration."""
         # Create a temporary migration with dangerous operations
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tmp:
-            tmp.write('''
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
+            tmp.write(
+                """
 def upgrade():
     op.drop_table('users')
 
 def downgrade():
     pass
-''')
+"""
+            )
             tmp_path = tmp.name
 
         try:
             # Set up production environment
-            old_approvals = os.environ.get('MIGRATION_APPROVALS')
-            os.environ['MIGRATION_APPROVALS'] = 'dba'
+            old_approvals = os.environ.get("MIGRATION_APPROVALS")
+            os.environ["MIGRATION_APPROVALS"] = "dba"
 
             # Test production mode validation
             issues = validate_migration_safety(tmp_path, production_mode=True)
 
             # Should have both safety and production issues
-            safety_issues = [issue for issue in issues if 'Production safety' not in issue.message]
-            prod_issues = [issue for issue in issues if 'Production safety' in issue.message]
+            safety_issues = [
+                issue for issue in issues if "Production safety" not in issue.message
+            ]
+            prod_issues = [
+                issue for issue in issues if "Production safety" in issue.message
+            ]
 
             assert len(safety_issues) > 0, "Should detect safety issues"
             assert len(prod_issues) > 0, "Should detect production issues"
@@ -358,9 +433,9 @@ def downgrade():
         finally:
             # Restore environment
             if old_approvals:
-                os.environ['MIGRATION_APPROVALS'] = old_approvals
+                os.environ["MIGRATION_APPROVALS"] = old_approvals
             else:
-                os.environ.pop('MIGRATION_APPROVALS', None)
+                os.environ.pop("MIGRATION_APPROVALS", None)
 
             os.unlink(tmp_path)
 
@@ -377,22 +452,22 @@ class TestSafetyReporting:
                 message="Dropping table: 'users'",
                 line_number=15,
                 code_snippet="op.drop_table('users')",
-                recommendation="Archive table data before dropping"
+                recommendation="Archive table data before dropping",
             ),
             SafetyIssue(
-                risk_level=RiskLevel.MEDIUM,
-                message="No error handling detected"
+                risk_level=RiskLevel.MEDIUM, message="No error handling detected"
             ),
             SafetyIssue(
                 risk_level=RiskLevel.LOW,
                 message="Minor formatting issue",
-                recommendation="Consider adding comments"
-            )
+                recommendation="Consider adding comments",
+            ),
         ]
 
         # Capture output
         import sys
         from io import StringIO
+
         old_stdout = sys.stdout
         sys.stdout = StringIO()
 
@@ -417,6 +492,7 @@ class TestSafetyReporting:
         # Capture output
         import sys
         from io import StringIO
+
         old_stdout = sys.stdout
         sys.stdout = StringIO()
 
@@ -454,9 +530,11 @@ class TestSafetyIntegration:
 
                 # Check that issues have proper structure
                 for issue in issues:
-                    assert isinstance(issue, SafetyIssue), "All issues should be SafetyIssue objects"
-                    assert hasattr(issue, 'risk_level'), "Issues should have risk level"
-                    assert hasattr(issue, 'message'), "Issues should have message"
+                    assert isinstance(
+                        issue, SafetyIssue
+                    ), "All issues should be SafetyIssue objects"
+                    assert hasattr(issue, "risk_level"), "Issues should have risk level"
+                    assert hasattr(issue, "message"), "Issues should have message"
 
     def test_validation_error_handling(self):
         """Test error handling in validation."""
@@ -465,11 +543,13 @@ class TestSafetyIntegration:
         # Test with non-existent file
         issues = validator.validate_migration_file("non_existent_file.py")
         assert len(issues) == 1, "Should return one issue for non-existent file"
-        assert issues[0].risk_level == RiskLevel.CRITICAL, "Non-existent file should be critical risk"
+        assert (
+            issues[0].risk_level == RiskLevel.CRITICAL
+        ), "Non-existent file should be critical risk"
         assert "not found" in issues[0].message, "Should mention file not found"
 
         # Test with unreadable file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
             tmp_path = tmp.name
 
         # Make file unreadable (if possible on the system)

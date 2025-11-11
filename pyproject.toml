@@ -31,6 +31,7 @@ dependencies = [
     "asyncpg>=0.28.0",
     "click>=8.3.0",
     "pymysql>=1.1.2",
+    "aiomysql>=0.3.2",
 ]
 
 [project.optional-dependencies]
@@ -41,6 +42,7 @@ dev = [
     "black>=23.0.0",
     "ruff>=0.1.0",
     "mypy>=1.5.0",
+    "bandit>=1.7.0",
     "pre-commit>=3.4.0",
 ]
 test = [
@@ -97,6 +99,8 @@ extend-exclude = '''
 [tool.ruff]
 target-version = "py311"
 line-length = 88
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -112,11 +116,11 @@ ignore = [
     "C901",  # too complex
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "tests/*" = ["B011"]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-third-party = ["sqlalchemy", "pydantic", "alembic"]
 
 [tool.mypy]
@@ -143,7 +147,7 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q --strict-markers --strict-config"
+addopts = "-ra -q --strict-markers --strict-config -W ignore::DeprecationWarning"
 testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
@@ -178,6 +182,9 @@ exclude_lines = [
 [dependency-groups]
 dev = [
     "mysql-connector-python>=9.5.0",
+    "myst-parser>=4.0.1",
     "pytest-benchmark>=5.2.1",
+    "sphinx>=8.2.3",
+    "sphinx-autobuild>=2025.8.25",
     "testcontainers>=4.13.2",
 ]

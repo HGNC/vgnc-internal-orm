@@ -1,5 +1,7 @@
 # Sessions & Engines
 
+**VGNC Internal ORM v0.2.0** - MIT License
+
 `SessionFactory` centralizes engine creation and session provisioning (sync + async) using config-driven pooling and driver-specific connect args.
 
 ## Engine Events

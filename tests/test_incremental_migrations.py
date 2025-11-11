@@ -1,15 +1,14 @@
 """Tests for incremental migration workflow and validation."""
 
-import pytest
-import tempfile
 import os
-import re
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
+import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, text, inspect
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from scripts.migration_workflow import MigrationWorkflow
@@ -18,10 +17,10 @@ from scripts.migration_workflow import MigrationWorkflow
 @pytest.fixture
 def test_database():
     """Create a temporary database for migration testing."""
-    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
         db_path = tmp.name
 
-    engine = create_engine(f'sqlite:///{db_path}')
+    engine = create_engine(f"sqlite:///{db_path}")
 
     yield db_path, engine
 
@@ -49,7 +48,9 @@ class TestIncrementalMigrations:
 
         try:
             # Create a temporary migration message
-            test_message = f"test_add_sample_field_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            test_message = (
+                f"test_add_sample_field_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            )
 
             # Test dry run
             success = migration_workflow.create_migration(test_message, dry_run=True)
@@ -80,8 +81,9 @@ class TestIncrementalMigrations:
     def test_detect_dangerous_operations(self, migration_workflow):
         """Test detection of dangerous operations in migrations."""
         # Create a temporary migration file with dangerous operations
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tmp:
-            tmp.write('''
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
+            tmp.write(
+                '''
 """Test migration with dangerous operations."""
 from alembic import op
 import sqlalchemy as sa
@@ -94,13 +96,14 @@ def upgrade():
 
 def downgrade():
     pass
-''')
+'''
+            )
             tmp_path = tmp.name
 
         try:
-            # Test validation - should detect dangerous operations
+            # Test validation - should detect dangerous operations and fail
             success = migration_workflow.validate_migration(tmp_path)
-            assert success, "Validation should succeed even with warnings"
+            assert not success, "Validation should fail for dangerous operations"
         finally:
             os.unlink(tmp_path)
 
@@ -129,8 +132,12 @@ class TestMigrationNaming:
         if history:
             for revision in history:
                 # Check that revision follows expected format (should be 12-char hash)
-                assert len(revision.revision) == 12, f"Revision {revision.revision} should be 12 characters"
-                assert revision.revision.isalnum(), f"Revision {revision.revision} should be alphanumeric"
+                assert (
+                    len(revision.revision) == 12
+                ), f"Revision {revision.revision} should be 12 characters"
+                assert (
+                    revision.revision.isalnum()
+                ), f"Revision {revision.revision} should be alphanumeric"
 
     def test_migration_file_format(self):
         """Test that migration files are properly formatted."""
@@ -141,14 +148,26 @@ class TestMigrationNaming:
                 content = migration_file.read_text()
 
                 # Check for required elements
-                assert 'revision:' in content, f"Migration {migration_file.name} missing revision identifier"
-                assert 'down_revision:' in content, f"Migration {migration_file.name} missing down_revision"
-                assert 'def upgrade(' in content, f"Migration {migration_file.name} missing upgrade function"
-                assert 'def downgrade(' in content, f"Migration {migration_file.name} missing downgrade function"
+                assert (
+                    "revision:" in content
+                ), f"Migration {migration_file.name} missing revision identifier"
+                assert (
+                    "down_revision:" in content
+                ), f"Migration {migration_file.name} missing down_revision"
+                assert (
+                    "def upgrade(" in content
+                ), f"Migration {migration_file.name} missing upgrade function"
+                assert (
+                    "def downgrade(" in content
+                ), f"Migration {migration_file.name} missing downgrade function"
 
                 # Check for proper imports
-                assert 'import sqlalchemy as sa' in content, f"Migration {migration_file.name} missing SQLAlchemy import"
-                assert 'from alembic import op' in content, f"Migration {migration_file.name} missing Alembic op import"
+                assert (
+                    "import sqlalchemy as sa" in content
+                ), f"Migration {migration_file.name} missing SQLAlchemy import"
+                assert (
+                    "from alembic import op" in content
+                ), f"Migration {migration_file.name} missing Alembic op import"
 
 
 class TestMigrationIntegration:
@@ -164,9 +183,9 @@ class TestMigrationIntegration:
         command.upgrade(alembic_cfg, "head")
 
         # Test models work with migrated database
-        from src.vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
-        from src.vgnc_internal_orm.models.assembly import Assembly
         from datetime import datetime
+
+        from src.vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 
         SessionLocal = sessionmaker(bind=engine)
         session = SessionLocal()
@@ -175,10 +194,10 @@ class TestMigrationIntegration:
             # Create test data
             species = Species(
                 taxon_id=9606,
-                genefam_prefix='HSA',
-                display_name='human (Homo sapiens)',
+                genefam_prefix="HSA",
+                display_name="human (Homo sapiens)",
                 is_live=SpeciesLiveStatus.YES,
-                created=datetime.now()
+                created=datetime.now(),
             )
             session.add(species)
             session.commit()
@@ -186,7 +205,7 @@ class TestMigrationIntegration:
             # Query data
             saved = session.query(Species).filter(Species.taxon_id == 9606).first()
             assert saved is not None
-            assert saved.display_name == 'human (Homo sapiens)'
+            assert saved.display_name == "human (Homo sapiens)"
 
         finally:
             session.close()
@@ -210,19 +229,27 @@ class TestMigrationIntegration:
         # Note: command.current() may return None in some configurations,
         # but the database should still have the correct version
         if current is not None:
-            assert current == version, f"Current version {current} doesn't match alembic_version table {version}"
+            assert (
+                current == version
+            ), f"Current version {current} doesn't match alembic_version table {version}"
 
             # Check that heads command matches
             heads = command.heads(alembic_cfg)
-            assert current == heads[0], f"Current version {current} doesn't match head {heads[0]}"
+            assert (
+                current == heads[0]
+            ), f"Current version {current} doesn't match head {heads[0]}"
         else:
             # If current returns None, verify that the database has a version
-            assert version is not None, "Database should have a version in alembic_version table"
+            assert (
+                version is not None
+            ), "Database should have a version in alembic_version table"
 
             # Check that heads command returns the same version as in database
             heads = command.heads(alembic_cfg)
             if heads:
-                assert version == heads[0], f"Database version {version} doesn't match head {heads[0]}"
+                assert (
+                    version == heads[0]
+                ), f"Database version {version} doesn't match head {heads[0]}"
 
 
 class TestMigrationCommands:
@@ -239,9 +266,10 @@ class TestMigrationCommands:
 
     def test_migration_help_output(self):
         """Test that migration script provides help."""
-        from scripts.migration_workflow import main
         import sys
         from io import StringIO
+
+        from scripts.migration_workflow import main
 
         # Capture help output
         old_stdout = sys.stdout
@@ -249,7 +277,7 @@ class TestMigrationCommands:
 
         try:
             # Run with --help to check it doesn't crash
-            sys.argv = ['migration_workflow.py', '--help']
+            sys.argv = ["migration_workflow.py", "--help"]
             with pytest.raises(SystemExit) as exc_info:
                 main()
             assert exc_info.value.code == 0, "Help should exit with code 0"

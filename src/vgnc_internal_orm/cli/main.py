@@ -4,104 +4,122 @@ This module provides CLI commands for querying genes, families,
 and related data with proper parameter handling and output formatting.
 """
 
-import sys
+import csv
+import io
+import json
 import os
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Optional, List, Dict, Any
-import json
-import csv
-from io import StringIO
+from typing import TYPE_CHECKING, Any
 
 import click
-from sqlalchemy import create_engine, select, text, func
-from sqlalchemy.orm import sessionmaker, Session
 
-# Add src to path for imports when running as script
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root / "src"))
+if TYPE_CHECKING:
+    pass
+from sqlalchemy import create_engine, func, select, text
+from sqlalchemy.orm import Session, sessionmaker
 
 from vgnc_internal_orm.config.settings import DatabaseConfig
-from vgnc_internal_orm.models.base import BaseModel
-from vgnc_internal_orm.models.species import Species
-from vgnc_internal_orm.models.genefam import Genefam
-from vgnc_internal_orm.models.chromosomes import Chromosomes
 from vgnc_internal_orm.models.assembly import Assembly
+from vgnc_internal_orm.models.chromosomes import Chromosomes
+from vgnc_internal_orm.models.genefam import Genefam
+from vgnc_internal_orm.models.species import Species
 
 
 @click.group()
-@click.option('--database-url', '-d',
-              help='Database connection URL (overrides config file)')
-@click.option('--config', '-c',
-              type=click.Path(exists=True),
-              help='Path to configuration file')
-@click.option('--verbose', '-v', is_flag=True,
-              help='Enable verbose output')
+@click.option(
+    "--database-url", "-d", help="Database connection URL (overrides config file)"
+)
+@click.option(
+    "--config", "-c", type=click.Path(exists=True), help="Path to configuration file"
+)
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
 @click.pass_context
-def cli(ctx: click.Context, database_url: Optional[str], config: Optional[str], verbose: bool):
+def cli(
+    ctx: click.Context,
+    database_url: str | None,
+    config: str | None,
+    verbose: bool,
+) -> None:
     """VGNC ORM Command-line Interface.
 
     A powerful CLI for querying gene families, species, and orthology data
     from the VGNC database with support for multiple output formats.
     """
+    # Add src to path for imports when running as script
+    project_root = Path(__file__).parent.parent.parent
+    sys.path.insert(0, str(project_root / "src"))
+
     ctx.ensure_object(dict)
-    ctx.obj['verbose'] = verbose
-    ctx.obj['database_url'] = database_url
-    ctx.obj['config_file'] = config
+    ctx.obj["verbose"] = verbose
+    ctx.obj["database_url"] = database_url
+    ctx.obj["config_file"] = config
 
     # Defer configuration loading until we actually need it
     # This prevents configuration errors when just displaying help
-    ctx.obj['db_config'] = None
-    ctx.obj['config_loaded'] = False
+    ctx.obj["db_config"] = None
+    ctx.obj["config_loaded"] = False
 
 
-def ensure_config_loaded(ctx: click.Context):
+def ensure_config_loaded(ctx: click.Context) -> None:
     """Load configuration if not already loaded."""
-    if ctx.obj.get('config_loaded', False):
+    if ctx.obj.get("config_loaded", False):
         return
 
     try:
-        if ctx.obj.get('config_file'):
-            os.environ['VGNC_CONFIG_FILE'] = ctx.obj['config_file']
+        if ctx.obj.get("config_file"):
+            os.environ["VGNC_CONFIG_FILE"] = ctx.obj["config_file"]
 
         # Set minimal database config if database URL is provided directly
-        if ctx.obj.get('database_url'):
+        if ctx.obj.get("database_url"):
             # Create minimal config when database URL is provided
-            os.environ['DB_DATABASE'] = 'cli_database'  # Minimal required field
-            os.environ['DB_DRIVER'] = 'sqlite'  # Set SQLite driver to avoid auth requirements
-            db_config = DatabaseConfig()
+            os.environ["DB_DATABASE"] = "cli_database"  # Minimal required field
+            os.environ["DB_DRIVER"] = (
+                "sqlite"  # Set SQLite driver to avoid auth requirements
+            )
+            db_config = DatabaseConfig(database="cli_database")
             # Override the database_url property by storing it separately
-            ctx.obj['database_url'] = ctx.obj['database_url']
+            ctx.obj["database_url"] = ctx.obj["database_url"]
         else:
-            db_config = DatabaseConfig()
-            ctx.obj['database_url'] = None
+            db_config = DatabaseConfig(database="cli_database")
+            ctx.obj["database_url"] = None
 
-        ctx.obj['db_config'] = db_config
-        ctx.obj['config_loaded'] = True
+        ctx.obj["db_config"] = db_config
+        ctx.obj["config_loaded"] = True
 
     except Exception as e:
         # Fallback to minimal config if configuration loading fails
-        if ctx.obj.get('database_url'):
+        if ctx.obj.get("database_url"):
             try:
-                os.environ['DB_DATABASE'] = 'cli_database'
-                os.environ['DB_DRIVER'] = 'sqlite'  # Set SQLite driver to avoid auth requirements
-                db_config = DatabaseConfig()
-                ctx.obj['database_url'] = ctx.obj['database_url']
-                ctx.obj['db_config'] = db_config
-                ctx.obj['config_loaded'] = True
-                if ctx.obj.get('verbose'):
-                    click.echo("Using database URL with minimal configuration", err=True)
+                os.environ["DB_DATABASE"] = "cli_database"
+                os.environ["DB_DRIVER"] = (
+                    "sqlite"  # Set SQLite driver to avoid auth requirements
+                )
+                db_config = DatabaseConfig(database="cli_database")
+                ctx.obj["database_url"] = ctx.obj["database_url"]
+                ctx.obj["db_config"] = db_config
+                ctx.obj["config_loaded"] = True
+                if ctx.obj.get("verbose"):
+                    click.echo(
+                        "Using database URL with minimal configuration", err=True
+                    )
             except Exception as fallback_error:
-                click.echo(f"Error setting up minimal configuration: {fallback_error}", err=True)
+                click.echo(
+                    f"Error setting up minimal configuration: {fallback_error}",
+                    err=True,
+                )
                 ctx.exit(1)
         else:
             click.echo(f"Error loading configuration: {e}", err=True)
-            click.echo("Please provide --database-url or ensure proper configuration", err=True)
+            click.echo(
+                "Please provide --database-url or ensure proper configuration", err=True
+            )
             ctx.exit(1)
 
 
 # Export utility functions
-def format_species_as_xml(species_list: List[Species]) -> str:
+def format_species_as_xml(species_list: list[Species]) -> str:
     """Format species data as XML with proper UTF8MB4 encoding support."""
     root = ET.Element("species")
 
@@ -125,16 +143,16 @@ def format_species_as_xml(species_list: List[Species]) -> str:
         elem = ET.SubElement(species_elem, "ensembl_species_name")
         elem.text = species.ensembl_species_name or ""
 
-        if species.created:
+        if species.created and hasattr(species.created, "isoformat"):
             elem = ET.SubElement(species_elem, "created")
             elem.text = species.created.isoformat()
 
     # Pretty print XML
     ET.indent(root, space="  ")
-    return ET.tostring(root, encoding='unicode')
+    return ET.tostring(root, encoding="unicode")
 
 
-def format_genefam_as_xml(genefam_list: List[Genefam]) -> str:
+def format_genefam_as_xml(genefam_list: list[Genefam]) -> str:
     """Format genefam data as XML with proper UTF8MB4 encoding support."""
     root = ET.Element("genefams")
 
@@ -161,10 +179,10 @@ def format_genefam_as_xml(genefam_list: List[Genefam]) -> str:
 
     # Pretty print XML
     ET.indent(root, space="  ")
-    return ET.tostring(root, encoding='unicode')
+    return ET.tostring(root, encoding="unicode")
 
 
-def format_assembly_as_xml(assembly_list: List[Assembly]) -> str:
+def format_assembly_as_xml(assembly_list: list[Assembly]) -> str:
     """Format assembly data as XML with proper UTF8MB4 encoding support."""
     root = ET.Element("assemblies")
 
@@ -194,10 +212,10 @@ def format_assembly_as_xml(assembly_list: List[Assembly]) -> str:
 
     # Pretty print XML
     ET.indent(root, space="  ")
-    return ET.tostring(root, encoding='unicode')
+    return ET.tostring(root, encoding="unicode")
 
 
-def format_chromosomes_as_xml(chromosomes_list: List[Chromosomes]) -> str:
+def format_chromosomes_as_xml(chromosomes_list: list[Chromosomes]) -> str:
     """Format chromosomes data as XML with proper UTF8MB4 encoding support."""
     root = ET.Element("chromosomes")
 
@@ -222,36 +240,43 @@ def format_chromosomes_as_xml(chromosomes_list: List[Chromosomes]) -> str:
         elem = ET.SubElement(chromosomes_elem, "ensembl_accession")
         elem.text = chromosomes.ensembl_accession or ""
 
-        elem = ET.SubElement(chromosomes_elem, "ucsc_name")
-        elem.text = chromosomes.ucsc_name or ""
+        # Note: ucsc_name field doesn't exist in Chromosomes model
+        # elem = ET.SubElement(chromosomes_elem, "ucsc_name")
+        # elem.text = chromosomes.ucsc_name or ""
 
     # Pretty print XML
     ET.indent(root, space="  ")
-    return ET.tostring(root, encoding='unicode')
+    return ET.tostring(root, encoding="unicode")
 
 
 @cli.command()
-@click.option('--limit', '-l', default=10, help='Maximum number of results to return')
-@click.option('--offset', '-o', default=0, help='Number of results to skip')
-@click.option('--format', '-f',
-              type=click.Choice(['table', 'json', 'csv', 'xml']),
-              default='table',
-              help='Output format')
-@click.option('--sort-by', '-s',
-              type=click.Choice(['display_name', 'genefam_prefix', 'taxon_id', 'is_live']),
-              default='display_name',
-              help='Sort field')
-@click.option('--order',
-              type=click.Choice(['asc', 'desc']),
-              default='asc',
-              help='Sort order')
+@click.option("--limit", "-l", default=10, help="Maximum number of results to return")
+@click.option("--offset", "-o", default=0, help="Number of results to skip")
+@click.option(
+    "--format",
+    "-f",
+    type=click.Choice(["table", "json", "csv", "xml"]),
+    default="table",
+    help="Output format",
+)
+@click.option(
+    "--sort-by",
+    "-s",
+    type=click.Choice(["display_name", "genefam_prefix", "taxon_id", "is_live"]),
+    default="display_name",
+    help="Sort field",
+)
+@click.option(
+    "--order", type=click.Choice(["asc", "desc"]), default="asc", help="Sort order"
+)
 @click.pass_context
-def query_species(ctx: click.Context, limit: int, offset: int, format: str,
-                 sort_by: str, order: str):
+def query_species(
+    ctx: click.Context, limit: int, offset: int, format: str, sort_by: str, order: str
+) -> None:
     """Query species information from the database."""
     try:
         ensure_config_loaded(ctx)
-        session = get_session(ctx.obj['db_config'], ctx.obj.get('database_url'))
+        session = get_session(ctx.obj["db_config"], ctx.obj.get("database_url"))
 
         # Build query
         stmt = select(Species)
@@ -259,7 +284,7 @@ def query_species(ctx: click.Context, limit: int, offset: int, format: str,
         # Add sorting
         if hasattr(Species, sort_by):
             sort_column = getattr(Species, sort_by)
-            if order == 'desc':
+            if order == "desc":
                 stmt = stmt.order_by(sort_column.desc())
             else:
                 stmt = stmt.order_by(sort_column.asc())
@@ -271,14 +296,15 @@ def query_species(ctx: click.Context, limit: int, offset: int, format: str,
         species_list = session.execute(stmt).scalars().all()
 
         # Format and display results
-        if format == 'table':
-            display_species_table(species_list)
-        elif format == 'json':
-            display_species_json(species_list)
-        elif format == 'csv':
-            display_species_csv(species_list)
-        elif format == 'xml':
-            click.echo(format_species_as_xml(species_list))
+        species_list_fixed = list(species_list)  # Convert Sequence to list
+        if format == "table":
+            display_species_table(species_list_fixed)
+        elif format == "json":
+            display_species_json(species_list_fixed)
+        elif format == "csv":
+            display_species_csv(species_list_fixed)
+        elif format == "xml":
+            click.echo(format_species_as_xml(species_list_fixed))
 
         session.close()
 
@@ -288,30 +314,39 @@ def query_species(ctx: click.Context, limit: int, offset: int, format: str,
 
 
 @cli.command()
-@click.option('--name', '-n', help='Search by gene family name (supports wildcards)')
-@click.option('--symbol', '-s', help='Filter by gene symbol')
-@click.option('--status', help='Filter by status')
-@click.option('--limit', '-l', default=10, help='Maximum number of results')
-@click.option('--format', '-f',
-              type=click.Choice(['table', 'json', 'csv', 'xml']),
-              default='table',
-              help='Output format')
+@click.option("--name", "-n", help="Search by gene family name (supports wildcards)")
+@click.option("--symbol", "-s", help="Filter by gene symbol")
+@click.option("--status", help="Filter by status")
+@click.option("--limit", "-l", default=10, help="Maximum number of results")
+@click.option(
+    "--format",
+    "-f",
+    type=click.Choice(["table", "json", "csv", "xml"]),
+    default="table",
+    help="Output format",
+)
 @click.pass_context
-def query_genefams(ctx: click.Context, name: Optional[str], symbol: Optional[str],
-                  status: Optional[str], limit: int, format: str):
+def query_genefams(
+    ctx: click.Context,
+    name: str | None,
+    symbol: str | None,
+    status: str | None,
+    limit: int,
+    format: str,
+) -> None:
     """Query gene family information from the database."""
     try:
         ensure_config_loaded(ctx)
-        session = get_session(ctx.obj['db_config'], ctx.obj.get('database_url'))
+        session = get_session(ctx.obj["db_config"], ctx.obj.get("database_url"))
 
         # Build query
         stmt = select(Genefam)
 
         # Add filters
         if name:
-            if '*' in name or '%' in name:
+            if "*" in name or "%" in name:
                 # Pattern matching
-                pattern = name.replace('*', '%')
+                pattern = name.replace("*", "%")
                 stmt = stmt.where(Genefam.assigned_id.like(pattern))
             else:
                 # Exact match
@@ -332,14 +367,15 @@ def query_genefams(ctx: click.Context, name: Optional[str], symbol: Optional[str
         genefams = session.execute(stmt).scalars().all()
 
         # Format and display results
-        if format == 'table':
-            display_genefams_table(genefams)
-        elif format == 'json':
-            display_genefams_json(genefams)
-        elif format == 'csv':
-            display_genefams_csv(genefams)
-        elif format == 'xml':
-            click.echo(format_genefam_as_xml(genefams))
+        genefams_fixed = list(genefams)  # Convert Sequence to list
+        if format == "table":
+            display_genefams_table(genefams_fixed)
+        elif format == "json":
+            display_genefams_json(genefams_fixed)
+        elif format == "csv":
+            display_genefams_csv(genefams_fixed)
+        elif format == "xml":
+            click.echo(format_genefam_as_xml(genefams_fixed))
 
         session.close()
 
@@ -349,17 +385,20 @@ def query_genefams(ctx: click.Context, name: Optional[str], symbol: Optional[str
 
 
 @cli.command()
-@click.argument('genefam_id')
-@click.option('--format', '-f',
-              type=click.Choice(['table', 'json', 'csv', 'xml']),
-              default='table',
-              help='Output format')
+@click.argument("genefam_id")
+@click.option(
+    "--format",
+    "-f",
+    type=click.Choice(["table", "json", "csv", "xml"]),
+    default="table",
+    help="Output format",
+)
 @click.pass_context
-def query_genefam_species(ctx: click.Context, genefam_id: str, format: str):
+def query_genefam_species(ctx: click.Context, genefam_id: str, format: str) -> None:
     """Query species associated with a specific gene family."""
     try:
         ensure_config_loaded(ctx)
-        session = get_session(ctx.obj['db_config'], ctx.obj.get('database_url'))
+        session = get_session(ctx.obj["db_config"], ctx.obj.get("database_url"))
 
         # Find the gene family by ID or assigned_id
         try:
@@ -380,13 +419,13 @@ def query_genefam_species(ctx: click.Context, genefam_id: str, format: str):
         species = session.execute(species_stmt).scalar_one_or_none()
 
         # Format and display results
-        if format == 'table':
+        if format == "table":
             display_genefam_species_table(genefam, [species] if species else [])
-        elif format == 'json':
+        elif format == "json":
             display_genefam_species_json(genefam, species)
-        elif format == 'csv':
+        elif format == "csv":
             display_genefam_species_csv(genefam, species)
-        elif format == 'xml':
+        elif format == "xml":
             # Create XML for both genefam and species
             root = ET.Element("genefam_species")
 
@@ -421,7 +460,7 @@ def query_genefam_species(ctx: click.Context, genefam_id: str, format: str):
 
             # Pretty print XML
             ET.indent(root, space="  ")
-            click.echo(ET.tostring(root, encoding='unicode'))
+            click.echo(ET.tostring(root, encoding="unicode"))
 
         session.close()
 
@@ -430,59 +469,62 @@ def query_genefam_species(ctx: click.Context, genefam_id: str, format: str):
         ctx.exit(1)
 
 
-def get_session(db_config: DatabaseConfig, database_url: Optional[str] = None) -> Session:
+def get_session(db_config: DatabaseConfig, database_url: str | None = None) -> Session:
     """Create database session from configuration."""
     # Use provided database URL or fall back to config
     url = database_url if database_url else db_config.database_url.get_secret_value()
 
-    engine = create_engine(
-        url,
-        echo=db_config.echo,
-        pool_pre_ping=True
-    )
+    engine = create_engine(url, echo=db_config.echo, pool_pre_ping=True)
 
     SessionLocal = sessionmaker(bind=engine)
     return SessionLocal()
 
 
-def display_species_table(species_list: List[Species]):
+def display_species_table(species_list: list[Species]) -> None:
     """Display species information in table format."""
     if not species_list:
         click.echo("No species found.")
         return
 
-    click.echo(f"{'Taxon ID':<10} {'Display Name':<30} {'Genefam Prefix':<15} {'Live Status':<10}")
+    click.echo(
+        f"{'Taxon ID':<10} {'Display Name':<30} {'Genefam Prefix':<15} {'Live Status':<10}"
+    )
     click.echo("-" * 75)
 
     for species in species_list:
-        click.echo(f"{species.taxon_id:<10} {species.display_name:<30} "
-                  f"{species.genefam_prefix:<15} {species.is_live.value:<10}")
+        click.echo(
+            f"{species.taxon_id:<10} {species.display_name:<30} "
+            f"{species.genefam_prefix:<15} {species.is_live.value:<10}"
+        )
 
 
-def display_species_json(species_list: List[Species]):
+def display_species_json(species_list: list[Species]) -> None:
     """Display species information in JSON format."""
-    import json
-
     data = []
     for species in species_list:
-        data.append({
-            'taxon_id': species.taxon_id,
-            'display_name': species.display_name,
-            'genefam_prefix': species.genefam_prefix,
-            'ensembl_species_name': species.ensembl_species_name,
-            'is_live': species.is_live.value,
-            'created': species.created.isoformat() if species.created else None,
-            'is_active': species.is_active
-        })
+        data.append(
+            {
+                "taxon_id": species.taxon_id,
+                "display_name": species.display_name,
+                "genefam_prefix": species.genefam_prefix,
+                "ensembl_species_name": species.ensembl_species_name,
+                "scientific_name": species.scientific_name,
+                "vgnc_prefix": species.vgnc_prefix,
+                "is_live": species.is_live.value,
+                "created": (
+                    species.created.isoformat()
+                    if species.created and hasattr(species.created, "isoformat")
+                    else None
+                ),
+                "is_active": species.is_active,
+            }
+        )
 
     click.echo(json.dumps(data, indent=2))
 
 
-def display_species_csv(species_list: List[Species]):
+def display_species_csv(species_list: list[Species]) -> None:
     """Display species information in CSV format."""
-    import csv
-    import io
-
     if not species_list:
         return
 
@@ -490,61 +532,84 @@ def display_species_csv(species_list: List[Species]):
     writer = csv.writer(output)
 
     # Header
-    writer.writerow(['Taxon ID', 'Display Name', 'Genefam Prefix',
-                    'Ensembl Species Name', 'Live Status', 'Created', 'Is Active'])
+    writer.writerow(
+        [
+            "Taxon ID",
+            "Display Name",
+            "Genefam Prefix",
+            "Ensembl Species Name",
+            "Scientific Name",
+            "VGNC Prefix",
+            "Live Status",
+            "Created",
+            "Is Active",
+        ]
+    )
 
     # Data rows
     for species in species_list:
-        writer.writerow([
-            species.taxon_id, species.display_name, species.genefam_prefix,
-            species.ensembl_species_name, species.is_live.value,
-            species.created.isoformat() if species.created else None,
-            species.is_active
-        ])
+        writer.writerow(
+            [
+                species.taxon_id,
+                species.display_name,
+                species.genefam_prefix,
+                species.ensembl_species_name,
+                species.scientific_name,
+                species.vgnc_prefix,
+                species.is_live.value,
+                (
+                    species.created.isoformat()
+                    if species.created and hasattr(species.created, "isoformat")
+                    else None
+                ),
+                species.is_active,
+            ]
+        )
 
     click.echo(output.getvalue().strip())
 
 
-def display_genefams_table(genefams: List[Genefam]):
+def display_genefams_table(genefams: list[Genefam]) -> None:
     """Display gene families in table format."""
     if not genefams:
         click.echo("No gene families found.")
         return
 
-    click.echo(f"{'ID':<10} {'Assigned ID':<20} {'Symbol':<15} {'Status ID':<10} {'Editor ID':<10}")
+    click.echo(
+        f"{'ID':<10} {'Assigned ID':<20} {'Symbol':<15} {'Status ID':<10} {'Editor ID':<10}"
+    )
     click.echo("-" * 80)
 
     for genefam in genefams:
-        click.echo(f"{genefam.genefam_id:<10} {genefam.assigned_id:<20} "
-                  f"{genefam.assigned_symbol or 'N/A':<15} "
-                  f"{str(genefam.status_id):<10} {str(genefam.editor_id):<10}")
+        click.echo(
+            f"{genefam.genefam_id:<10} {genefam.assigned_id:<20} "
+            f"{genefam.assigned_symbol or 'N/A':<15} "
+            f"{str(genefam.status_id):<10} {str(genefam.editor_id):<10}"
+        )
 
 
-def display_genefams_json(genefams: List[Genefam]):
+def display_genefams_json(genefams: list[Genefam]) -> None:
     """Display gene families in JSON format."""
-    import json
-
     data = []
     for genefam in genefams:
-        data.append({
-            'genefam_id': genefam.genefam_id,
-            'taxon_id': genefam.taxon_id,
-            'assigned_id': genefam.assigned_id,
-            'assigned_symbol': genefam.assigned_symbol,
-            'assigned_name': genefam.assigned_name,
-            'status_id': genefam.status_id,
-            'editor_id': genefam.editor_id,
-            'hcop_support_level': genefam.hcop_support_level
-        })
+        data.append(
+            {
+                "genefam_id": genefam.genefam_id,
+                "taxon_id": genefam.taxon_id,
+                "assigned_id": genefam.assigned_id,
+                "assigned_symbol": genefam.assigned_symbol,
+                "assigned_name": genefam.assigned_name,
+                "status_id": genefam.status_id,
+                "editor_id": genefam.editor_id,
+                "hcop_support_level": genefam.hcop_support_level,
+            }
+        )
 
     click.echo(json.dumps(data, indent=2))
 
 
-def display_genefams_csv(genefams: List[Genefam]):
+def display_genefams_csv(genefams: list[Genefam]) -> None:
     """Display gene families in CSV format."""
-    import csv
-    import io
-
     if not genefams:
         return
 
@@ -552,21 +617,36 @@ def display_genefams_csv(genefams: List[Genefam]):
     writer = csv.writer(output)
 
     # Header
-    writer.writerow(['GeneFamily ID', 'Taxon ID', 'Assigned ID', 'Symbol', 'Name',
-                    'Status ID', 'Editor ID'])
+    writer.writerow(
+        [
+            "GeneFamily ID",
+            "Taxon ID",
+            "Assigned ID",
+            "Symbol",
+            "Name",
+            "Status ID",
+            "Editor ID",
+        ]
+    )
 
     # Data rows
     for genefam in genefams:
-        writer.writerow([
-            genefam.genefam_id, genefam.taxon_id, genefam.assigned_id,
-            genefam.assigned_symbol, genefam.assigned_name,
-            str(genefam.status_id), str(genefam.editor_id)
-        ])
+        writer.writerow(
+            [
+                genefam.genefam_id,
+                genefam.taxon_id,
+                genefam.assigned_id,
+                genefam.assigned_symbol,
+                genefam.assigned_name,
+                str(genefam.status_id),
+                str(genefam.editor_id),
+            ]
+        )
 
     click.echo(output.getvalue().strip())
 
 
-def display_genefam_species_table(genefam: Genefam, species_list: List):
+def display_genefam_species_table(genefam: Genefam, species_list: list[Any]) -> None:
     """Display gene family-species associations in table format."""
     click.echo(f"Gene Family: {genefam.assigned_id}")
     if genefam.assigned_name:
@@ -577,102 +657,145 @@ def display_genefam_species_table(genefam: Genefam, species_list: List):
         click.echo("No species associations found.")
         return
 
-    click.echo(f"{'Taxon ID':<10} {'Display Name':<30} {'Genefam Prefix':<15} {'Live Status':<10}")
+    click.echo(
+        f"{'Taxon ID':<10} {'Display Name':<30} {'Genefam Prefix':<15} {'Live Status':<10}"
+    )
     click.echo("-" * 75)
 
     for species in species_list:
-        click.echo(f"{species.taxon_id:<10} {species.display_name:<30} "
-                  f"{species.genefam_prefix:<15} {species.is_live.value:<10}")
+        click.echo(
+            f"{species.taxon_id:<10} {species.display_name:<30} "
+            f"{species.genefam_prefix:<15} {species.is_live.value:<10}"
+        )
 
 
-def display_genefam_species_json(genefam: Genefam, species):
+def display_genefam_species_json(genefam: Genefam, species: Any) -> None:
     """Display gene family-species associations in JSON format."""
-    import json
-
     data = {
-        'genefam': {
-            'genefam_id': genefam.genefam_id,
-            'assigned_id': genefam.assigned_id,
-            'assigned_name': genefam.assigned_name,
-            'status': genefam.status_text
+        "genefam": {
+            "genefam_id": genefam.genefam_id,
+            "assigned_id": genefam.assigned_id,
+            "assigned_name": genefam.assigned_name,
+            "status": genefam.status_text,
         }
     }
 
     if species:
-        data['species'] = {
-            'taxon_id': species.taxon_id,
-            'display_name': species.display_name,
-            'genefam_prefix': species.genefam_prefix,
-            'ensembl_species_name': species.ensembl_species_name,
-            'is_live': species.is_live.value,
-            'is_active': species.is_active
+        data["species"] = {
+            "taxon_id": species.taxon_id,
+            "display_name": species.display_name,
+            "genefam_prefix": species.genefam_prefix,
+            "ensembl_species_name": species.ensembl_species_name,
+            "is_live": species.is_live.value,
+            "is_active": species.is_active,
         }
     else:
-        data['species'] = None
+        data["species"] = {}  # Empty dict instead of None for consistent typing
 
     click.echo(json.dumps(data, indent=2))
 
 
-def display_genefam_species_csv(genefam: Genefam, species):
+def display_genefam_species_csv(genefam: Genefam, species: Any) -> None:
     """Display gene family-species associations in CSV format."""
-    import csv
-    import io
-
     output = io.StringIO()
     writer = csv.writer(output)
 
     # Header
-    writer.writerow(['GeneFamily ID', 'Assigned ID', 'Assigned Name',
-                    'Species Taxon ID', 'Display Name', 'Genefam Prefix', 'Live Status'])
+    writer.writerow(
+        [
+            "GeneFamily ID",
+            "Assigned ID",
+            "Assigned Name",
+            "Species Taxon ID",
+            "Display Name",
+            "Genefam Prefix",
+            "Live Status",
+        ]
+    )
 
     # Data row
     if species:
-        writer.writerow([
-            genefam.genefam_id, genefam.assigned_id, genefam.assigned_name,
-            species.taxon_id, species.display_name, species.genefam_prefix,
-            species.is_live.value
-        ])
+        writer.writerow(
+            [
+                genefam.genefam_id,
+                genefam.assigned_id,
+                genefam.assigned_name,
+                species.taxon_id,
+                species.display_name,
+                species.genefam_prefix,
+                species.is_live.value,
+            ]
+        )
     else:
-        writer.writerow([
-            genefam.genefam_id, genefam.assigned_id, genefam.assigned_name,
-            'N/A', 'N/A', 'N/A', 'N/A'
-        ])
+        writer.writerow(
+            [
+                genefam.genefam_id,
+                genefam.assigned_id,
+                genefam.assigned_name,
+                "N/A",
+                "N/A",
+                "N/A",
+                "N/A",
+            ]
+        )
 
     click.echo(output.getvalue().strip())
 
 
 # Dedicated export commands
 @cli.command()
-@click.option('--entity', '-e',
-              type=click.Choice(['species', 'genefams', 'assemblies', 'chromosomes']),
-              required=True,
-              help='Entity type to export')
-@click.option('--format', '-f',
-              type=click.Choice(['csv', 'json', 'xml']),
-              required=True,
-              help='Export format')
-@click.option('--output', '-o',
-              type=click.Path(),
-              help='Output file path (if not specified, prints to stdout)')
-@click.option('--batch-size', '-b',
-              default=1000,
-              help='Number of records to process at a time')
-@click.option('--progress', '-p', is_flag=True,
-              help='Show progress bar for large exports')
+@click.option(
+    "--entity",
+    "-e",
+    type=click.Choice(["species", "genefams", "assemblies", "chromosomes"]),
+    required=True,
+    help="Entity type to export",
+)
+@click.option(
+    "--format",
+    "-f",
+    type=click.Choice(["csv", "json", "xml"]),
+    required=True,
+    help="Export format",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    help="Output file path (if not specified, prints to stdout)",
+)
+@click.option(
+    "--batch-size", "-b", default=1000, help="Number of records to process at a time"
+)
+@click.option(
+    "--progress", "-p", is_flag=True, help="Show progress bar for large exports"
+)
 @click.pass_context
-def export(ctx: click.Context, entity: str, format: str, output: Optional[str],
-           batch_size: int, progress: bool):
+def export(
+    ctx: click.Context,
+    entity: str,
+    format: str,
+    output: str | None,
+    batch_size: int,
+    progress: bool,
+) -> None:
     """Export data in various formats with progress indicators and UTF8MB4 encoding support."""
     try:
         ensure_config_loaded(ctx)
-        session = get_session(ctx.obj['db_config'], ctx.obj.get('database_url'))
+        session = get_session(ctx.obj["db_config"], ctx.obj.get("database_url"))
 
         # Map entity to model class and formatter
         entity_map = {
-            'species': (Species, format_species_as_xml if format == 'xml' else None),
-            'genefams': (Genefam, format_genefam_as_xml if format == 'xml' else None),
-            'assemblies': (Assembly, format_assembly_as_xml if format == 'xml' else None),
-            'chromosomes': (Chromosomes, format_chromosomes_as_xml if format == 'xml' else None)
+            "species": (Species, format_species_as_xml if format == "xml" else None),
+            "genefams": (Genefam, format_genefam_as_xml if format == "xml" else None),
+            "assemblies": (
+                Assembly,
+                format_assembly_as_xml if format == "xml" else None,
+            ),
+            "chromosomes": (
+                Chromosomes,
+                format_chromosomes_as_xml if format == "xml" else None,
+            ),
         }
 
         if entity not in entity_map:
@@ -688,15 +811,22 @@ def export(ctx: click.Context, entity: str, format: str, output: Optional[str],
             click.echo(f"Exporting {total_records} {entity} records...")
 
         # Query all records
-        stmt = select(model_class).order_by(getattr(model_class, next(
-            col.name for col in model_class.__table__.columns
-            if col.primary_key
-        )))
+        stmt = select(model_class).order_by(
+            getattr(
+                model_class,
+                next(
+                    col.name for col in model_class.__table__.columns if col.primary_key
+                ),
+            )
+        )
 
         if progress:
             # Process with progress bar
             records = []
-            with click.progressbar(length=total_records, label=f'Exporting {entity}') as bar:
+            bar: Any = click.progressbar(
+                length=total_records, label=f"Exporting {entity}"
+            )
+            with bar:
                 for record in session.execute(stmt):
                     records.append(record[0])
                     bar.update(1)
@@ -705,15 +835,15 @@ def export(ctx: click.Context, entity: str, format: str, output: Optional[str],
             records = [record[0] for record in session.execute(stmt)]
 
         # Format output
-        if format == 'json':
+        if format == "json":
             output_data = []
             for record in records:
                 output_data.append(record.to_dict())
-            formatted_output = json.dumps(output_data, indent=2, ensure_ascii=False, default=str)
+            formatted_output = json.dumps(
+                output_data, indent=2, ensure_ascii=False, default=str
+            )
 
-        elif format == 'csv':
-            import csv
-            import io
+        elif format == "csv":
             output_stream = io.StringIO()
 
             # Get column headers
@@ -726,23 +856,25 @@ def export(ctx: click.Context, entity: str, format: str, output: Optional[str],
                 row_data = {}
                 for col in model_class.__table__.columns:
                     value = getattr(record, col.name)
-                    if hasattr(value, 'value'):  # Handle enums
+                    if hasattr(value, "value"):  # Handle enums
                         value = value.value
                     row_data[col.name] = value
                 writer.writerow(row_data)
 
             formatted_output = output_stream.getvalue()
 
-        elif format == 'xml':
+        elif format == "xml":
             if xml_formatter:
                 formatted_output = xml_formatter(records)
             else:
-                click.echo(f"Error: XML formatter not implemented for {entity}", err=True)
+                click.echo(
+                    f"Error: XML formatter not implemented for {entity}", err=True
+                )
                 ctx.exit(1)
 
         # Write to file or stdout
         if output:
-            with open(output, 'w', encoding='utf-8') as f:
+            with open(output, "w", encoding="utf-8") as f:
                 f.write(formatted_output)
             click.echo(f"✓ Exported {len(records)} {entity} records to {output}")
         else:
@@ -751,7 +883,9 @@ def export(ctx: click.Context, entity: str, format: str, output: Optional[str],
         session.close()
 
         if progress:
-            click.echo(f"✓ Successfully exported {len(records)} {entity} records in {format} format")
+            click.echo(
+                f"✓ Successfully exported {len(records)} {entity} records in {format} format"
+            )
 
     except Exception as e:
         click.echo(f"Error exporting {entity}: {e}", err=True)
@@ -759,21 +893,28 @@ def export(ctx: click.Context, entity: str, format: str, output: Optional[str],
 
 
 @cli.command()
-@click.option('--query', '-q', required=True,
-              help='SQL query to execute and export')
-@click.option('--format', '-f',
-              type=click.Choice(['csv', 'json', 'xml']),
-              required=True,
-              help='Export format')
-@click.option('--output', '-o',
-              type=click.Path(),
-              help='Output file path (if not specified, prints to stdout)')
+@click.option("--query", "-q", required=True, help="SQL query to execute and export")
+@click.option(
+    "--format",
+    "-f",
+    type=click.Choice(["csv", "json", "xml"]),
+    required=True,
+    help="Export format",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    help="Output file path (if not specified, prints to stdout)",
+)
 @click.pass_context
-def export_query(ctx: click.Context, query: str, format: str, output: Optional[str]):
+def export_query(
+    ctx: click.Context, query: str, format: str, output: str | None
+) -> None:
     """Execute custom SQL query and export results."""
     try:
         ensure_config_loaded(ctx)
-        session = get_session(ctx.obj['db_config'], ctx.obj.get('database_url'))
+        session = get_session(ctx.obj["db_config"], ctx.obj.get("database_url"))
 
         click.echo(f"Executing query: {query}")
 
@@ -790,11 +931,11 @@ def export_query(ctx: click.Context, query: str, format: str, output: Optional[s
             return
 
         # Format output
-        if format == 'json':
-            formatted_output = json.dumps(records, indent=2, ensure_ascii=False, default=str)
-        elif format == 'csv':
-            import csv
-            import io
+        if format == "json":
+            formatted_output = json.dumps(
+                records, indent=2, ensure_ascii=False, default=str
+            )
+        elif format == "csv":
             output_stream = io.StringIO()
 
             if records:
@@ -804,7 +945,7 @@ def export_query(ctx: click.Context, query: str, format: str, output: Optional[s
 
             formatted_output = output_stream.getvalue()
 
-        elif format == 'xml':
+        elif format == "xml":
             # Create custom XML from query results
             root = ET.Element("query_results")
             for record in records:
@@ -814,23 +955,25 @@ def export_query(ctx: click.Context, query: str, format: str, output: Optional[s
                     elem.text = str(value) if value is not None else ""
 
             ET.indent(root, space="  ")
-            formatted_output = ET.tostring(root, encoding='unicode')
+            formatted_output = ET.tostring(root, encoding="unicode")
 
         # Write to file or stdout
         if output:
-            with open(output, 'w', encoding='utf-8') as f:
+            with open(output, "w", encoding="utf-8") as f:
                 f.write(formatted_output)
             click.echo(f"✓ Exported {len(records)} query results to {output}")
         else:
             click.echo(formatted_output)
 
         session.close()
-        click.echo(f"✓ Successfully exported {len(records)} query results in {format} format")
+        click.echo(
+            f"✓ Successfully exported {len(records)} query results in {format} format"
+        )
 
     except Exception as e:
         click.echo(f"Error executing query: {e}", err=True)
         ctx.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()

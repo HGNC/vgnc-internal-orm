@@ -13,33 +13,34 @@ association tables or domain models with natural/composite keys.
 """
 
 import json
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set, Type, Union
+from datetime import UTC, datetime
+from typing import Any, Optional
 
-from sqlalchemy import DateTime, Integer, String, Boolean, Text, Float, Numeric
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
+from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from sqlalchemy.sql import func
 
 
 class TimestampMixin:
     """Mixin supplying created/updated timestamp columns and touch helper."""
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
-        comment="Timestamp when record was created"
+        comment="Timestamp when record was created",
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
-        comment="Timestamp when record was last updated"
+        comment="Timestamp when record was last updated",
     )
 
     def touch(self) -> None:  # Lightweight helper used by several domain models
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
 
 class BaseModel(TimestampMixin, DeclarativeBase):
@@ -48,29 +49,28 @@ class BaseModel(TimestampMixin, DeclarativeBase):
     __abstract__ = True
 
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        autoincrement=True,
-        comment="Primary key identifier"
+        Integer, primary_key=True, autoincrement=True, comment="Primary key identifier"
     )
 
-    
     @classmethod
     def get_table_name(cls) -> str:
         """Get the table name for this model."""
-        if hasattr(cls, '__tablename__'):
-            return cls.__tablename__
+        if hasattr(cls, "__tablename__"):
+            return str(getattr(cls, "__tablename__", ""))
         return cls.__name__.lower()
 
     @classmethod
-    def get_column_names(cls) -> List[str]:
+    def get_column_names(cls) -> list[str]:
         """Get list of column names for this model."""
-        return [column.name for column in cls.__table__.columns]
+        return [str(column.name) for column in cls.__table__.columns]
 
     @classmethod
-    def get_primary_key_columns(cls) -> List[str]:
+    def get_primary_key_columns(cls) -> list[str]:
         """Get list of primary key column names."""
-        return [column.name for column in cls.__table__.primary_key.columns]
+        pk_columns = []
+        for column in cls.__table__.primary_key.columns:  # type: ignore[attr-defined]
+            pk_columns.append(str(column.name))
+        return pk_columns
 
     @classmethod
     def has_column(cls, column_name: str) -> bool:
@@ -78,7 +78,7 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         return column_name in cls.__table__.columns
 
     @classmethod
-    def get_column_type(cls, column_name: str) -> Optional[Type]:
+    def get_column_type(cls, column_name: str) -> type | None:
         """Get the SQLAlchemy type for a specific column."""
         if column_name in cls.__table__.columns:
             return type(cls.__table__.columns[column_name].type)
@@ -86,12 +86,12 @@ class BaseModel(TimestampMixin, DeclarativeBase):
 
     def to_dict(
         self,
-        exclude: Optional[Set[str]] = None,
-        include: Optional[Set[str]] = None,
+        exclude: set[str] | None = None,
+        include: set[str] | None = None,
         exclude_none: bool = False,
         datetime_format: str = "iso",
-        serialize_relationships: bool = False
-    ) -> Dict[str, Any]:
+        serialize_relationships: bool = False,
+    ) -> dict[str, Any]:
         """
         Convert model instance to dictionary with various options.
 
@@ -111,9 +111,7 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         if include is not None:
             fields_to_process = include
         else:
-            fields_to_process = {
-                column.name for column in self.__table__.columns
-            }
+            fields_to_process = {column.name for column in self.__table__.columns}
             if exclude:
                 fields_to_process -= exclude
 
@@ -145,12 +143,12 @@ class BaseModel(TimestampMixin, DeclarativeBase):
 
     def to_json(
         self,
-        exclude: Optional[Set[str]] = None,
-        include: Optional[Set[str]] = None,
+        exclude: set[str] | None = None,
+        include: set[str] | None = None,
         exclude_none: bool = False,
         datetime_format: str = "iso",
         serialize_relationships: bool = False,
-        **json_kwargs
+        **json_kwargs: Any,
     ) -> str:
         """
         Convert model instance to JSON string.
@@ -171,7 +169,7 @@ class BaseModel(TimestampMixin, DeclarativeBase):
             include=include,
             exclude_none=exclude_none,
             datetime_format=datetime_format,
-            serialize_relationships=serialize_relationships
+            serialize_relationships=serialize_relationships,
         )
 
         # Default JSON encoder settings
@@ -182,10 +180,10 @@ class BaseModel(TimestampMixin, DeclarativeBase):
 
     def update_from_dict(
         self,
-        data: Dict[str, Any],
-        exclude: Optional[Set[str]] = None,
-        only: Optional[Set[str]] = None
-    ) -> List[str]:
+        data: dict[str, Any],
+        exclude: set[str] | None = None,
+        only: set[str] | None = None,
+    ) -> list[str]:
         """
         Update model instance from dictionary.
 
@@ -224,13 +222,19 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         """Helper method to serialize relationship values."""
         if value is None:
             return None
-        elif hasattr(value, 'to_dict'):  # Single related object
+        elif hasattr(value, "to_dict"):  # Single related object
             return value.to_dict(datetime_format=datetime_format)
-        elif hasattr(value, '__iter__') and not isinstance(value, (str, bytes, bytearray)):  # Collection of related objects
-            if hasattr(value, 'all'):  # SQLAlchemy relationship collection
+        elif hasattr(value, "__iter__") and not isinstance(
+            value, (str, bytes, bytearray)
+        ):  # Collection of related objects
+            if hasattr(value, "all"):  # SQLAlchemy relationship collection
                 value = value.all()
             return [
-                item.to_dict(datetime_format=datetime_format) if hasattr(item, 'to_dict') else item
+                (
+                    item.to_dict(datetime_format=datetime_format)
+                    if hasattr(item, "to_dict")
+                    else item
+                )
                 for item in value
             ]
         else:
@@ -241,9 +245,9 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         """Default JSON serializer for unsupported types."""
         if isinstance(obj, datetime):
             return obj.isoformat()
-        elif hasattr(obj, 'to_dict'):
+        elif hasattr(obj, "to_dict"):
             return obj.to_dict()
-        elif hasattr(obj, '__dict__'):
+        elif hasattr(obj, "__dict__"):
             return obj.__dict__
         else:
             return str(obj)
@@ -252,13 +256,13 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         """Force refresh of timestamp fields from database."""
         session.refresh(self)
         # Refresh specifically the timestamp fields
-        session.refresh(self, ['created_at', 'updated_at'])
+        session.refresh(self, ["created_at", "updated_at"])
 
     async def arefresh_timestamps(self, session: AsyncSession) -> None:
         """Force refresh of timestamp fields from database asynchronously."""
         await session.refresh(self)
         # Refresh specifically the timestamp fields
-        await session.refresh(self, ['created_at', 'updated_at'])
+        await session.refresh(self, ["created_at", "updated_at"])
 
     def save(self, session: Session) -> None:
         """Save the model instance to the database."""
@@ -282,25 +286,34 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         await session.delete(self)
         await session.commit()
 
-    def refresh(self, session: Session, attribute_names: Optional[List[str]] = None) -> None:
+    def refresh(
+        self, session: Session, attribute_names: list[str] | None = None
+    ) -> None:
         """Refresh the model instance from the database."""
         session.refresh(self, attribute_names)
 
-    async def arefresh(self, session: AsyncSession, attribute_names: Optional[List[str]] = None) -> None:
+    async def arefresh(
+        self, session: AsyncSession, attribute_names: list[str] | None = None
+    ) -> None:
         """Refresh the model instance from the database asynchronously."""
         await session.refresh(self, attribute_names)
 
-    def expire(self, session: Session, attribute_names: Optional[List[str]] = None) -> None:
+    def expire(
+        self, session: Session, attribute_names: list[str] | None = None
+    ) -> None:
         """Expire the model instance attributes."""
         session.expire(self, attribute_names)
 
-    async def aexpire(self, session: AsyncSession, attribute_names: Optional[List[str]] = None) -> None:
+    async def aexpire(
+        self, session: AsyncSession, attribute_names: list[str] | None = None
+    ) -> None:
         """Expire the model instance attributes asynchronously."""
-        await session.expire(self, attribute_names)
+        session.expire(self, attribute_names)  # expire returns None
 
-    def get_dirty_fields(self, session: Session) -> Set[str]:
+    def get_dirty_fields(self, session: Session) -> set[str]:
         """Get set of dirty field names."""
         from sqlalchemy.orm.attributes import get_history
+
         dirty_fields = set()
 
         for column in self.__table__.columns:
@@ -312,19 +325,22 @@ class BaseModel(TimestampMixin, DeclarativeBase):
 
     # Query helper methods (class methods)
     @classmethod
-    def find_by_id(cls, session: Session, record_id: Any) -> Optional['BaseModel']:
+    def find_by_id(cls, session: Session, record_id: Any) -> Optional["BaseModel"]:
         """Find a record by its primary key ID."""
         return session.query(cls).filter(cls.id == record_id).first()
 
     @classmethod
-    async def afind_by_id(cls, session: AsyncSession, record_id: Any) -> Optional['BaseModel']:
+    async def afind_by_id(
+        cls, session: AsyncSession, record_id: Any
+    ) -> Optional["BaseModel"]:
         """Find a record by its primary key ID asynchronously."""
         from sqlalchemy import select
+
         result = await session.execute(select(cls).filter(cls.id == record_id))
         return result.scalar_one_or_none()
 
     @classmethod
-    def find_all(cls, session: Session, **filters) -> List['BaseModel']:
+    def find_all(cls, session: Session, **filters: Any) -> list["BaseModel"]:
         """Find all records matching the given filters."""
         query = session.query(cls)
         for key, value in filters.items():
@@ -333,9 +349,12 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         return query.all()
 
     @classmethod
-    async def afind_all(cls, session: AsyncSession, **filters) -> List['BaseModel']:
+    async def afind_all(
+        cls, session: AsyncSession, **filters: Any
+    ) -> list["BaseModel"]:
         """Find all records matching the given filters asynchronously."""
         from sqlalchemy import select
+
         stmt = select(cls)
         for key, value in filters.items():
             if hasattr(cls, key):
@@ -344,7 +363,7 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         return list(result.scalars().all())
 
     @classmethod
-    def find_one(cls, session: Session, **filters) -> Optional['BaseModel']:
+    def find_one(cls, session: Session, **filters: Any) -> Optional["BaseModel"]:
         """Find one record matching the given filters."""
         query = session.query(cls)
         for key, value in filters.items():
@@ -353,9 +372,12 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         return query.first()
 
     @classmethod
-    async def afind_one(cls, session: AsyncSession, **filters) -> Optional['BaseModel']:
+    async def afind_one(
+        cls, session: AsyncSession, **filters: Any
+    ) -> Optional["BaseModel"]:
         """Find one record matching the given filters asynchronously."""
         from sqlalchemy import select
+
         stmt = select(cls)
         for key, value in filters.items():
             if hasattr(cls, key):
@@ -364,7 +386,7 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         return result.scalar_one_or_none()
 
     @classmethod
-    def create(cls, session: Session, **kwargs) -> 'BaseModel':
+    def create(cls, session: Session, **kwargs: Any) -> "BaseModel":
         """Create a new record with the given attributes."""
         instance = cls(**kwargs)
         session.add(instance)
@@ -373,7 +395,7 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         return instance
 
     @classmethod
-    async def acreate(cls, session: AsyncSession, **kwargs) -> 'BaseModel':
+    async def acreate(cls, session: AsyncSession, **kwargs: Any) -> "BaseModel":
         """Create a new record with the given attributes asynchronously."""
         instance = cls(**kwargs)
         session.add(instance)
@@ -382,7 +404,9 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         return instance
 
     @classmethod
-    def get_or_create(cls, session: Session, defaults: Optional[Dict[str, Any]] = None, **kwargs) -> tuple['BaseModel', bool]:
+    def get_or_create(
+        cls, session: Session, defaults: dict[str, Any] | None = None, **kwargs: Any
+    ) -> tuple["BaseModel", bool]:
         """Get a record or create it if it doesn't exist."""
         instance = cls.find_one(session, **kwargs)
         if instance:
@@ -396,7 +420,12 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         return instance, True
 
     @classmethod
-    async def aget_or_create(cls, session: AsyncSession, defaults: Optional[Dict[str, Any]] = None, **kwargs) -> tuple['BaseModel', bool]:
+    async def aget_or_create(
+        cls,
+        session: AsyncSession,
+        defaults: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> tuple["BaseModel", bool]:
         """Get a record or create it if it doesn't exist asynchronously."""
         instance = await cls.afind_one(session, **kwargs)
         if instance:
@@ -410,7 +439,9 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         return instance, True
 
     @classmethod
-    def update_by_id(cls, session: Session, record_id: Any, **kwargs) -> Optional['BaseModel']:
+    def update_by_id(
+        cls, session: Session, record_id: Any, **kwargs: Any
+    ) -> Optional["BaseModel"]:
         """Update a record by ID with the given attributes."""
         instance = cls.find_by_id(session, record_id)
         if instance:
@@ -421,7 +452,9 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         return instance
 
     @classmethod
-    async def aupdate_by_id(cls, session: AsyncSession, record_id: Any, **kwargs) -> Optional['BaseModel']:
+    async def aupdate_by_id(
+        cls, session: AsyncSession, record_id: Any, **kwargs: Any
+    ) -> Optional["BaseModel"]:
         """Update a record by ID with the given attributes asynchronously."""
         instance = await cls.afind_by_id(session, record_id)
         if instance:
@@ -452,7 +485,7 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         return False
 
     @classmethod
-    def count(cls, session: Session, **filters) -> int:
+    def count(cls, session: Session, **filters: Any) -> int:
         """Count records matching the given filters."""
         query = session.query(cls)
         for key, value in filters.items():
@@ -461,23 +494,25 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         return query.count()
 
     @classmethod
-    async def acount(cls, session: AsyncSession, **filters) -> int:
+    async def acount(cls, session: AsyncSession, **filters: Any) -> int:
         """Count records matching the given filters asynchronously."""
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
+
         stmt = select(func.count(cls.id))
         for key, value in filters.items():
             if hasattr(cls, key):
                 stmt = stmt.filter(getattr(cls, key) == value)
         result = await session.execute(stmt)
-        return result.scalar()
+        count = result.scalar()
+        return count or 0  # Ensure int return type
 
     @classmethod
-    def exists(cls, session: Session, **filters) -> bool:
+    def exists(cls, session: Session, **filters: Any) -> bool:
         """Check if any record exists matching the given filters."""
         return cls.count(session, **filters) > 0
 
     @classmethod
-    async def aexists(cls, session: AsyncSession, **filters) -> bool:
+    async def aexists(cls, session: AsyncSession, **filters: Any) -> bool:
         """Check if any record exists matching the given filters asynchronously."""
         return await cls.acount(session, **filters) > 0
 
@@ -515,7 +550,7 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         return f"{self.__class__.__name__}(id={self.id})"
 
     # UTF8MB4 charset validation methods
-    def validate_utf8mb4_fields(self, *field_names: str) -> Dict[str, Any]:
+    def validate_utf8mb4_fields(self, *field_names: str) -> dict[str, Any]:
         """
         Validate that specified text fields can handle UTF8MB4 characters.
 
@@ -535,19 +570,19 @@ class BaseModel(TimestampMixin, DeclarativeBase):
                     results[field_name] = CharsetValidator.validate_text_encoding(value)
                 else:
                     results[field_name] = {
-                        'valid': True,
-                        'encoding': 'not_text',
-                        'message': 'Field is not a text field'
+                        "valid": True,
+                        "encoding": "not_text",
+                        "message": "Field is not a text field",
                     }
             else:
                 results[field_name] = {
-                    'valid': False,
-                    'error': f"Field '{field_name}' does not exist"
+                    "valid": False,
+                    "error": f"Field '{field_name}' does not exist",
                 }
 
         return results
 
-    def requires_utf8mb4(self, *field_names: str) -> Dict[str, bool]:
+    def requires_utf8mb4(self, *field_names: str) -> dict[str, bool]:
         """
         Check if specified text fields contain characters requiring UTF8MB4.
 
@@ -572,7 +607,9 @@ class BaseModel(TimestampMixin, DeclarativeBase):
 
         return results
 
-    def sanitize_for_basic_utf8(self, *field_names: str, replacement: str = '?') -> Dict[str, str]:
+    def sanitize_for_basic_utf8(
+        self, *field_names: str, replacement: str = "?"
+    ) -> dict[str, str]:
         """
         Sanitize specified text fields by replacing UTF8MB4-only characters.
 
@@ -590,15 +627,19 @@ class BaseModel(TimestampMixin, DeclarativeBase):
             if hasattr(self, field_name):
                 value = getattr(self, field_name)
                 if isinstance(value, str):
-                    results[field_name] = UTF8MB4Handler.sanitize_for_basic_utf8(value, replacement)
+                    results[field_name] = UTF8MB4Handler.sanitize_for_basic_utf8(
+                        value, replacement
+                    )
                 else:
                     results[field_name] = value
             else:
-                results[field_name] = None
+                results[field_name] = (
+                    ""  # Empty string instead of None for str return type
+                )
 
         return results
 
-    def get_utf8mb4_summary(self) -> Dict[str, Any]:
+    def get_utf8mb4_summary(self) -> dict[str, Any]:
         """
         Get a summary of UTF8MB4 requirements for all text fields in the model.
 
@@ -607,38 +648,42 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         """
         from ..utils.mysql_features import UTF8MB4Handler
 
-        summary = {
-            'model': self.__class__.__name__,
-            'total_text_fields': 0,
-            'utf8mb4_required_fields': 0,
-            'fields_requiring_utf8mb4': [],
-            'all_fields_support_utf8mb4': True,
-            'emoji_count': 0,
-            'total_characters': 0
+        summary: dict[str, Any] = {
+            "model": self.__class__.__name__,
+            "total_text_fields": 0,
+            "utf8mb4_required_fields": 0,
+            "fields_requiring_utf8mb4": [],
+            "all_fields_support_utf8mb4": True,
+            "emoji_count": 0,
+            "total_characters": 0,
         }
 
         # Check all text columns
         for column in self.__table__.columns:
             if isinstance(column.type, (String, Text)):
-                summary['total_text_fields'] += 1
+                summary["total_text_fields"] = summary["total_text_fields"] + 1
 
                 field_name = column.name
                 if hasattr(self, field_name):
                     value = getattr(self, field_name)
                     if isinstance(value, str):
-                        summary['total_characters'] += len(value)
+                        summary["total_characters"] = summary["total_characters"] + len(
+                            value
+                        )
 
                         if UTF8MB4Handler.requires_utf8mb4(value):
-                            summary['utf8mb4_required_fields'] += 1
-                            summary['fields_requiring_utf8mb4'].append(field_name)
-                            summary['all_fields_support_utf8mb4'] = False
+                            summary["utf8mb4_required_fields"] = (
+                                summary["utf8mb4_required_fields"] + 1
+                            )
+                            summary["fields_requiring_utf8mb4"].append(field_name)
+                            summary["all_fields_support_utf8mb4"] = False
 
                         # Count emoji characters
                         for char in value:
                             char_code = ord(char)
                             for start, end in UTF8MB4Handler.EMOJI_RANGES:
                                 if start <= char_code <= end:
-                                    summary['emoji_count'] += 1
+                                    summary["emoji_count"] = summary["emoji_count"] + 1
                                     break
 
         return summary
@@ -651,8 +696,8 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         search_term: str,
         *field_names: str,
         case_sensitive: bool = False,
-        exact_match: bool = False
-    ) -> List['BaseModel']:
+        exact_match: bool = False,
+    ) -> list["BaseModel"]:
         """
         Search model with proper charset support for international characters.
 
@@ -666,11 +711,11 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         Returns:
             List of matching model instances
         """
-        from sqlalchemy import or_, cast, String
+        from sqlalchemy import or_
         from sqlalchemy.sql import collate
 
         if not field_names:
-            field_names = []
+            field_names = ()  # Use empty tuple instead of list
 
         # Build search conditions for each field
         conditions = []
@@ -686,9 +731,11 @@ class BaseModel(TimestampMixin, DeclarativeBase):
                 else:
                     # Use COLLATE for case-insensitive search with proper charset support
                     if exact_match:
-                        condition = collate(field, 'utf8mb4_unicode_ci') == search_term
+                        condition = collate(field, "utf8mb4_unicode_ci") == search_term
                     else:
-                        condition = collate(field, 'utf8mb4_unicode_ci').contains(search_term)
+                        condition = collate(field, "utf8mb4_unicode_ci").contains(
+                            search_term
+                        )
 
                 conditions.append(condition)
 
@@ -706,8 +753,8 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         search_term: str,
         *field_names: str,
         case_sensitive: bool = False,
-        exact_match: bool = False
-    ) -> List['BaseModel']:
+        exact_match: bool = False,
+    ) -> list["BaseModel"]:
         """
         Async version of search_with_charset_support.
 
@@ -725,7 +772,7 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         from sqlalchemy.sql import collate
 
         if not field_names:
-            field_names = []
+            field_names = ()  # Use empty tuple instead of list
 
         # Build search conditions for each field
         conditions = []
@@ -741,9 +788,11 @@ class BaseModel(TimestampMixin, DeclarativeBase):
                 else:
                     # Use COLLATE for case-insensitive search with proper charset support
                     if exact_match:
-                        condition = collate(field, 'utf8mb4_unicode_ci') == search_term
+                        condition = collate(field, "utf8mb4_unicode_ci") == search_term
                     else:
-                        condition = collate(field, 'utf8mb4_unicode_ci').contains(search_term)
+                        condition = collate(field, "utf8mb4_unicode_ci").contains(
+                            search_term
+                        )
 
                 conditions.append(condition)
 
@@ -762,4 +811,5 @@ class BaseCustomModel(TimestampMixin, DeclarativeBase):
     Provides timestamps and ``touch`` but intentionally omits the auto
     integer ``id`` and the CRUD helpers that assume it.
     """
+
     __abstract__ = True

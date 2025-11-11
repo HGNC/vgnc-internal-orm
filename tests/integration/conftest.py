@@ -5,15 +5,14 @@ complex foreign key dependencies between BaseModel and BaseCustomModel
 metadata registries, as well as MySQL testcontainers support.
 """
 
-import os
 import time
-import pytest
-from typing import Generator, Tuple
+from collections.abc import Generator
 from unittest.mock import Mock
 
-from sqlalchemy import create_engine, MetaData, text
+import pytest
+from sqlalchemy import MetaData, create_engine, text
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.orm import sessionmaker, Session
 
 from vgnc_internal_orm.models.base import BaseModel
 from vgnc_internal_orm.models.species import BaseCustomModel
@@ -21,6 +20,7 @@ from vgnc_internal_orm.models.species import BaseCustomModel
 # Try to import testcontainers, but make it optional
 try:
     from testcontainers.mysql import MySqlContainer
+
     TESTCONTAINERS_AVAILABLE = True
 except ImportError:
     TESTCONTAINERS_AVAILABLE = False
@@ -39,7 +39,7 @@ def integrated_test_db():
         "sqlite:///:memory:",
         poolclass=StaticPool,
         connect_args={"check_same_thread": False},
-        echo=False
+        echo=False,
     )
 
     # Create unified metadata to resolve cross-registry foreign key dependencies
@@ -118,7 +118,7 @@ def create_test_engine_with_unified_metadata(echo: bool = False):
         "sqlite:///:memory:",
         poolclass=StaticPool,
         connect_args={"check_same_thread": False},
-        echo=echo
+        echo=echo,
     )
 
     unified_metadata = create_unified_metadata()
@@ -131,6 +131,7 @@ def create_test_engine_with_unified_metadata(echo: bool = False):
 # MySQL Testcontainers Fixtures
 # ============================================================================
 
+
 @pytest.fixture(scope="session")
 def mysql_container() -> MySqlContainer:
     """Start a MySQL 8.0 container for integration testing.
@@ -140,7 +141,9 @@ def mysql_container() -> MySqlContainer:
     per test session and reused across tests.
     """
     if not TESTCONTAINERS_AVAILABLE:
-        pytest.skip("testcontainers not available - install with: pip install testcontainers[mysql]")
+        pytest.skip(
+            "testcontainers not available - install with: pip install testcontainers[mysql]"
+        )
 
     # Configure MySQL 8.0 container with specific settings
     container = MySqlContainer(
@@ -158,7 +161,7 @@ def mysql_container() -> MySqlContainer:
             "--collation-server=utf8mb4_unicode_ci",
             "--innodb-buffer-pool-size=256M",
             "--innodb-log-file-size=64M",
-        ]
+        ],
     )
 
     try:
@@ -175,7 +178,9 @@ def mysql_container() -> MySqlContainer:
                 break
             except Exception as e:
                 if attempt == max_retries - 1:
-                    raise RuntimeError(f"MySQL container failed to start after {max_retries} attempts: {e}")
+                    raise RuntimeError(
+                        f"MySQL container failed to start after {max_retries} attempts: {e}"
+                    ) from e
                 time.sleep(1)
 
         print(f"MySQL container started on port: {container.get_exposed_port(3306)}")
@@ -214,7 +219,7 @@ def mysql_engine(mysql_container: MySqlContainer) -> Generator:
             "charset": "utf8mb4",
             "use_unicode": True,
             "autocommit": False,
-        }
+        },
     )
 
     try:
@@ -284,6 +289,7 @@ def sample_species_mysql(mysql_session: Session):
         pytest.skip("testcontainers not available")
 
     from datetime import datetime
+
     from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 
     species = Species(
@@ -328,7 +334,9 @@ def mock_mysql_container():
     or for faster test execution during development.
     """
     mock_container = Mock()
-    mock_container.get_connection_url.return_value = "mysql+pymysql://testuser:testpass@localhost:3306/vgnc_test"
+    mock_container.get_connection_url.return_value = (
+        "mysql+pymysql://testuser:testpass@localhost:3306/vgnc_test"
+    )
     mock_container.get_container_host_ip.return_value = "localhost"
     mock_container.get_exposed_port.return_value = 3306
     mock_container.start.return_value = None
@@ -343,17 +351,21 @@ def pytest_configure(config):
         try:
             # Try to import and create a test container
             from testcontainers.core.docker_client import DockerClient
+
             client = DockerClient()
             client.ping()
         except Exception:
             # Docker is not available, add a marker to skip MySQL tests
             config.addinivalue_line(
-                "markers", "skip_if_no_docker: mark test to skip when Docker is not available"
+                "markers",
+                "skip_if_no_docker: mark test to skip when Docker is not available",
             )
 
 
 @pytest.fixture(autouse=True)
 def skip_if_no_docker(request):
     """Automatically skip MySQL tests if Docker is not available."""
-    if ("mysql" in request.fixturenames or "mysql_container" in request.fixturenames) and not TESTCONTAINERS_AVAILABLE:
+    if (
+        "mysql" in request.fixturenames or "mysql_container" in request.fixturenames
+    ) and not TESTCONTAINERS_AVAILABLE:
         pytest.skip("testcontainers not available - skipping MySQL integration test")

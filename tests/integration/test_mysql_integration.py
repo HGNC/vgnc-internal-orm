@@ -5,16 +5,16 @@ databases, testing transaction handling, relationship navigation, and
 MySQL-specific features.
 """
 
-import pytest
 from datetime import datetime
-from sqlalchemy import text, select, func, and_, or_
-from sqlalchemy.orm import joinedload, selectinload, Session
 
-from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
-from vgnc_internal_orm.models.genefam import Genefam
+import pytest
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, joinedload
+
 from vgnc_internal_orm.models.assembly import Assembly
 from vgnc_internal_orm.models.chromosomes import Chromosomes
-from vgnc_internal_orm.models.supporting import GeneStatus, Editor
+from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 
 # MySQL fixtures are now available from conftest.py
 
@@ -54,7 +54,9 @@ class TestMySQLBasicCRUD:
         deleted = mysql_session.get(Species, 10090)
         assert deleted is None
 
-    def test_assembly_crud_mysql(self, mysql_session: Session, sample_species_mysql: Species):
+    def test_assembly_crud_mysql(
+        self, mysql_session: Session, sample_species_mysql: Species
+    ):
         """Test CRUD operations for Assembly model in MySQL."""
         # Create
         assembly = Assembly(
@@ -83,10 +85,12 @@ class TestMySQLBasicCRUD:
         )
         mysql_session.add(invalid_assembly)
 
-        with pytest.raises(Exception):  # Should raise foreign key constraint error
+        with pytest.raises(IntegrityError):  # Should raise foreign key constraint error
             mysql_session.commit()
 
-    def test_chromosomes_crud_mysql(self, mysql_session: Session, sample_species_mysql: Species):
+    def test_chromosomes_crud_mysql(
+        self, mysql_session: Session, sample_species_mysql: Species
+    ):
         """Test CRUD operations for Chromosomes model in MySQL."""
         # Create multiple chromosomes
         chromosomes = []
@@ -102,15 +106,19 @@ class TestMySQLBasicCRUD:
         mysql_session.commit()
 
         # Verify all were created
-        count = mysql_session.query(Chromosomes).filter(
-            Chromosomes.taxon_id == sample_species_mysql.taxon_id
-        ).count()
+        count = (
+            mysql_session.query(Chromosomes)
+            .filter(Chromosomes.taxon_id == sample_species_mysql.taxon_id)
+            .count()
+        )
         assert count == 3
 
         # Query specific chromosome
-        chr1 = mysql_session.query(Chromosomes).filter(
-            Chromosomes.display_name == "chr1"
-        ).first()
+        chr1 = (
+            mysql_session.query(Chromosomes)
+            .filter(Chromosomes.display_name == "chr1")
+            .first()
+        )
         assert chr1 is not None
         assert chr1.coord_system == "GRCm38"
 
@@ -118,7 +126,9 @@ class TestMySQLBasicCRUD:
 class TestMySQLRelationships:
     """Test relationship navigation with MySQL."""
 
-    def test_species_to_assemblies_navigation(self, mysql_session: Session, sample_species_mysql: Species):
+    def test_species_to_assemblies_navigation(
+        self, mysql_session: Session, sample_species_mysql: Species
+    ):
         """Test navigation from species to assemblies."""
         # Create multiple assemblies
         assemblies = []
@@ -128,6 +138,9 @@ class TestMySQLRelationships:
                 taxon_id=sample_species_mysql.taxon_id,
                 source="Test",
                 genbank_assembly_accession=f"GCA_TEST_{i:010d}",
+                refseq_assembly_accession=f"GCF_TEST_{i:010d}",  # Add required field
+                is_current=i == 0,  # Make first one current
+                is_vgnc_default=False,
             )
             mysql_session.add(assembly)
             assemblies.append(assembly)
@@ -135,19 +148,26 @@ class TestMySQLRelationships:
         mysql_session.commit()
 
         # Query species with assemblies
-        species_with_assemblies = mysql_session.query(Species).options(
-            joinedload(Species.assemblies)
-        ).filter(Species.taxon_id == sample_species_mysql.taxon_id).first()
+        species_with_assemblies = (
+            mysql_session.query(Species)
+            .options(joinedload(Species.assemblies))
+            .filter(Species.taxon_id == sample_species_mysql.taxon_id)
+            .first()
+        )
 
         assert species_with_assemblies is not None
         # Note: This will only work if the relationship is properly defined
         # For now, let's test the foreign key relationship manually
-        assembly_count = mysql_session.query(Assembly).filter(
-            Assembly.taxon_id == sample_species_mysql.taxon_id
-        ).count()
+        assembly_count = (
+            mysql_session.query(Assembly)
+            .filter(Assembly.taxon_id == sample_species_mysql.taxon_id)
+            .count()
+        )
         assert assembly_count == 3
 
-    def test_species_to_chromosomes_navigation(self, mysql_session: Session, sample_species_mysql: Species):
+    def test_species_to_chromosomes_navigation(
+        self, mysql_session: Session, sample_species_mysql: Species
+    ):
         """Test navigation from species to chromosomes."""
         # Create chromosomes
         chromosome_names = ["chr1", "chr2", "chr3", "chrX", "chrY"]
@@ -162,9 +182,12 @@ class TestMySQLRelationships:
         mysql_session.commit()
 
         # Query chromosomes by species
-        chromosomes = mysql_session.query(Chromosomes).filter(
-            Chromosomes.taxon_id == sample_species_mysql.taxon_id
-        ).order_by(Chromosomes.display_name).all()
+        chromosomes = (
+            mysql_session.query(Chromosomes)
+            .filter(Chromosomes.taxon_id == sample_species_mysql.taxon_id)
+            .order_by(Chromosomes.display_name)
+            .all()
+        )
 
         assert len(chromosomes) == len(chromosome_names)
         assert chromosomes[0].display_name == "chr1"
@@ -193,6 +216,7 @@ class TestMySQLTransactions:
 
         # Verify it exists in a new session
         from sqlalchemy.orm import sessionmaker
+
         SessionLocal = sessionmaker(bind=mysql_session.bind)
         new_session = SessionLocal()
         try:
@@ -263,7 +287,9 @@ class TestMySQLTransactions:
 class TestMySQLSpecificFeatures:
     """Test MySQL-specific features and behaviors."""
 
-    def test_mysql_charset_handling(self, mysql_session: Session, sample_species_mysql: Species):
+    def test_mysql_charset_handling(
+        self, mysql_session: Session, sample_species_mysql: Species
+    ):
         """Test MySQL charset handling with Unicode data."""
         # Test with Unicode characters
         unicode_species = Species(
@@ -294,7 +320,7 @@ class TestMySQLSpecificFeatures:
             (SpeciesLiveStatus.FLAGGED, "F"),
         ]
 
-        for i, (enum_value, expected_db_value) in enumerate(enum_values):
+        for i, (enum_value, _expected_db_value) in enumerate(enum_values):
             species = Species(
                 taxon_id=30000 + i,
                 genefam_prefix=f"ENUM{i}",
@@ -307,12 +333,14 @@ class TestMySQLSpecificFeatures:
         mysql_session.commit()
 
         # Verify enum values were stored correctly
-        for i, (enum_value, expected_db_value) in enumerate(enum_values):
+        for i, (enum_value, _expected_db_value) in enumerate(enum_values):
             retrieved = mysql_session.get(Species, 30000 + i)
             assert retrieved is not None
             assert retrieved.is_live == enum_value
 
-    def test_mysql_auto_increment(self, mysql_session: Session, sample_species_mysql: Species):
+    def test_mysql_auto_increment(
+        self, mysql_session: Session, sample_species_mysql: Species
+    ):
         """Test MySQL auto increment behavior."""
         assemblies = []
 
@@ -323,6 +351,9 @@ class TestMySQLSpecificFeatures:
                 taxon_id=sample_species_mysql.taxon_id,
                 source="Test",
                 genbank_assembly_accession=f"GCA_AUTO_{i:010d}",
+                refseq_assembly_accession=f"GCF_AUTO_{i:010d}",  # Add required field
+                is_current=i == 0,  # Make first one current
+                is_vgnc_default=False,
             )
             mysql_session.add(assembly)
             assemblies.append(assembly)
@@ -335,13 +366,15 @@ class TestMySQLSpecificFeatures:
             assert assembly.id is not None
             # IDs should be sequential (though not guaranteed to start at 1)
             if i > 0:
-                assert assembly.id > assemblies[i-1].id
+                assert assembly.id > assemblies[i - 1].id
 
 
 class TestMySQLPerformance:
     """Test MySQL performance characteristics."""
 
-    def test_bulk_insert_performance(self, mysql_session: Session, sample_species_mysql: Species):
+    def test_bulk_insert_performance(
+        self, mysql_session: Session, sample_species_mysql: Species
+    ):
         """Test bulk insert performance."""
         import time
 
@@ -366,10 +399,14 @@ class TestMySQLPerformance:
         print(f"Bulk insert of 1000 chromosomes took: {duration:.3f} seconds")
 
         # Verify all were inserted
-        count = mysql_session.query(Chromosomes).filter(
-            Chromosomes.taxon_id == sample_species_mysql.taxon_id,
-            Chromosomes.coord_system == "BulkTest"
-        ).count()
+        count = (
+            mysql_session.query(Chromosomes)
+            .filter(
+                Chromosomes.taxon_id == sample_species_mysql.taxon_id,
+                Chromosomes.coord_system == "BulkTest",
+            )
+            .count()
+        )
         assert count == 1000
 
         # Performance should be reasonable (less than 5 seconds for 1000 records)
@@ -377,6 +414,8 @@ class TestMySQLPerformance:
 
     def test_index_usage(self, mysql_session: Session, sample_species_mysql: Species):
         """Test that indexes are being used correctly."""
+        import time
+
         # Create test data
         for i in range(100):
             chromosome = Chromosomes(
@@ -390,16 +429,20 @@ class TestMySQLPerformance:
 
         # Test query by indexed field (taxon_id should be indexed as foreign key)
         start_time = time.time()
-        results = mysql_session.query(Chromosomes).filter(
-            Chromosomes.taxon_id == sample_species_mysql.taxon_id
-        ).all()
+        results = (
+            mysql_session.query(Chromosomes)
+            .filter(Chromosomes.taxon_id == sample_species_mysql.taxon_id)
+            .all()
+        )
         end_time = time.time()
 
         assert len(results) >= 100
         query_time = end_time - start_time
 
         # Query should be fast with indexes
-        assert query_time < 0.1, f"Query took too long: {query_time:.3f}s (might be missing index)"
+        assert (
+            query_time < 0.1
+        ), f"Query took too long: {query_time:.3f}s (might be missing index)"
 
 
 class TestMySQLConnectionManagement:
@@ -413,12 +456,12 @@ class TestMySQLConnectionManagement:
 
         # Create multiple sessions simultaneously
         sessions = []
-        for i in range(5):
+        for _i in range(5):
             session = SessionLocal()
             sessions.append(session)
 
         # Use all sessions
-        for i, session in enumerate(sessions):
+        for _i, session in enumerate(sessions):
             result = session.execute(text("SELECT 1 as test_col"))
             row = result.fetchone()
             assert row[0] == 1
@@ -465,14 +508,18 @@ class TestMySQLDataIntegrity:
             taxon_id=999999,  # Non-existent species
             source="Test",
             genbank_assembly_accession="INVALID001",
+            refseq_assembly_accession="INVALID001",
+            is_current=False,
+            is_vgnc_default=False,
         )
         mysql_session.add(invalid_assembly)
 
         with pytest.raises(Exception) as exc_info:
             mysql_session.commit()
 
-        assert "foreign key constraint" in str(exc_info.value).lower() or \
-               "Cannot add or update a child row" in str(exc_info.value)
+        assert "foreign key constraint" in str(
+            exc_info.value
+        ).lower() or "Cannot add or update a child row" in str(exc_info.value)
 
     def test_unique_constraints(self, mysql_session: Session):
         """Test unique constraint enforcement."""
@@ -486,6 +533,7 @@ class TestMySQLDataIntegrity:
         )
         mysql_session.add(species1)
         mysql_session.commit()
+        mysql_session.expunge_all()  # Clear session to avoid instance conflict
 
         # Try to create another species with same taxon_id
         species2 = Species(
@@ -499,9 +547,12 @@ class TestMySQLDataIntegrity:
 
         with pytest.raises(Exception) as exc_info:
             mysql_session.commit()
+            mysql_session.expunge_all()  # Clean up after test
 
-        assert "duplicate" in str(exc_info.value).lower() or \
-               "unique" in str(exc_info.value).lower()
+        assert (
+            "duplicate" in str(exc_info.value).lower()
+            or "unique" in str(exc_info.value).lower()
+        )
 
     def test_not_null_constraints(self, mysql_session: Session):
         """Test NOT NULL constraint enforcement."""
@@ -517,5 +568,7 @@ class TestMySQLDataIntegrity:
         with pytest.raises(Exception) as exc_info:
             mysql_session.commit()
 
-        assert "cannot be null" in str(exc_info.value).lower() or \
-               "doesn't have a default value" in str(exc_info.value).lower()
+        assert (
+            "cannot be null" in str(exc_info.value).lower()
+            or "doesn't have a default value" in str(exc_info.value).lower()
+        )

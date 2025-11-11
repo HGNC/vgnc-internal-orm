@@ -4,19 +4,25 @@ This module benchmarks model creation, validation, and ORM operations
 to ensure they meet performance requirements.
 """
 
-import pytest
+import random
+import time
 from datetime import datetime
 
-from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
-from vgnc_internal_orm.models.genefam import Genefam
+from tests.performance.conftest import assert_performance_threshold
 from vgnc_internal_orm.models.assembly import Assembly
 from vgnc_internal_orm.models.chromosomes import Chromosomes
+from vgnc_internal_orm.models.genefam import Genefam
+from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 
-from tests.performance.conftest import (
-    benchmark_db, benchmark_data_factory,
-    performance_thresholds, assert_performance_threshold,
-    assert_performance_regression
-)
+
+def generate_unique_taxon_id(base_id: int = 100000) -> int:
+    """Generate a unique taxon_id for testing to avoid constraint violations."""
+    # Use current time in nanoseconds and random component to ensure uniqueness
+    time_component = (
+        int(time.time_ns() / 1000) % 10000
+    )  # Last 4 digits of microsecond timestamp
+    random_component = random.randint(0, 999)  # 3 digit random number
+    return base_id + time_component + random_component
 
 
 class TestModelCreationPerformance:
@@ -24,6 +30,7 @@ class TestModelCreationPerformance:
 
     def test_species_creation_performance(self, benchmark, performance_thresholds):
         """Benchmark Species model creation."""
+
         def create_species():
             return Species(
                 taxon_id=12345,
@@ -38,6 +45,7 @@ class TestModelCreationPerformance:
 
     def test_genefam_creation_performance(self, benchmark, performance_thresholds):
         """Benchmark Genefam model creation."""
+
         def create_genefam():
             return Genefam(
                 taxon_id=9606,
@@ -54,6 +62,7 @@ class TestModelCreationPerformance:
 
     def test_assembly_creation_performance(self, benchmark, performance_thresholds):
         """Benchmark Assembly model creation."""
+
         def create_assembly():
             return Assembly(
                 name="TEST_ASSEMBLY",
@@ -70,6 +79,7 @@ class TestModelCreationPerformance:
 
     def test_chromosomes_creation_performance(self, benchmark, performance_thresholds):
         """Benchmark Chromosomes model creation."""
+
         def create_chromosome():
             return Chromosomes(
                 display_name="chrTEST",
@@ -82,6 +92,7 @@ class TestModelCreationPerformance:
 
     def test_batch_model_creation(self, benchmark, performance_thresholds):
         """Benchmark batch model creation."""
+
         def create_models_batch():
             models = []
             for i in range(100):
@@ -102,7 +113,9 @@ class TestModelCreationPerformance:
 class TestORMOperationPerformance:
     """Benchmarks for ORM operations (add, update, delete, etc.)."""
 
-    def test_add_single_object(self, benchmark, benchmark_session, performance_thresholds):
+    def test_add_single_object(
+        self, benchmark, benchmark_session, performance_thresholds
+    ):
         """Benchmark adding a single object to the database."""
         session = benchmark_session
 
@@ -128,7 +141,9 @@ class TestORMOperationPerformance:
         # Just verify the result structure, not the specific taxon_id since it changes
         assert result.taxon_id >= 30000
 
-    def test_add_multiple_objects(self, benchmark, benchmark_session, performance_thresholds):
+    def test_add_multiple_objects(
+        self, benchmark, benchmark_session, performance_thresholds
+    ):
         """Benchmark adding multiple objects to the database."""
         session = benchmark_session
 
@@ -159,17 +174,27 @@ class TestORMOperationPerformance:
             return len(objects)
 
         result = benchmark(add_objects)
-        assert_performance_threshold(benchmark, performance_thresholds["bulk_insert"], "add multiple objects")
+        assert_performance_threshold(
+            benchmark, performance_thresholds["bulk_insert"], "add multiple objects"
+        )
         assert result == 50
 
-    def test_update_single_object(self, benchmark, benchmark_db, performance_thresholds):
+    def test_update_single_object(
+        self, benchmark, benchmark_session, performance_thresholds
+    ):
         """Benchmark updating a single object."""
-        session = benchmark_db
+        session = benchmark_session
+        # Generate unique ID once per test to avoid collisions across benchmark runs
+        test_taxon_id = generate_unique_taxon_id(40000)
 
-        def update_object(session):
-            # First create an object
+        def update_object():
+            # Clean up any existing records first
+            session.query(Species).filter(Species.taxon_id == test_taxon_id).delete()
+            session.commit()
+
+            # Create an object
             species = Species(
-                taxon_id=40000,
+                taxon_id=test_taxon_id,
                 genefam_prefix="UPD",
                 display_name="Original Name",
                 is_live=SpeciesLiveStatus.YES,
@@ -185,20 +210,32 @@ class TestORMOperationPerformance:
 
             return species
 
-        result = benchmark(update_object, session)
-        assert_performance_threshold(benchmark, performance_thresholds["simple_query"], "update single object")
+        result = benchmark(update_object)
+        assert_performance_threshold(
+            benchmark, performance_thresholds["simple_query"], "update single object"
+        )
         assert result.display_name == "Updated Name"
 
-    def test_update_multiple_objects(self, benchmark, benchmark_db, performance_thresholds):
+    def test_update_multiple_objects(
+        self, benchmark, benchmark_session, performance_thresholds
+    ):
         """Benchmark updating multiple objects."""
-        session = benchmark_db
+        session = benchmark_session
+        # Generate unique ID range once per test
+        base_taxon_id = generate_unique_taxon_id(41000)
 
-        def update_objects(session):
-            # First create objects
+        def update_objects():
+            # Clean up any existing records first
+            session.query(Species).filter(
+                Species.taxon_id >= base_taxon_id, Species.taxon_id < base_taxon_id + 25
+            ).delete()
+            session.commit()
+
+            # Create objects
             objects = []
             for i in range(25):
                 obj = Species(
-                    taxon_id=41000 + i,
+                    taxon_id=base_taxon_id + i,
                     genefam_prefix=f"UPD{i:03d}",
                     display_name=f"Original {i}",
                     is_live=SpeciesLiveStatus.YES,
@@ -210,27 +247,35 @@ class TestORMOperationPerformance:
             session.commit()
 
             # Update all objects
-            count = session.query(Species).filter(
-                Species.taxon_id >= 41000,
-                Species.taxon_id < 41025
-            ).update({"display_name": "Updated Name"})
+            count = (
+                session.query(Species)
+                .filter(
+                    Species.taxon_id >= base_taxon_id,
+                    Species.taxon_id < base_taxon_id + 25,
+                )
+                .update({"display_name": "Updated Name"})
+            )
 
             session.commit()
 
             return count
 
-        result = benchmark(update_objects, session)
-        assert_performance_threshold(benchmark, performance_thresholds["simple_query"], "update multiple objects")
+        result = benchmark(update_objects)
+        assert_performance_threshold(
+            benchmark, performance_thresholds["simple_query"], "update multiple objects"
+        )
         assert result == 25
 
-    def test_delete_single_object(self, benchmark, benchmark_db, performance_thresholds):
+    def test_delete_single_object(
+        self, benchmark, benchmark_session, performance_thresholds
+    ):
         """Benchmark deleting a single object."""
-        session = benchmark_db
+        session = benchmark_session
 
         def delete_object(session):
-            # First create an object
+            # First create an object with unique taxon_id
             species = Species(
-                taxon_id=50000,
+                taxon_id=generate_unique_taxon_id(50000),
                 genefam_prefix="DEL",
                 display_name="Delete Test",
                 is_live=SpeciesLiveStatus.YES,
@@ -249,19 +294,24 @@ class TestORMOperationPerformance:
             return deleted is None
 
         result = benchmark(delete_object, session)
-        assert_performance_threshold(benchmark, performance_thresholds["simple_query"], "delete single object")
+        assert_performance_threshold(
+            benchmark, performance_thresholds["simple_query"], "delete single object"
+        )
         assert result is True
 
-    def test_delete_multiple_objects(self, benchmark, benchmark_db, performance_thresholds):
+    def test_delete_multiple_objects(
+        self, benchmark, benchmark_session, performance_thresholds
+    ):
         """Benchmark deleting multiple objects."""
-        session = benchmark_db
+        session = benchmark_session
 
         def delete_objects(session):
-            # First create objects
+            # First create objects with unique taxon_id
             objects = []
+            base_taxon_id = generate_unique_taxon_id(51000)
             for i in range(30):
                 obj = Species(
-                    taxon_id=51000 + i,
+                    taxon_id=base_taxon_id + i,
                     genefam_prefix=f"DEL{i:03d}",
                     display_name=f"Delete Test {i}",
                     is_live=SpeciesLiveStatus.YES,
@@ -273,32 +323,47 @@ class TestORMOperationPerformance:
             session.commit()
 
             # Delete all objects
-            count = session.query(Species).filter(
-                Species.taxon_id >= 51000,
-                Species.taxon_id < 51030
-            ).delete()
+            count = (
+                session.query(Species)
+                .filter(
+                    Species.taxon_id >= base_taxon_id,
+                    Species.taxon_id < base_taxon_id + 30,
+                )
+                .delete()
+            )
 
             session.commit()
 
             return count
 
         result = benchmark(delete_objects, session)
-        assert_performance_threshold(benchmark, performance_thresholds["bulk_insert"], "delete multiple objects")
+        assert_performance_threshold(
+            benchmark, performance_thresholds["bulk_insert"], "delete multiple objects"
+        )
         assert result == 30
 
 
 class TestSessionOperationPerformance:
     """Benchmarks for SQLAlchemy session operations."""
 
-    def test_session_commit_performance(self, benchmark, benchmark_db, performance_thresholds):
+    def test_session_commit_performance(
+        self, benchmark, benchmark_session, performance_thresholds
+    ):
         """Benchmark session commit performance."""
-        session = benchmark_db
+        session = benchmark_session
+        base_taxon_id = generate_unique_taxon_id(60000)
 
-        def commit_operation(session):
+        def commit_operation():
+            # Clean up any existing records first
+            session.query(Species).filter(
+                Species.taxon_id >= base_taxon_id, Species.taxon_id < base_taxon_id + 20
+            ).delete()
+            session.commit()
+
             # Create multiple objects
             for i in range(20):
                 species = Species(
-                    taxon_id=60000 + i,
+                    taxon_id=base_taxon_id + i,
                     genefam_prefix=f"COM{i:03d}",
                     display_name=f"Commit Test {i}",
                     is_live=SpeciesLiveStatus.YES,
@@ -311,19 +376,24 @@ class TestSessionOperationPerformance:
 
             return True
 
-        result = benchmark(commit_operation, session)
-        assert_performance_threshold(benchmark, performance_thresholds["bulk_insert"], "session commit")
+        result = benchmark(commit_operation)
+        assert_performance_threshold(
+            benchmark, performance_thresholds["bulk_insert"], "session commit"
+        )
         assert result is True
 
-    def test_session_rollback_performance(self, benchmark, benchmark_db, performance_thresholds):
+    def test_session_rollback_performance(
+        self, benchmark, benchmark_session, performance_thresholds
+    ):
         """Benchmark session rollback performance."""
-        session = benchmark_db
+        session = benchmark_session
 
         def rollback_operation(session):
-            # Create multiple objects
+            # Create multiple objects with unique taxon_id
+            base_taxon_id = generate_unique_taxon_id(61000)
             for i in range(15):
                 species = Species(
-                    taxon_id=61000 + i,
+                    taxon_id=base_taxon_id + i,
                     genefam_prefix=f"ROL{i:03d}",
                     display_name=f"Rollback Test {i}",
                     is_live=SpeciesLiveStatus.YES,
@@ -337,18 +407,23 @@ class TestSessionOperationPerformance:
             return True
 
         result = benchmark(rollback_operation, session)
-        assert_performance_threshold(benchmark, performance_thresholds["simple_query"], "session rollback")
+        assert_performance_threshold(
+            benchmark, performance_thresholds["simple_query"], "session rollback"
+        )
         assert result is True
 
-    def test_session_flush_performance(self, benchmark, benchmark_db, performance_thresholds):
+    def test_session_flush_performance(
+        self, benchmark, benchmark_session, performance_thresholds
+    ):
         """Benchmark session flush performance."""
-        session = benchmark_db
+        session = benchmark_session
 
         def flush_operation(session):
-            # Create multiple objects and flush
+            # Create multiple objects and flush with unique taxon_id
+            base_taxon_id = generate_unique_taxon_id(62000)
             for i in range(10):
                 species = Species(
-                    taxon_id=62000 + i,
+                    taxon_id=base_taxon_id + i,
                     genefam_prefix=f"FLU{i:03d}",
                     display_name=f"Flush Test {i}",
                     is_live=SpeciesLiveStatus.YES,
@@ -365,17 +440,26 @@ class TestSessionOperationPerformance:
             return True
 
         result = benchmark(flush_operation, session)
-        assert_performance_threshold(benchmark, performance_thresholds["simple_query"], "session flush")
+        assert_performance_threshold(
+            benchmark, performance_thresholds["simple_query"], "session flush"
+        )
         assert result is True
 
-    def test_session_refresh_performance(self, benchmark, benchmark_db, performance_thresholds):
+    def test_session_refresh_performance(
+        self, benchmark, benchmark_session, performance_thresholds
+    ):
         """Benchmark session refresh performance."""
-        session = benchmark_db
+        session = benchmark_session
+        test_taxon_id = generate_unique_taxon_id(70000)
 
-        def refresh_operation(session):
+        def refresh_operation():
+            # Clean up any existing records first
+            session.query(Species).filter(Species.taxon_id == test_taxon_id).delete()
+            session.commit()
+
             # Create an object
             species = Species(
-                taxon_id=70000,
+                taxon_id=test_taxon_id,
                 genefam_prefix="REF",
                 display_name="Refresh Test",
                 is_live=SpeciesLiveStatus.YES,
@@ -390,9 +474,11 @@ class TestSessionOperationPerformance:
 
             return species
 
-        result = benchmark(refresh_operation, session)
-        assert_performance_threshold(benchmark, performance_thresholds["simple_query"], "session refresh")
-        assert result.taxon_id == 70000
+        result = benchmark(refresh_operation)
+        assert_performance_threshold(
+            benchmark, performance_thresholds["simple_query"], "session refresh"
+        )
+        assert result.taxon_id == test_taxon_id
 
 
 class TestValidationPerformance:
@@ -400,10 +486,11 @@ class TestValidationPerformance:
 
     def test_enum_validation_performance(self, benchmark, performance_thresholds):
         """Benchmark enum field validation."""
+
         def validate_enum():
             for i in range(100):
                 # Create species with different enum values
-                species = Species(
+                Species(
                     taxon_id=80000 + i,
                     genefam_prefix=f"VAL{i:03d}",
                     display_name=f"Validation Test {i}",
@@ -415,16 +502,19 @@ class TestValidationPerformance:
             return 100
 
         result = benchmark(validate_enum)
-        assert_performance_threshold(benchmark, performance_thresholds["bulk_insert"], "enum validation")
+        assert_performance_threshold(
+            benchmark, performance_thresholds["bulk_insert"], "enum validation"
+        )
         assert result == 100
 
     def test_string_validation_performance(self, benchmark, performance_thresholds):
         """Benchmark string field validation."""
+
         def validate_strings():
             for i in range(50):
                 # Test with different string lengths
                 long_string = "A" * (100 + i)  # Strings from 100 to 150 chars
-                species = Species(
+                Species(
                     taxon_id=81000 + i,
                     genefam_prefix="VAL",
                     display_name=long_string,
@@ -436,16 +526,19 @@ class TestValidationPerformance:
             return 50
 
         result = benchmark(validate_strings)
-        assert_performance_threshold(benchmark, performance_thresholds["simple_query"], "string validation")
+        assert_performance_threshold(
+            benchmark, performance_thresholds["simple_query"], "string validation"
+        )
         assert result == 50
 
     def test_datetime_validation_performance(self, benchmark, performance_thresholds):
         """Benchmark datetime field validation."""
+
         def validate_datetimes():
             for i in range(75):
                 # Test with different datetime values
                 dt = datetime(2024, 1, 1, i % 24, i % 60, i % 60)
-                species = Species(
+                Species(
                     taxon_id=82000 + i,
                     genefam_prefix="VAL",
                     display_name="Datetime Test",
@@ -457,14 +550,18 @@ class TestValidationPerformance:
             return 75
 
         result = benchmark(validate_datetimes)
-        assert_performance_threshold(benchmark, performance_thresholds["simple_query"], "datetime validation")
+        assert_performance_threshold(
+            benchmark, performance_thresholds["simple_query"], "datetime validation"
+        )
         assert result == 75
 
 
 class TestSerializationPerformance:
     """Benchmarks for model serialization operations."""
 
-    def test_model_dict_serialization(self, benchmark, benchmark_session, performance_thresholds):
+    def test_model_dict_serialization(
+        self, benchmark, benchmark_session, performance_thresholds
+    ):
         """Benchmark model to_dict serialization performance."""
         session = benchmark_session
 
@@ -492,20 +589,24 @@ class TestSerializationPerformance:
             # Serialize models to dict
             dict_data = []
             for model in models:
-                if hasattr(model, 'to_dict'):
+                if hasattr(model, "to_dict"):
                     dict_data.append(model.to_dict())
                 else:
                     # Fallback serialization
-                    dict_data.append({
-                        'taxon_id': model.taxon_id,
-                        'genefam_prefix': model.genefam_prefix,
-                        'display_name': model.display_name,
-                        'is_live': model.is_live,
-                        'created': model.created,
-                    })
+                    dict_data.append(
+                        {
+                            "taxon_id": model.taxon_id,
+                            "genefam_prefix": model.genefam_prefix,
+                            "display_name": model.display_name,
+                            "is_live": model.is_live,
+                            "created": model.created,
+                        }
+                    )
 
             return len(dict_data)
 
         result = benchmark(serialize_models)
-        assert_performance_threshold(benchmark, performance_thresholds["bulk_insert"], "model serialization")
+        assert_performance_threshold(
+            benchmark, performance_thresholds["bulk_insert"], "model serialization"
+        )
         assert result == 25

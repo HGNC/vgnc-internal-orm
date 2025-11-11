@@ -1,5 +1,7 @@
 # Getting Started
 
+**VGNC Internal ORM v0.2.0** - MIT License
+
 ## Installation
 
 Install into your project environment:
@@ -46,6 +48,10 @@ items = Species.find(session, limit=10)  # helper wrapper
 ## CLI Usage
 
 ```bash
+# Option 1: Using the installed command
+vgnc-cli query-species --limit 10 --format table
+
+# Option 2: Using Python module invocation
 python -m vgnc_internal_orm.cli query-species --limit 10 --format table
 ```
 

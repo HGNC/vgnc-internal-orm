@@ -6,6 +6,12 @@ Invoke with module path or entrypoint:
 python -m vgnc_internal_orm.cli query-species --limit 20 --format table
 ```
 
+Or using the installed command:
+
+```bash
+vgnc-cli query-species --limit 20 --format table
+```
+
 ## Global Options
 
 - `--db-url` override connection string.

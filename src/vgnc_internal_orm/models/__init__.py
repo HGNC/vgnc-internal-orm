@@ -1,22 +1,22 @@
 """Models module for VGNC ORM."""
 
-from .base import BaseModel
-from .species import BaseCustomModel
-from .genefam import Genefam
-from .species import Species
-from .chromosomes import Chromosomes
 from .assembly import Assembly
+from .base import BaseModel
+from .chromosomes import Chromosomes
+from .genefam import Genefam
+from .species import BaseCustomModel, Species
 from .supporting import (
-    GeneStatus,
-    Editor,
     AltName,
     AltSymbol,
-    NomenclatureType,
     Comment,
-    GeneFlag,
+    Editor,
+    FamilyNew,
     FlagClass,
-    FamilyNew
+    GeneFlag,
+    GeneStatus,
+    NomenclatureType,
 )
+
 # Orthology models removed - they don't exist in the actual database
 
 __all__ = [

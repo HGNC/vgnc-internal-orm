@@ -1,5 +1,7 @@
 # Utilities & Performance Toolkit
 
+**VGNC Internal ORM v0.2.0** - MIT License
+
 ## Index Ecosystem
 
 - `index_definitions.py`: curated logical index sets (may include template columns not yet present).

@@ -23,6 +23,18 @@ from alembic.config import Config
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
+try:
+    from vgnc_internal_orm.migrations.safety import (
+        validate_migration_safety,
+        print_safety_report,
+        MigrationSafetyValidator,
+        RiskLevel
+    )
+    SAFETY_MODULE_AVAILABLE = True
+except ImportError:
+    SAFETY_MODULE_AVAILABLE = False
+    print("⚠️  Warning: Safety module not available. Install package for full safety validation.")
+
 
 class MigrationWorkflow:
     """Manages the complete migration workflow."""
@@ -168,28 +180,51 @@ class MigrationWorkflow:
 
             print(f"   Validating: {migration_path}")
 
-            # Read migration file and check for common issues
-            content = migration_path.read_text()
+            # Use comprehensive safety module if available
+            if SAFETY_MODULE_AVAILABLE:
+                try:
+                    issues = validate_migration_safety(str(migration_path))
+                    print_safety_report(issues)
+                    
+                    # Check for critical/high risk issues
+                    has_critical = any(issue.risk_level == RiskLevel.CRITICAL for issue in issues)
+                    has_high = any(issue.risk_level == RiskLevel.HIGH for issue in issues)
+                    
+                    if has_critical:
+                        print("\n❌ CRITICAL issues found - manual review required")
+                        return False
+                    elif has_high:
+                        print("\n⚠️  HIGH risk issues found - careful review recommended")
+                    else:
+                        print("\n✅ No critical safety issues detected")
+                    
+                except Exception as e:
+                    print(f"   ⚠️  Safety validation error: {e}")
+                    # Fall through to basic validation
+            
+            # Fallback to basic validation if safety module unavailable or errored
+            if not SAFETY_MODULE_AVAILABLE:
+                content = migration_path.read_text()
 
-            # Check for dangerous operations
-            dangerous_patterns = [
-                ('DROP TABLE', 'Dropping tables'),
-                ('DROP COLUMN', 'Dropping columns'),
-                ('DELETE FROM', 'Direct deletion'),
-                ('TRUNCATE', 'Truncating tables')
-            ]
+                # Check for dangerous operations (basic version)
+                dangerous_patterns = [
+                    ('DROP TABLE', 'Dropping tables'),
+                    ('DROP COLUMN', 'Dropping columns'),
+                    ('DELETE FROM', 'Direct deletion'),
+                    ('TRUNCATE', 'Truncating tables')
+                ]
 
-            warnings = []
-            for pattern, description in dangerous_patterns:
-                if pattern in content.upper():
-                    warnings.append(f"⚠️  {description} detected")
+                warnings = []
+                for pattern, description in dangerous_patterns:
+                    if pattern in content.upper():
+                        warnings.append(f"⚠️  {description} detected")
 
-            if warnings:
-                print("   Warnings found:")
-                for warning in warnings:
-                    print(f"      {warning}")
-            else:
-                print("   ✅ No dangerous operations detected")
+                if warnings:
+                    print("   Warnings found:")
+                    for warning in warnings:
+                        print(f"      {warning}")
+                else:
+                    print("   ✅ No dangerous operations detected (basic check)")
 
         # Always check current migrations
         try:

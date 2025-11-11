@@ -136,9 +136,6 @@ pytest tests/test_alembic_baseline.py -v
 The baseline migration uses SQLite by default. For other databases:
 
 ```bash
-# PostgreSQL
-export DATABASE_URL="postgresql://user:pass@localhost:5432/vgnc_database"
-
 # MySQL
 export DATABASE_URL="mysql+pymysql://user:pass@localhost:3306/vgnc_database"
 

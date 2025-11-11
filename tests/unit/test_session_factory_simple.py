@@ -1,29 +1,32 @@
 """Simplified unit tests for session factory focusing on core functionality."""
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from sqlalchemy import Engine, text
-from sqlalchemy.orm import Session
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from unittest.mock import AsyncMock, Mock, patch
 
-from vgnc_internal_orm.config.settings import DatabaseConfig, DatabaseDriver, Environment
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
+
+from vgnc_internal_orm.config.settings import (
+    DatabaseConfig,
+    DatabaseDriver,
+    Environment,
+)
 from vgnc_internal_orm.sessions.factory import (
     SessionFactory,
-    get_session_factory,
-    engine_from_config,
-    async_engine_from_config,
-    get_session,
-    get_async_session,
     create_session_factory_with_config,
-    health_check_from_config,
-    async_health_check_from_config,
-    get_engine_info_from_config,
-    get_pool_status_from_config,
-    get_session_context,
     get_async_session_context,
-    check_database_connection,
-    check_async_database_connection
+    get_session_context,
+    get_session_factory,
+    reset_global_session_factory,
 )
+
+
+@pytest.fixture(autouse=True)
+def reset_global_session_factory_fixture():
+    """Reset global session factory before each test to ensure isolation."""
+    reset_global_session_factory()
+    yield
+    reset_global_session_factory()
 
 
 class TestSessionFactoryBasics:
@@ -32,9 +35,7 @@ class TestSessionFactoryBasics:
     def test_initialization_with_config(self):
         """Test SessionFactory initialization with configuration."""
         config = DatabaseConfig(
-            username="test_user",
-            password="test_password",
-            database="test_db"
+            username="test_user", password="test_password", database="test_db"
         )
         factory = SessionFactory(config)
         assert factory.config == config
@@ -63,10 +64,12 @@ class TestSessionFactoryBasics:
     def test_get_pool_config_development(self):
         """Test pool configuration for development environment."""
         config = DatabaseConfig(
+            driver=DatabaseDriver.MYSQL,
             username="test_user",
             password="test_password",
             database="test_db",
-            environment=Environment.DEVELOPMENT
+            environment=Environment.DEVELOPMENT,
+            _env_file=None,  # Disable environment file loading for tests
         )
         factory = SessionFactory(config)
 
@@ -75,16 +78,20 @@ class TestSessionFactoryBasics:
         assert pool_config["pool_pre_ping"] is True
         assert "pool_size" in pool_config
         assert "pool_timeout" in pool_config
-        assert pool_config["pool_timeout"] <= 10  # Development should have shorter timeout
+        assert (
+            pool_config["pool_timeout"] <= 10
+        )  # Development should have shorter timeout
         assert pool_config["pool_recycle"] == 3600  # 1 hour for development
 
     def test_get_pool_config_production(self):
         """Test pool configuration for production environment."""
         config = DatabaseConfig(
+            driver=DatabaseDriver.MYSQL,
             username="test_user",
             password="test_password",
             database="test_db",
-            environment=Environment.PRODUCTION
+            environment=Environment.PRODUCTION,
+            _env_file=None,  # Disable environment file loading for tests
         )
         factory = SessionFactory(config)
 
@@ -97,10 +104,7 @@ class TestSessionFactoryBasics:
 
     def test_get_pool_config_sqlite(self):
         """Test pool configuration for SQLite."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database="test.db"
-        )
+        config = DatabaseConfig(driver=DatabaseDriver.SQLITE, database="test.db")
         factory = SessionFactory(config)
 
         pool_config = factory._get_pool_config()
@@ -117,7 +121,7 @@ class TestSessionFactoryBasics:
             username="test_user",
             password="test_password",
             database="test_db",
-            isolation_level="READ_COMMITTED"
+            isolation_level="READ_COMMITTED",
         )
         factory = SessionFactory(config)
 
@@ -128,28 +132,15 @@ class TestSessionFactoryBasics:
         assert connect_args["autocommit"] is False
         assert connect_args["isolation_level"] == "READ_COMMITTED"
 
-    def test_get_connect_args_postgresql(self):
-        """Test connection arguments for PostgreSQL."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.POSTGRES,
-            username="test_user",
-            password="test_password",
-            database="test_db"
-        )
-        factory = SessionFactory(config)
-
-        connect_args = factory._get_connect_args()
-
-        assert "server_settings" in connect_args
-        assert connect_args["server_settings"]["application_name"] == "vgnc_internal_orm"
-
     def test_get_engine_info(self):
         """Test engine information retrieval."""
         config = DatabaseConfig(
+            driver=DatabaseDriver.MYSQL,
             username="test_user",
             password="test_password",
             database="test_db",
-            echo=True
+            echo=True,
+            _env_file=None,  # Disable environment file loading for tests
         )
         factory = SessionFactory(config)
 
@@ -162,14 +153,12 @@ class TestSessionFactoryBasics:
         assert "pool_config" in info
         assert "connect_args" in info
         assert info["echo"] is True
-        assert info["driver"] == "postgresql"
+        assert info["driver"] == "mysql+pymysql"
 
     def test_get_pool_status_not_initialized(self):
         """Test pool status when engine not initialized."""
         config = DatabaseConfig(
-            username="test_user",
-            password="test_password",
-            database="test_db"
+            username="test_user", password="test_password", database="test_db"
         )
         factory = SessionFactory(config)
 
@@ -197,6 +186,7 @@ class TestHelperFunctions:
         """Test global session factory lazy initialization."""
         # Reset global state
         import vgnc_internal_orm.sessions.factory as factory_module
+
         factory_module.session_factory = None
 
         factory1 = get_session_factory()
@@ -208,9 +198,7 @@ class TestHelperFunctions:
     def test_create_session_factory_with_config(self):
         """Test creating SessionFactory with specific config."""
         config = DatabaseConfig(
-            username="test_user",
-            password="test_password",
-            database="test_db"
+            username="test_user", password="test_password", database="test_db"
         )
         factory = create_session_factory_with_config(config)
         assert isinstance(factory, SessionFactory)
@@ -220,7 +208,7 @@ class TestHelperFunctions:
 class TestContextManagers:
     """Test cases for context managers."""
 
-    @patch('vgnc_internal_orm.sessions.factory.get_session_factory')
+    @patch("vgnc_internal_orm.sessions.factory.get_session_factory")
     def test_get_session_context_success(self, mock_get_session_factory):
         """Test session context manager on success."""
         mock_factory = Mock()
@@ -234,7 +222,7 @@ class TestContextManagers:
         mock_session.commit.assert_called_once()
         mock_session.close.assert_called_once()
 
-    @patch('vgnc_internal_orm.sessions.factory.get_session_factory')
+    @patch("vgnc_internal_orm.sessions.factory.get_session_factory")
     def test_get_session_context_with_exception(self, mock_get_session_factory):
         """Test session context manager with exception."""
         mock_factory = Mock()
@@ -243,14 +231,14 @@ class TestContextManagers:
         mock_get_session_factory.return_value = mock_factory
 
         with pytest.raises(ValueError):
-            with get_session_context() as session:
+            with get_session_context():
                 raise ValueError("Test error")
 
         mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch('vgnc_internal_orm.sessions.factory.get_session_factory')
+    @patch("vgnc_internal_orm.sessions.factory.get_session_factory")
     async def test_get_async_session_context_success(self, mock_get_session_factory):
         """Test async session context manager on success."""
         mock_factory = Mock()
@@ -265,8 +253,10 @@ class TestContextManagers:
         mock_session.close.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch('vgnc_internal_orm.sessions.factory.get_session_factory')
-    async def test_get_async_session_context_with_exception(self, mock_get_session_factory):
+    @patch("vgnc_internal_orm.sessions.factory.get_session_factory")
+    async def test_get_async_session_context_with_exception(
+        self, mock_get_session_factory
+    ):
         """Test async session context manager with exception."""
         mock_factory = Mock()
         mock_session = AsyncMock(spec=AsyncSession)
@@ -274,7 +264,7 @@ class TestContextManagers:
         mock_get_session_factory.return_value = mock_factory
 
         with pytest.raises(ValueError):
-            async with get_async_session_context() as session:
+            async with get_async_session_context():
                 raise ValueError("Test error")
 
         mock_session.rollback.assert_called_once()
@@ -287,10 +277,12 @@ class TestMultiEnvironmentSupport:
     def test_staging_environment_config(self):
         """Test staging environment specific configuration."""
         config = DatabaseConfig(
+            driver=DatabaseDriver.MYSQL,
             username="test_user",
             password="test_password",
             database="test_db",
-            environment=Environment.STAGING
+            environment=Environment.STAGING,
+            _env_file=None,  # Disable environment file loading for tests
         )
         factory = SessionFactory(config)
 
@@ -304,7 +296,7 @@ class TestMultiEnvironmentSupport:
             username="test_user",
             password="test_password",
             database="test_db",
-            isolation_level="REPEATABLE_READ"
+            isolation_level="REPEATABLE_READ",
         )
         factory = SessionFactory(config)
 
@@ -314,34 +306,38 @@ class TestMultiEnvironmentSupport:
     def test_development_mode_logging(self):
         """Test enhanced logging in development mode."""
         config = DatabaseConfig(
+            driver=DatabaseDriver.MYSQL,
             username="test_user",
             password="test_password",
             database="test_db",
             environment=Environment.DEVELOPMENT,
-            echo=True
+            echo=True,
+            _env_file=None,  # Disable environment file loading for tests
         )
         factory = SessionFactory(config)
 
         # Test that development mode config is properly set
         pool_config = factory._get_pool_config()
-        assert pool_config["pool_timeout"] <= 10  # Development should have shorter timeouts
+        assert (
+            pool_config["pool_timeout"] <= 10
+        )  # Development should have shorter timeouts
         assert pool_config["pool_recycle"] == 3600  # 1 hour for development
 
     def test_ssl_configuration_inclusion(self):
         """Test SSL configuration inclusion in connect args."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.POSTGRES,
+            driver=DatabaseDriver.MYSQL,
             username="test_user",
             password="test_password",
             database="test_db",
-            ssl_mode="require"
+            ssl_mode="REQUIRED",
         )
         factory = SessionFactory(config)
 
         connect_args = factory._get_connect_args()
         # Note: SSL args are added in _create_engine method, not _get_connect_args
         # but we can verify the basic config structure
-        assert "server_settings" in connect_args
+        assert "charset" in connect_args
 
 
 class TestCharsetAndEncoding:
@@ -353,7 +349,7 @@ class TestCharsetAndEncoding:
             driver=DatabaseDriver.MYSQL,
             username="test_user",
             password="test_password",
-            database="test_db"
+            database="test_db",
         )
         factory = SessionFactory(config)
 
@@ -361,25 +357,9 @@ class TestCharsetAndEncoding:
         assert connect_args["charset"] == "utf8mb4"
         assert connect_args["collation"] == "utf8mb4_unicode_ci"
 
-    def test_postgresql_application_name(self):
-        """Test PostgreSQL application name setting."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.POSTGRES,
-            username="test_user",
-            password="test_password",
-            database="test_db"
-        )
-        factory = SessionFactory(config)
-
-        connect_args = factory._get_connect_args()
-        assert connect_args["server_settings"]["application_name"] == "vgnc_internal_orm"
-
     def test_sqlite_connect_args(self):
         """Test SQLite-specific connection arguments."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database="test.db"
-        )
+        config = DatabaseConfig(driver=DatabaseDriver.SQLITE, database="test.db")
         factory = SessionFactory(config)
 
         pool_config = factory._get_pool_config()
@@ -394,18 +374,24 @@ class TestPoolConfiguration:
     def test_pool_config_environment_differences(self):
         """Test that pool configurations differ by environment."""
         base_config = DatabaseConfig(
+            driver=DatabaseDriver.MYSQL,
             username="test_user",
             password="test_password",
-            database="test_db"
+            database="test_db",
+            _env_file=None,  # Disable environment file loading for tests
         )
 
         # Development config
-        dev_config = base_config.model_copy(update={"environment": Environment.DEVELOPMENT})
+        dev_config = base_config.model_copy(
+            update={"environment": Environment.DEVELOPMENT}
+        )
         dev_factory = SessionFactory(dev_config)
         dev_pool = dev_factory._get_pool_config()
 
         # Production config
-        prod_config = base_config.model_copy(update={"environment": Environment.PRODUCTION})
+        prod_config = base_config.model_copy(
+            update={"environment": Environment.PRODUCTION}
+        )
         prod_factory = SessionFactory(prod_config)
         prod_pool = prod_factory._get_pool_config()
 
@@ -415,10 +401,12 @@ class TestPoolConfiguration:
     def test_pool_timeout_configuration(self):
         """Test pool timeout configuration."""
         config = DatabaseConfig(
+            driver=DatabaseDriver.MYSQL,
             username="test_user",
             password="test_password",
             database="test_db",
-            environment=Environment.DEVELOPMENT
+            environment=Environment.DEVELOPMENT,
+            _env_file=None,  # Disable environment file loading for tests
         )
         factory = SessionFactory(config)
 
@@ -429,9 +417,7 @@ class TestPoolConfiguration:
     def test_pool_pre_ping_enabled(self):
         """Test that pool pre-ping is enabled by default."""
         config = DatabaseConfig(
-            username="test_user",
-            password="test_password",
-            database="test_db"
+            username="test_user", password="test_password", database="test_db"
         )
         factory = SessionFactory(config)
 

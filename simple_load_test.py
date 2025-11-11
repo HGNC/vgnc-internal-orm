@@ -25,9 +25,14 @@ from sqlalchemy import create_engine, text, select, func
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
 
+# Import all models to ensure proper relationship resolution
+import vgnc_internal_orm.models as models
 from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 from vgnc_internal_orm.models.assembly import Assembly
 from vgnc_internal_orm.models.chromosomes import Chromosomes
+from vgnc_internal_orm.models.genefam import Genefam
+from vgnc_internal_orm.models.supporting import GeneStatus, Editor
+from vgnc_internal_orm.models.base import BaseCustomModel, BaseModel
 
 
 @dataclass
@@ -124,10 +129,20 @@ class SimpleLoadTestEnvironment:
             echo=False,
         )
 
-        # Create tables
-        Species.metadata.create_all(self.engine)
-        Assembly.metadata.create_all(self.engine)
-        Chromosomes.metadata.create_all(self.engine)
+        # Create unified metadata to resolve cross-registry relationships
+        from sqlalchemy.schema import MetaData
+
+        unified_metadata = MetaData()
+
+        # Add all tables from both metadata registries
+        for table in BaseModel.metadata.tables.values():
+            table.to_metadata(unified_metadata)
+
+        for table in BaseCustomModel.metadata.tables.values():
+            table.to_metadata(unified_metadata)
+
+        # Create all tables at once
+        unified_metadata.create_all(self.engine)
 
         # Create session factory
         self.SessionLocal = sessionmaker(bind=self.engine)
@@ -141,14 +156,47 @@ class SimpleLoadTestEnvironment:
         session = self.SessionLocal()
 
         try:
+            # Create supporting data directly via SQL to avoid relationship resolution issues
+            session.execute(
+                text(
+                    """
+                INSERT INTO gene_status (id, status, display)
+                VALUES (1, 'Approved', 'Approved Status'),
+                       (2, 'Pending', 'Pending Status'),
+                       (3, 'Rejected', 'Rejected Status')
+            """
+                )
+            )
+
+            session.execute(
+                text(
+                    """
+                INSERT INTO editor (id, display_name, email, current, connected)
+                VALUES (1, 'Test Editor', 'test@example.com', 1, 1),
+                       (2, 'Senior Editor', 'senior@example.com', 1, 1),
+                       (3, 'Editor 3', 'editor3@example.com', 1, 1),
+                       (4, 'Editor 4', 'editor4@example.com', 1, 1),
+                       (5, 'Editor 5', 'editor5@example.com', 1, 1)
+            """
+                )
+            )
+
+            session.commit()
+
             # Species data
+            from datetime import datetime
             species_data = []
             for i in range(100):
                 species = Species(
                     taxon_id=9000 + i,
                     genefam_prefix=f"TST{i:03d}",
+                    primary_db_table=None,
                     display_name=f"Test Species {i}",
+                    ensembl_species_name=None,
                     is_live=SpeciesLiveStatus.YES if i % 2 == 0 else SpeciesLiveStatus.NO,
+                    created=datetime.now(),
+                    _scientific_name=None,
+                    _common_name=None,
                 )
                 species_data.append(species)
                 session.add(species)
@@ -163,7 +211,7 @@ class SimpleLoadTestEnvironment:
                         taxon_id=species.taxon_id,
                         source="Ensembl" if j == 0 else "NCBI",
                         genbank_assembly_accession=f"GCA_{species.taxon_id:08d}_{j+1:010d}",
-                        refseq_assembly_accession=f"GCF_{species.taxon_id:08d}_{j+1:010d}" if j == 0 else None,
+                        refseq_assembly_accession=f"GCF_{species.taxon_id:08d}_{j+1:010d}",
                         is_current=True if j == 0 else False,
                         is_vgnc_default=True if j == 0 else False,
                     )
@@ -180,6 +228,36 @@ class SimpleLoadTestEnvironment:
                         coord_system=f"{species.genefam_prefix}_coord_system",
                     )
                     session.add(chromosome)
+
+            session.commit()
+
+            # Create genefam data via SQL to avoid foreign key issues
+            genefam_records = []
+            for i, species in enumerate(species_data[:50]):  # Create genefams for half the species
+                for j in range(5):  # 5 genefams per species
+                    genefam_data = {
+                        "genefam_id": 1000 + i * 10 + j,
+                        "taxon_id": species.taxon_id,
+                        "assigned_id": f"{species.genefam_prefix}GF{j+1:03d}",
+                        "assigned_symbol": f"GF{j+1}",
+                        "assigned_name": f"Test Gene Family {j+1}",
+                        "status_id": 1,  # Use first status
+                        "editor_id": 1,  # Use first editor
+                        "hcop_support_level": j + 1
+                    }
+                    genefam_records.append(genefam_data)
+
+            # Batch insert genefams
+            for genefam_data in genefam_records:
+                session.execute(
+                    text(
+                        """
+                INSERT INTO genefam (genefam_id, taxon_id, assigned_id, assigned_symbol, assigned_name, status_id, editor_id, hcop_support_level)
+                VALUES (:genefam_id, :taxon_id, :assigned_id, :assigned_symbol, :assigned_name, :status_id, :editor_id, :hcop_support_level)
+            """
+                    ),
+                    genefam_data,
+                )
 
             session.commit()
             print("Database setup complete.")

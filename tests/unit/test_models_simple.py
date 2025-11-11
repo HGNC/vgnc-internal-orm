@@ -9,10 +9,10 @@ from datetime import datetime
 
 import pytest
 
-from tests.unit.base_test import BaseUnitTest, ModelTestMixin, DatabaseTestMixin
-from src.vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 from src.vgnc_internal_orm.models.assembly import Assembly
 from src.vgnc_internal_orm.models.chromosomes import Chromosomes
+from src.vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
+from tests.unit.base_test import BaseUnitTest, DatabaseTestMixin, ModelTestMixin
 
 
 class TestSpecies(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
@@ -61,7 +61,15 @@ class TestAssembly(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
         "is_current": True,
         "is_vgnc_default": True,
     }
-    required_fields = ["name", "taxon_id", "source", "genbank_assembly_accession", "refseq_assembly_accession", "is_current", "is_vgnc_default"]
+    required_fields = [
+        "name",
+        "taxon_id",
+        "source",
+        "genbank_assembly_accession",
+        "refseq_assembly_accession",
+        "is_current",
+        "is_vgnc_default",
+    ]
 
     @pytest.fixture(autouse=True)
     def setup_species(self, sample_species):
@@ -151,9 +159,11 @@ class TestModelRelationships:
         test_db_session.commit()
 
         # Verify assemblies are linked to the species
-        count = test_db_session.query(Assembly).filter(
-            Assembly.taxon_id == sample_species.taxon_id
-        ).count()
+        count = (
+            test_db_session.query(Assembly)
+            .filter(Assembly.taxon_id == sample_species.taxon_id)
+            .count()
+        )
         assert count == 3
 
     def test_species_with_chromosomes(self, test_db_session, sample_species):
@@ -173,9 +183,11 @@ class TestModelRelationships:
         test_db_session.commit()
 
         # Verify count
-        count = test_db_session.query(Chromosomes).filter(
-            Chromosomes.taxon_id == sample_species.taxon_id
-        ).count()
+        count = (
+            test_db_session.query(Chromosomes)
+            .filter(Chromosomes.taxon_id == sample_species.taxon_id)
+            .count()
+        )
         assert count == len(chromosome_names)
 
 
@@ -201,9 +213,11 @@ class TestModelQueries:
         test_db_session.commit()
 
         # Test queries
-        hsa_species = test_db_session.query(Species).filter(
-            Species.genefam_prefix == "HSA"
-        ).first()
+        hsa_species = (
+            test_db_session.query(Species)
+            .filter(Species.genefam_prefix == "HSA")
+            .first()
+        )
         assert hsa_species is not None
         assert hsa_species.display_name == "human"
 
@@ -228,9 +242,11 @@ class TestModelQueries:
         test_db_session.commit()
 
         # Query by species
-        assemblies = test_db_session.query(Assembly).filter(
-            Assembly.taxon_id == sample_species.taxon_id
-        ).all()
+        assemblies = (
+            test_db_session.query(Assembly)
+            .filter(Assembly.taxon_id == sample_species.taxon_id)
+            .all()
+        )
         assert len(assemblies) == 3
 
     def test_chromosome_queries(self, test_db_session, sample_species):
@@ -249,7 +265,9 @@ class TestModelQueries:
         test_db_session.commit()
 
         # Query by coord system
-        test_chromosomes = test_db_session.query(Chromosomes).filter(
-            Chromosomes.coord_system == "TestCoordSystem"
-        ).all()
+        test_chromosomes = (
+            test_db_session.query(Chromosomes)
+            .filter(Chromosomes.coord_system == "TestCoordSystem")
+            .all()
+        )
         assert len(test_chromosomes) == len(names)

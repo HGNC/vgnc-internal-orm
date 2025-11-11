@@ -4,11 +4,11 @@ These models represent supporting tables from the actual genefam_production data
 that are referenced by the main models.
 """
 
-from typing import Optional
-from sqlalchemy import String, Integer, ForeignKey, Text, Boolean, DateTime
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import BaseModel
+from .genefam import Genefam
 
 
 class GeneStatus(BaseModel):
@@ -17,29 +17,19 @@ class GeneStatus(BaseModel):
     __tablename__ = "gene_status"
 
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        nullable=False,
-        comment="Primary key for gene status"
+        Integer, primary_key=True, nullable=False, comment="Primary key for gene status"
     )
 
     status: Mapped[str] = mapped_column(
-        String(45),
-        nullable=False,
-        comment="Status name"
+        String(45), nullable=False, comment="Status name"
     )
 
-    display: Mapped[Optional[str]] = mapped_column(
-        String(128),
-        nullable=True,
-        comment="Display name for status"
+    display: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, comment="Display name for status"
     )
 
     # Relationships
-    genefams: Mapped[list["Genefam"]] = relationship(
-        "Genefam",
-        back_populates="status"
-    )
+    genefams: Mapped[list["Genefam"]] = relationship("Genefam", back_populates="status")
 
     def __repr__(self) -> str:
         return f"<GeneStatus(id={self.id}, status='{self.status}')>"
@@ -51,59 +41,39 @@ class Editor(BaseModel):
     __tablename__ = "editor"
 
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        nullable=False,
-        comment="Primary key for editor"
+        Integer, primary_key=True, nullable=False, comment="Primary key for editor"
     )
 
     display_name: Mapped[str] = mapped_column(
-        String(128),
-        nullable=False,
-        comment="Display name for editor"
+        String(128), nullable=False, comment="Display name for editor"
     )
 
-    first_name: Mapped[Optional[str]] = mapped_column(
-        String(128),
-        nullable=True,
-        comment="First name"
+    first_name: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, comment="First name"
     )
 
-    last_name: Mapped[Optional[str]] = mapped_column(
-        String(128),
-        nullable=True,
-        comment="Last name"
+    last_name: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, comment="Last name"
     )
 
-    email: Mapped[Optional[str]] = mapped_column(
-        String(128),
-        nullable=True,
-        comment="Email address"
+    email: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, comment="Email address"
     )
 
-    password: Mapped[Optional[str]] = mapped_column(
-        String(255),
-        nullable=True,
-        comment="Password hash"
+    password: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, comment="Password hash"
     )
 
     current: Mapped[bool] = mapped_column(
-        Boolean,
-        nullable=False,
-        comment="Whether this is the current editor"
+        Boolean, nullable=False, comment="Whether this is the current editor"
     )
 
     connected: Mapped[bool] = mapped_column(
-        Boolean,
-        nullable=False,
-        comment="Connection status"
+        Boolean, nullable=False, comment="Connection status"
     )
 
     # Relationships
-    genefams: Mapped[list["Genefam"]] = relationship(
-        "Genefam",
-        back_populates="editor"
-    )
+    genefams: Mapped[list["Genefam"]] = relationship("Genefam", back_populates="editor")
 
     def __repr__(self) -> str:
         return f"<Editor(id={self.id}, display_name='{self.display_name}')>"
@@ -118,32 +88,27 @@ class AltName(BaseModel):
         Integer,
         primary_key=True,
         nullable=False,
-        comment="Primary key for alternative name"
+        comment="Primary key for alternative name",
     )
 
     name: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-        comment="Alternative name"
+        String(255), nullable=False, comment="Alternative name"
     )
 
     nomenclature_type_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("nomenclature_type.id"),
         nullable=False,
-        comment="Foreign key to nomenclature type"
+        comment="Foreign key to nomenclature type",
     )
 
     # Relationships
     genefams: Mapped[list["Genefam"]] = relationship(
-        "Genefam",
-        secondary="gene_alt_name",
-        back_populates="alt_names"
+        "Genefam", secondary="gene_alt_name", back_populates="alt_names"
     )
 
     nomenclature_type: Mapped["NomenclatureType"] = relationship(
-        "NomenclatureType",
-        back_populates="alt_names"
+        "NomenclatureType", back_populates="alt_names"
     )
 
     def __repr__(self) -> str:
@@ -159,32 +124,27 @@ class AltSymbol(BaseModel):
         Integer,
         primary_key=True,
         nullable=False,
-        comment="Primary key for alternative symbol"
+        comment="Primary key for alternative symbol",
     )
 
     symbol: Mapped[str] = mapped_column(
-        String(45),
-        nullable=False,
-        comment="Alternative symbol"
+        String(45), nullable=False, comment="Alternative symbol"
     )
 
     nomenclature_type_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("nomenclature_type.id"),
         nullable=False,
-        comment="Foreign key to nomenclature type"
+        comment="Foreign key to nomenclature type",
     )
 
     # Relationships
     genefams: Mapped[list["Genefam"]] = relationship(
-        "Genefam",
-        secondary="gene_alt_symbol",
-        back_populates="alt_symbols"
+        "Genefam", secondary="gene_alt_symbol", back_populates="alt_symbols"
     )
 
     nomenclature_type: Mapped["NomenclatureType"] = relationship(
-        "NomenclatureType",
-        back_populates="alt_symbols"
+        "NomenclatureType", back_populates="alt_symbols"
     )
 
     def __repr__(self) -> str:
@@ -200,24 +160,20 @@ class NomenclatureType(BaseModel):
         Integer,
         primary_key=True,
         nullable=False,
-        comment="Primary key for nomenclature type"
+        comment="Primary key for nomenclature type",
     )
 
     type: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-        comment="Nomenclature type"
+        String(255), nullable=False, comment="Nomenclature type"
     )
 
     # Relationships
     alt_names: Mapped[list["AltName"]] = relationship(
-        "AltName",
-        back_populates="nomenclature_type"
+        "AltName", back_populates="nomenclature_type"
     )
 
     alt_symbols: Mapped[list["AltSymbol"]] = relationship(
-        "AltSymbol",
-        back_populates="nomenclature_type"
+        "AltSymbol", back_populates="nomenclature_type"
     )
 
     def __repr__(self) -> str:
@@ -230,78 +186,51 @@ class Comment(BaseModel):
     __tablename__ = "comment"
 
     id: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False,
-        primary_key=True,
-        comment="Primary key for comment"
+        Integer, nullable=False, primary_key=True, comment="Primary key for comment"
     )
 
-    comment: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-        comment="Comment text"
-    )
+    comment: Mapped[str] = mapped_column(Text, nullable=False, comment="Comment text")
 
     author_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("editor.id"),
         nullable=False,
-        comment="Author who created the comment"
+        comment="Author who created the comment",
     )
 
-    locked: Mapped[Optional[int]] = mapped_column(
-        Integer,
-        nullable=True,
-        comment="Lock status"
+    locked: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, comment="Lock status"
     )
 
     created: Mapped[DateTime] = mapped_column(
-        DateTime,
-        nullable=False,
-        comment="Creation date"
+        DateTime, nullable=False, comment="Creation date"
     )
 
-    publisher_id: Mapped[Optional[int]] = mapped_column(
-        Integer,
-        nullable=True,
-        comment="Publisher ID"
+    publisher_id: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, comment="Publisher ID"
     )
 
     status: Mapped[str] = mapped_column(
-        String(50),
-        nullable=False,
-        default="Pending",
-        comment="Comment status"
+        String(50), nullable=False, default="Pending", comment="Comment status"
     )
 
     status_date: Mapped[DateTime] = mapped_column(
-        DateTime,
-        nullable=False,
-        comment="Status date"
+        DateTime, nullable=False, comment="Status date"
     )
 
-    replace_id: Mapped[Optional[int]] = mapped_column(
-        Integer,
-        nullable=True,
-        comment="Replace ID"
+    replace_id: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, comment="Replace ID"
     )
 
-    replacement_id: Mapped[Optional[int]] = mapped_column(
-        Integer,
-        nullable=True,
-        comment="Replacement ID"
+    replacement_id: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, comment="Replacement ID"
     )
 
     # Relationships
-    author: Mapped["Editor"] = relationship(
-        "Editor",
-        foreign_keys=[author_id]
-    )
+    author: Mapped["Editor"] = relationship("Editor", foreign_keys=[author_id])
 
     genefams: Mapped[list["Genefam"]] = relationship(
-        "Genefam",
-        secondary="gene_has_comment",
-        back_populates="comments"
+        "Genefam", secondary="gene_has_comment", back_populates="comments"
     )
 
     def __repr__(self) -> str:
@@ -314,35 +243,23 @@ class GeneFlag(BaseModel):
     __tablename__ = "gene_flag"
 
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        nullable=False,
-        comment="Primary key for gene flag"
+        Integer, primary_key=True, nullable=False, comment="Primary key for gene flag"
     )
 
-    type: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-        comment="Flag type"
-    )
+    type: Mapped[str] = mapped_column(String(255), nullable=False, comment="Flag type")
 
     flag_class_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("flag_class.id"),
         nullable=False,
-        comment="Foreign key to flag class"
+        comment="Foreign key to flag class",
     )
 
     # Relationships
-    flag_class: Mapped["FlagClass"] = relationship(
-        "FlagClass",
-        back_populates="flags"
-    )
+    flag_class: Mapped["FlagClass"] = relationship("FlagClass", back_populates="flags")
 
     genefams: Mapped[list["Genefam"]] = relationship(
-        "Genefam",
-        secondary="gene_has_flag",
-        back_populates="flags"
+        "Genefam", secondary="gene_has_flag", back_populates="flags"
     )
 
     def __repr__(self) -> str:
@@ -355,22 +272,16 @@ class FlagClass(BaseModel):
     __tablename__ = "flag_class"
 
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        nullable=False,
-        comment="Primary key for flag class"
+        Integer, primary_key=True, nullable=False, comment="Primary key for flag class"
     )
 
     class_name: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-        comment="Flag class name"
+        String(255), nullable=False, comment="Flag class name"
     )
 
     # Relationships
     flags: Mapped[list["GeneFlag"]] = relationship(
-        "GeneFlag",
-        back_populates="flag_class"
+        "GeneFlag", back_populates="flag_class"
     )
 
     def __repr__(self) -> str:
@@ -383,94 +294,63 @@ class FamilyNew(BaseModel):
     __tablename__ = "family_new"
 
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        nullable=False,
-        comment="Primary key for family"
+        Integer, primary_key=True, nullable=False, comment="Primary key for family"
     )
 
     abbreviation: Mapped[str] = mapped_column(
-        String(255),
-        nullable=True,
-        default="",
-        comment="Family abbreviation"
+        String(255), nullable=True, default="", comment="Family abbreviation"
     )
 
     name: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-        comment="Family name"
+        String(255), nullable=False, comment="Family name"
     )
 
-    curator_comment: Mapped[Optional[str]] = mapped_column(
-        Text,
-        nullable=True,
-        comment="Curator comment"
+    curator_comment: Mapped[str | None] = mapped_column(
+        Text, nullable=True, comment="Curator comment"
     )
 
     status: Mapped[str] = mapped_column(
-        String(50),
-        nullable=True,
-        default="",
-        comment="Family status"
+        String(50), nullable=True, default="", comment="Family status"
     )
 
-    external_note: Mapped[Optional[str]] = mapped_column(
-        Text,
-        nullable=True,
-        comment="External note"
+    external_note: Mapped[str | None] = mapped_column(
+        Text, nullable=True, comment="External note"
     )
 
     type: Mapped[str] = mapped_column(
-        String(50),
-        nullable=True,
-        default="",
-        comment="Family type"
+        String(50), nullable=True, default="", comment="Family type"
     )
 
-    desc_comment: Mapped[Optional[str]] = mapped_column(
-        Text,
-        nullable=True,
-        comment="Description comment"
+    desc_comment: Mapped[str | None] = mapped_column(
+        Text, nullable=True, comment="Description comment"
     )
 
-    desc_label: Mapped[Optional[str]] = mapped_column(
-        String(255),
-        nullable=True,
-        comment="Description label"
+    desc_label: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, comment="Description label"
     )
 
-    desc_source: Mapped[Optional[str]] = mapped_column(
-        String(255),
-        nullable=True,
-        comment="Description source"
+    desc_source: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, comment="Description source"
     )
 
-    desc_go: Mapped[Optional[str]] = mapped_column(
-        String(255),
-        nullable=True,
-        default="",
-        comment="Description GO annotation"
+    desc_go: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, default="", comment="Description GO annotation"
     )
 
-    typical_gene: Mapped[Optional[str]] = mapped_column(
-        String(50),
-        nullable=True,
-        comment="Typical gene for this family"
+    typical_gene: Mapped[str | None] = mapped_column(
+        String(50), nullable=True, comment="Typical gene for this family"
     )
 
     editor_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("editor.id"),
         nullable=False,
-        comment="Editor who created this family"
+        comment="Editor who created this family",
     )
 
     # Relationships
     genefams: Mapped[list["Genefam"]] = relationship(
-        "Genefam",
-        secondary="gene_has_family",
-        back_populates="families"
+        "Genefam", secondary="gene_has_family", back_populates="families"
     )
 
     def __repr__(self) -> str:
