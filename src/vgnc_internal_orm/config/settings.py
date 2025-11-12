@@ -150,7 +150,7 @@ class DatabaseConfig(BaseSettings):
         autocommit (bool): Enable autocommit mode (MySQL-specific).
 
     Note:
-        Configuration can be loaded from environment variables with the DB_ prefix,
+        Configuration can be loaded from environment variables with the ``DB_`` prefix,
         from .env files, or programmatically. Secrets are handled securely using
         Pydantic's SecretStr type.
 
@@ -159,7 +159,7 @@ class DatabaseConfig(BaseSettings):
         ...     driver=DatabaseDriver.MYSQL,
         ...     host='localhost',
         ...     port=3306,
-        ...     database='myapp_db',
+        ...     database='myapp',
         ...     username='app_user',
         ...     password='secure_password'
         ... )
@@ -412,7 +412,7 @@ class Settings(BaseSettings):
         cache_ttl (int): Cache time-to-live in seconds for cached data.
 
     Note:
-        Settings can be configured through environment variables (VGNC_ prefix),
+        Settings can be configured through environment variables (VGNC prefix),
         .env files in the project root, or programmatically. The Settings class
         provides convenience methods for environment detection.
 

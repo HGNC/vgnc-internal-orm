@@ -38,8 +38,8 @@ jobs:
 
     - name: Run unit tests with coverage
       run: |
-        python -m pytest tests/unit/ \
-          --cov=src/vgnc_internal_orm \
+        PYTHONPATH=src python -m pytest tests/unit/ \
+          --cov=vgnc_internal_orm \
           --cov-report=xml:coverage-unit.xml \
           --cov-report=html:htmlcov-unit \
           --cov-report=term-missing \
@@ -48,8 +48,8 @@ jobs:
 
     - name: Run integration tests with coverage
       run: |
-        python -m pytest tests/integration/ \
-          --cov=src/vgnc_internal_orm \
+        PYTHONPATH=src python -m pytest tests/integration/ \
+          --cov=vgnc_internal_orm \
           --cov-append \
           --cov-report=xml:coverage-integration.xml \
           --cov-report=html:htmlcov-integration \
@@ -59,8 +59,8 @@ jobs:
 
     - name: Run performance tests with coverage
       run: |
-        python -m pytest tests/performance/ \
-          --cov=src/vgnc_internal_orm \
+        PYTHONPATH=src python -m pytest tests/performance/ \
+          --cov=vgnc_internal_orm \
           --cov-append \
           --cov-report=xml:coverage-performance.xml \
           --cov-report=term-missing \

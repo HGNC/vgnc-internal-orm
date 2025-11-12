@@ -129,7 +129,7 @@ class TestSettings:
             _env_file=None,
         )
         assert settings.app_name == "VGNC ORM"
-        assert settings.version == "0.1.0"
+        assert settings.version == "0.2.0"
         assert settings.debug is False
         assert settings.environment == Environment.DEVELOPMENT
         assert settings.log_level == "INFO"
