@@ -303,6 +303,14 @@ class TestBaseModelUtilityFunctionTests:
     def test_set_field_value_with_mock_instance(self):
         """Test set_field_value with mock instance."""
         mock_instance = Mock()
+        mock_instance.test_field = None  # Pre-existing field
+        
+        # Mock __table__ with columns
+        mock_column = Mock()
+        mock_column.name = "test_field"
+        mock_table = Mock()
+        mock_table.columns = {"test_field": mock_column}
+        mock_instance.__table__ = mock_table
 
         # Add the method to the mock instance
         mock_instance.set_field_value = BaseModel.set_field_value.__get__(mock_instance)
@@ -315,6 +323,13 @@ class TestBaseModelUtilityFunctionTests:
         """Test has_field with mock instance."""
         mock_instance = Mock()
         mock_instance.existing_field = "value"
+        
+        # Mock __table__ with columns
+        mock_column = Mock()
+        mock_column.name = "existing_field"
+        mock_table = Mock()
+        mock_table.columns = {"existing_field": mock_column}
+        mock_instance.__table__ = mock_table
 
         # Add the method to the mock instance
         mock_instance.has_field = BaseModel.has_field.__get__(mock_instance)
