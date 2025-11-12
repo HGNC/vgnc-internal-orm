@@ -124,6 +124,10 @@ class TestCLIFormattingFunctions:
         mock_assembly.taxon_id = 9606
         mock_assembly.source = "Ensembl"
         mock_assembly.name = "GRCh38"
+        mock_assembly.genbank_assembly_accession = "GCA_000001405.15"
+        mock_assembly.refseq_assembly_accession = "GCF_000001405.26"
+        mock_assembly.is_current = True
+        mock_assembly.is_vgnc_default = True
 
         result = format_assembly_as_xml([mock_assembly])
         assert isinstance(result, str)
@@ -133,14 +137,17 @@ class TestCLIFormattingFunctions:
     def test_format_chromosomes_as_xml_with_mock(self):
         """Test format_chromosomes_as_xml with mock chromosomes."""
         mock_chromosomes = Mock()
-        mock_chromosomes.id = 1
+        mock_chromosomes.chr_id = 1
         mock_chromosomes.taxon_id = 9606
-        mock_chromosomes.name = "1"
-        mock_chromosomes.length = 249250621
+        mock_chromosomes.display_name = "1"
+        mock_chromosomes.coord_system = "GRCh38"
+        mock_chromosomes.refseq_accession = "NC_000001.11"
+        mock_chromosomes.genbank_accession = "CM000663.2"
+        mock_chromosomes.ensembl_accession = "1"
 
         result = format_chromosomes_as_xml([mock_chromosomes])
         assert isinstance(result, str)
-        assert 'id="1"' in result
+        assert 'chr_id="1"' in result
 
 
 class TestCLIDisplayFunctions:
@@ -167,6 +174,8 @@ class TestCLIDisplayFunctions:
         mock_species.taxon_id = 9606
         mock_species.genefam_prefix = "HSA"
         mock_species.display_name = "Human"
+        mock_species.is_live = Mock()
+        mock_species.is_live.value = "YES"
 
         # This should not raise an exception
         display_species_table([mock_species])
@@ -177,6 +186,13 @@ class TestCLIDisplayFunctions:
         mock_species.taxon_id = 9606
         mock_species.genefam_prefix = "HSA"
         mock_species.display_name = "Human"
+        mock_species.ensembl_species_name = "homo_sapiens"
+        mock_species.scientific_name = "Homo sapiens"
+        mock_species.vgnc_prefix = "HSA"
+        mock_species.is_live = Mock()
+        mock_species.is_live.value = "YES"
+        mock_species.created = None
+        mock_species.is_active = True
 
         # This should not raise an exception
         display_species_json([mock_species])
