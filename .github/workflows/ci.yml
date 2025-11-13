@@ -28,8 +28,6 @@ on:
         default: '3.13'
         type: choice
         options:
-          - '3.11'
-          - '3.12'
           - '3.13'
 
 env:
@@ -44,12 +42,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.13"]
         include:
-          - python-version: "3.11"
+          - python-version: "3.13"
             test-type: "unit"
             cache-key: "unit"
-          - python-version: "3.12"
+          - python-version: "3.13"
             test-type: "integration"
             cache-key: "integration"
           - python-version: "3.13"
@@ -130,7 +128,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.13"]
 
     steps:
     - name: Checkout code
@@ -176,7 +174,7 @@ jobs:
     needs: unit-tests
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.13"]
 
     steps:
     - name: Checkout code
@@ -379,7 +377,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.13"]
 
     steps:
     - name: Checkout code
