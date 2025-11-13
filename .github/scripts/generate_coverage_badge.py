@@ -18,29 +18,33 @@ def main():
 
     coverage = data['totals']['percent_covered']
 
-    # Determine color based on coverage percentage
-    if coverage >= 90:
-        color = 'green'
-    elif coverage >= 80:
-        color = 'yellow'
-    elif coverage >= 70:
-        color = 'orange'
-    else:
-        color = 'red'
+    # Define color thresholds for coverage
+    thresholds = {
+        70: 'red',
+        80: 'orange',
+        90: 'yellow',
+        95: 'green'
+    }
 
-    # Create badge
+    # Create badge with automatic color selection based on thresholds
     badge = Badge(
         label='coverage',
         value=f'{coverage:.1f}%',
-        default_color=color,
-        num_value_padding=len(f'{coverage:.1f}%') + 1
+        thresholds=thresholds
     )
 
     # Write badge to file
     with open('coverage-badge.svg', 'w') as f:
         f.write(str(badge))
 
-    print(f"Generated coverage badge: {coverage:.1f}% ({color})")
+    print(f"Generated coverage badge: {coverage:.1f}%")
+    # Determine actual color for logging
+    actual_color = 'red'
+    for threshold, color in sorted(thresholds.items(), reverse=True):
+        if coverage >= threshold:
+            actual_color = color
+            break
+    print(f"Badge color: {actual_color}")
 
 
 if __name__ == '__main__':
