@@ -546,7 +546,6 @@ class TestModelConstraints:
             test_db_session.add(assembly)
             test_db_session.commit()
 
-    
 
 class TestModelQueries:
     """Tests for complex model queries."""

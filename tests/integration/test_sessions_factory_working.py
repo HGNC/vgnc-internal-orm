@@ -1,32 +1,25 @@
 """Working SessionFactory comprehensive tests based on actual module structure."""
 
 import pytest
-import tempfile
-import os
-from unittest.mock import Mock, patch, MagicMock
-from sqlalchemy import create_engine, text, inspect
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool, QueuePool, NullPool
+from sqlalchemy import text
+from sqlalchemy.pool import NullPool, QueuePool
 
+from vgnc_internal_orm.config.settings import (
+    DatabaseConfig,
+    DatabaseDriver,
+    Environment,
+)
 from vgnc_internal_orm.sessions.factory import (
     SessionFactory,
-    get_session_factory,
-    reset_global_session_factory,
-    engine_from_config,
-    async_engine_from_config,
-    get_session,
-    get_async_session,
-    create_session_factory_with_config,
-    health_check_from_config,
-    async_health_check_from_config,
-    get_engine_info_from_config,
-    get_pool_status_from_config,
-    get_session_context,
-    get_async_session_context,
     check_database_connection,
-    check_async_database_connection,
+    create_session_factory_with_config,
+    engine_from_config,
+    get_session,
+    get_session_context,
+    get_session_factory,
+    health_check_from_config,
+    reset_global_session_factory,
 )
-from vgnc_internal_orm.config.settings import DatabaseConfig, DatabaseDriver, Environment
 
 
 class TestSessionFactoryCoreFunctionality:
@@ -45,7 +38,7 @@ class TestSessionFactoryCoreFunctionality:
             database="test_database",
             host="localhost",
             driver=DatabaseDriver.SQLITE,
-            _env_file=None
+            _env_file=None,
         )
         factory = SessionFactory(config)
         assert factory.config == config
@@ -55,9 +48,7 @@ class TestSessionFactoryCoreFunctionality:
     def test_sqlite_engine_creation(self):
         """Test engine creation with SQLite configuration."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
         factory = SessionFactory(config)
         engine = factory.engine
@@ -73,7 +64,7 @@ class TestSessionFactoryCoreFunctionality:
             host="localhost",
             port=3306,
             driver=DatabaseDriver.MYSQL,
-            _env_file=None
+            _env_file=None,
         )
         factory = SessionFactory(config)
         # Should create engine without actual connection
@@ -88,9 +79,7 @@ class TestSessionFactoryCoreFunctionality:
     def test_session_creation(self):
         """Test session creation from factory."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
         factory = SessionFactory(config)
         session = factory.create_session()
@@ -100,9 +89,7 @@ class TestSessionFactoryCoreFunctionality:
     def test_health_check_sqlite(self):
         """Test health check functionality with SQLite."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
         factory = SessionFactory(config)
         health = factory.health_check()
@@ -111,9 +98,7 @@ class TestSessionFactoryCoreFunctionality:
     def test_engine_info(self):
         """Test engine information retrieval."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
         factory = SessionFactory(config)
         info = factory.get_engine_info()
@@ -123,26 +108,24 @@ class TestSessionFactoryCoreFunctionality:
     def test_pool_status_sqlite(self):
         """Test pool status for SQLite."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
         factory = SessionFactory(config)
         # Access engine to initialize it
         _ = factory.engine
         status = factory.get_pool_status()
         assert "status" in status
-        assert "StaticPool" in status.get("status", "") or "Not initialized" in status.get("status", "")
+        assert "StaticPool" in status.get(
+            "status", ""
+        ) or "Not initialized" in status.get("status", "")
 
     def test_dispose_engine(self):
         """Test engine disposal."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
         factory = SessionFactory(config)
-        engine = factory.engine
+        _ = factory.engine
         factory.dispose_engine()
         assert factory._engine is None
 
@@ -178,9 +161,7 @@ class TestHelperFunctions:
     def test_engine_from_config(self):
         """Test engine creation from config."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
         engine = engine_from_config(config)
         assert engine is not None
@@ -189,9 +170,7 @@ class TestHelperFunctions:
     def test_get_session_with_config(self):
         """Test session creation with config."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
         session = get_session(config)
         assert session is not None
@@ -212,9 +191,7 @@ class TestHelperFunctions:
     def test_health_check_from_config(self):
         """Test health check with config."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
         health = health_check_from_config(config)
         assert health is True
@@ -222,9 +199,7 @@ class TestHelperFunctions:
     def test_create_session_factory_with_config(self):
         """Test creating factory with config."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
         factory = create_session_factory_with_config(config)
         assert factory is not None
@@ -238,9 +213,7 @@ class TestContextManagers:
     def test_get_session_context(self):
         """Test session context manager."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
 
         with get_session_context(config) as session:
@@ -252,9 +225,7 @@ class TestContextManagers:
     def test_check_database_connection(self):
         """Test database connection check."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
         connection = check_database_connection(config)
         assert connection is True
@@ -266,9 +237,7 @@ class TestPoolConfiguration:
     def test_sqlite_pool_config(self):
         """Test SQLite pool configuration."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
         factory = SessionFactory(config)
         pool_config = factory._get_pool_config()
@@ -285,7 +254,7 @@ class TestPoolConfiguration:
             password="test",
             database="test",
             host="localhost",
-            _env_file=None
+            _env_file=None,
         )
         factory = SessionFactory(config)
         pool_config = factory._get_pool_config(is_async=False)
@@ -301,7 +270,7 @@ class TestPoolConfiguration:
             password="test",
             database="test",
             host="localhost",
-            _env_file=None
+            _env_file=None,
         )
         factory = SessionFactory(config)
         pool_config = factory._get_pool_config(is_async=True)
@@ -323,7 +292,7 @@ class TestConnectArguments:
             host="localhost",
             charset="utf8mb4",
             collation="utf8mb4_unicode_ci",
-            _env_file=None
+            _env_file=None,
         )
         factory = SessionFactory(config)
         connect_args = factory._get_connect_args()
@@ -334,9 +303,7 @@ class TestConnectArguments:
     def test_sqlite_connect_args(self):
         """Test SQLite connection arguments."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
         factory = SessionFactory(config)
         pool_config = factory._get_pool_config()
@@ -379,7 +346,7 @@ class TestEnvironmentSpecificConfig:
             database="test",
             host="localhost",
             environment=Environment.DEVELOPMENT,
-            _env_file=None
+            _env_file=None,
         )
         factory = SessionFactory(config)
         pool_config = factory._get_pool_config()
@@ -396,7 +363,7 @@ class TestEnvironmentSpecificConfig:
             database="test",
             host="localhost",
             environment=Environment.PRODUCTION,
-            _env_file=None
+            _env_file=None,
         )
         factory = SessionFactory(config)
         pool_config = factory._get_pool_config()
@@ -413,7 +380,7 @@ class TestEnvironmentSpecificConfig:
             database="test",
             host="localhost",
             environment=Environment.STAGING,
-            _env_file=None
+            _env_file=None,
         )
         factory = SessionFactory(config)
         pool_config = factory._get_pool_config()
@@ -428,9 +395,7 @@ class TestEdgeCases:
     def test_multiple_engine_access(self):
         """Test accessing engine multiple times returns same instance."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
         factory = SessionFactory(config)
         engine1 = factory.engine
@@ -440,9 +405,7 @@ class TestEdgeCases:
     def test_multiple_session_factory_access(self):
         """Test accessing session factory multiple times returns same instance."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
         factory = SessionFactory(config)
         sf1 = factory.session_factory
@@ -452,9 +415,7 @@ class TestEdgeCases:
     def test_close_all_sessions(self):
         """Test closing all sessions."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
         factory = SessionFactory(config)
 

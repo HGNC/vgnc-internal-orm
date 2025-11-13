@@ -2,17 +2,15 @@
 
 from unittest.mock import Mock
 
-import pytest
-
 from src.vgnc_internal_orm.cli.main import (
+    display_species_csv,
+    display_species_json,
+    display_species_table,
     ensure_config_loaded,
-    format_species_as_xml,
-    format_genefam_as_xml,
     format_assembly_as_xml,
     format_chromosomes_as_xml,
-    display_species_table,
-    display_species_json,
-    display_species_csv,
+    format_genefam_as_xml,
+    format_species_as_xml,
     get_session,
 )
 
@@ -220,7 +218,7 @@ class TestGetSessionFunction:
             password="test",
             database="test.db",
             driver=DatabaseDriver.SQLITE,
-            _env_file=None
+            _env_file=None,
         )
 
         # This should create a session without errors
@@ -236,7 +234,7 @@ class TestGetSessionFunction:
             password="test",
             database="test.db",
             driver=DatabaseDriver.SQLITE,
-            _env_file=None
+            _env_file=None,
         )
 
         # This should create a session without errors

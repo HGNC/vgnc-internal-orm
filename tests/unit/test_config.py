@@ -26,7 +26,7 @@ class TestDatabaseConfig:
             password="test_password",
             database="test_db",
             driver=DatabaseDriver.MYSQL,
-            _env_file=None  # Disable environment file loading for tests
+            _env_file=None,  # Disable environment file loading for tests
         )
         assert config.username == "test_user"
         assert config.password.get_secret_value() == "test_password"
@@ -79,7 +79,7 @@ class TestDatabaseConfig:
                 username="",  # Empty username should fail
                 password="pass",
                 database="db",
-                _env_file=None  # Disable environment file loading for tests
+                _env_file=None,  # Disable environment file loading for tests
             )
         assert "username" in str(exc_info.value)
 
