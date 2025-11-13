@@ -244,6 +244,9 @@ jobs:
         pip install -e ".[test,performance]"
         pip install pytest-benchmark
 
+    - name: Create test results directory
+      run: mkdir -p test-results
+
     - name: Run performance benchmarks
       run: |
         python -m pytest tests/performance/ \
@@ -309,6 +312,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[test]"
 
+    - name: Create test results directory
+      run: mkdir -p test-results
+
     - name: Run load test - ${{ matrix.test-scenario.name }}
       run: |
         python simple_load_test.py \
@@ -342,18 +348,18 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
 
+    - name: Create test results directory
+      run: mkdir -p test-results
+
     - name: Run code quality checks
       run: |
         # Format check
         black --check --diff src/ tests/
 
-        # Import sorting check
-        isort --check-only --diff src/ tests/
+        # Import sorting and linting check
+        ruff check src/ tests/
 
-        # Linting
-        flake8 src/ tests/ --max-line-length=120 --extend-ignore=E203,W503
-
-        # Type checking (if available)
+        # Type checking
         mypy src/ --ignore-missing-imports || true
 
     - name: Run security checks
@@ -390,7 +396,7 @@ jobs:
 
     - name: Build package
       run: |
-        python -m pip install --upgrade pip build
+        python -m pip install --upgrade pip build twine
         python -m build
 
     - name: Check package
