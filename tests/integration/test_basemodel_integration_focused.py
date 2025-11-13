@@ -1,4 +1,8 @@
-"""Integration tests for BaseModel functions to improve coverage."""
+"""Integration tests for BaseModel functions to improve coverage.
+
+Note: TimestampMixin tests have been consolidated into
+tests/unit/test_timestamp_mixin_consolidated.py
+"""
 
 from datetime import UTC, datetime
 from unittest.mock import Mock
@@ -7,53 +11,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from src.vgnc_internal_orm.models.base import BaseModel, TimestampMixin, BaseCustomModel
-
-
-class TestTimestampMixinIntegration:
-    """Integration tests for TimestampMixin."""
-
-    def test_timestamp_mixin_with_real_instance(self):
-        """Test TimestampMixin with a real instance."""
-        class TestModel:
-            pass
-
-        # Add TimestampMixin to the model
-        TestModel.touch = TimestampMixin.touch
-
-        instance = TestModel()
-
-        # Test touch functionality
-        before_time = datetime.now(UTC)
-        instance.touch()
-        after_time = datetime.now(UTC)
-
-        assert hasattr(instance, 'updated_at')
-        assert isinstance(instance.updated_at, datetime)
-        assert instance.updated_at.tzinfo == UTC
-        assert before_time <= instance.updated_at <= after_time
-
-    def test_timestamp_mixin_multiple_touches(self):
-        """Test TimestampMixin with multiple touches."""
-        class TestModel:
-            pass
-
-        TestModel.touch = TimestampMixin.touch
-        instance = TestModel()
-
-        # First touch
-        instance.touch()
-        first_time = instance.updated_at
-
-        # Small delay
-        import time
-        time.sleep(0.001)
-
-        # Second touch
-        instance.touch()
-        second_time = instance.updated_at
-
-        assert second_time >= first_time
+from src.vgnc_internal_orm.models.base import BaseModel, BaseCustomModel
 
 
 class TestBaseModelUtilityIntegration:
@@ -176,33 +134,21 @@ class TestBaseCustomModelIntegration:
 
         # Test that it inherits from BaseCustomModel
         assert issubclass(TestCustomModel, BaseCustomModel)
-        assert issubclass(TestCustomModel, TimestampMixin)
 
-        # Test that it has timestamp attributes
-        assert hasattr(TestCustomModel, 'created_at')
-        assert hasattr(TestCustomModel, 'updated_at')
-        assert hasattr(TestCustomModel, 'touch')
+    def test_base_custom_model_basic_functionality(self):
+        """Test BaseCustomModel basic functionality."""
 
-    def test_base_custom_model_touch_functionality(self):
-        """Test BaseCustomModel touch functionality."""
+        class TestCustomModelBasic(BaseCustomModel):
+            __tablename__ = "test_custom_model_basic"
 
-        class TestCustomModelTouch(BaseCustomModel):
-            __tablename__ = "test_custom_model_touch"
-            
             from sqlalchemy import Column, Integer, String
             custom_id = Column(String(50), primary_key=True)
 
-        instance = TestCustomModelTouch(custom_id="TEST_001")
+        instance = TestCustomModelBasic(custom_id="TEST_001")
 
-        # Test touch method from TimestampMixin
-        assert hasattr(instance, 'touch')
-        assert callable(instance.touch)
-
-        # Call touch and verify it updates timestamp
-        instance.touch()
-        assert hasattr(instance, 'updated_at')
-        assert isinstance(instance.updated_at, datetime)
-        assert instance.updated_at.tzinfo == UTC
+        # Test basic instantiation
+        assert hasattr(instance, 'custom_id')
+        assert instance.custom_id == "TEST_001"
 
 
 class TestBaseModelClassMethodIntegration:

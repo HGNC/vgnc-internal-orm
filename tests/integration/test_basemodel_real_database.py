@@ -180,24 +180,57 @@ class TestRealBaseCustomModel:
         self.engine = create_engine("sqlite:///:memory:", echo=False)
         self.SessionLocal = sessionmaker(bind=self.engine)
 
-        # Create a real custom model
-        class TestCustomModel(BaseCustomModel):
+        # Create a real custom model using a separate registry to avoid contaminating shared metadata
+        from datetime import datetime
+        from sqlalchemy import DateTime
+        from sqlalchemy.orm import Mapped, mapped_column, registry
+        from sqlalchemy.sql import func
+        
+        # Use a local registry that won't contaminate the shared registry
+        local_registry = registry()
+        
+        class TimestampMixin:
+            """Local timestamp mixin for test."""
+            created_at: Mapped[datetime] = mapped_column(
+                DateTime(timezone=True),
+                server_default=func.now(),
+                nullable=False,
+            )
+            updated_at: Mapped[datetime] = mapped_column(
+                DateTime(timezone=True),
+                server_default=func.now(),
+                onupdate=func.now(),
+                nullable=False,
+            )
+            
+            def touch(self) -> None:
+                """Update the updated_at timestamp."""
+                from datetime import UTC
+                self.updated_at = datetime.now(UTC)
+        
+        @local_registry.mapped
+        class TestCustomModel(TimestampMixin):
             __tablename__ = "test_custom_model"
-            __table_args__ = {'extend_existing': True}
 
-            # Custom primary key
-            custom_id = Column(String(50), primary_key=True)
-            name = Column(String(100), nullable=False)
-            category = Column(String(50), nullable=False)
+            # Custom primary key (not 'id')
+            custom_id: Mapped[str] = mapped_column(String(50), primary_key=True)
+            name: Mapped[str] = mapped_column(String(100), nullable=False)
+            category: Mapped[str] = mapped_column(String(50), nullable=False)
 
         self.TestCustomModel = TestCustomModel
+        self.local_registry = local_registry
 
-        # Create only the test table, not all metadata tables
-        # This avoids issues with Genefam's foreign keys to editor
-        TestCustomModel.__table__.create(bind=self.engine, checkfirst=True)
+        # Create tables using the local registry's metadata
+        local_registry.metadata.create_all(bind=self.engine)
 
     def teardown_method(self):
         """Clean up database."""
+        # Drop tables using the local registry's metadata
+        try:
+            self.local_registry.metadata.drop_all(bind=self.engine)
+        except Exception:
+            pass  # Tables might not exist
+        
         self.engine.dispose()
 
     def test_basecustommodel_real_instance_creation(self):

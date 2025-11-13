@@ -1,49 +1,15 @@
-"""Targeted tests for BaseModel functions to improve coverage."""
+"""Targeted tests for BaseModel functions to improve coverage.
+
+Note: TimestampMixin tests have been consolidated into
+tests/unit/test_timestamp_mixin_consolidated.py
+"""
 
 from datetime import UTC, datetime
 from unittest.mock import Mock
 
 import pytest
 
-from src.vgnc_internal_orm.models.base import BaseModel, TimestampMixin
-
-
-class TestTimestampMixinFunctions:
-    """Test TimestampMixin functions."""
-
-    def test_touch_method_timestamp_update(self):
-        """Test touch method updates timestamp correctly."""
-        mock_instance = Mock()
-
-        # Record time before touching
-        before_time = datetime.now(UTC)
-
-        # Apply touch method
-        TimestampMixin.touch(mock_instance)
-
-        # Check timestamp was updated
-        assert hasattr(mock_instance, 'updated_at')
-        assert isinstance(mock_instance.updated_at, datetime)
-        assert mock_instance.updated_at.tzinfo == UTC
-
-    def test_touch_method_multiple_calls(self):
-        """Test touch method can be called multiple times."""
-        mock_instance = Mock()
-
-        # First touch
-        TimestampMixin.touch(mock_instance)
-        first_time = mock_instance.updated_at
-
-        # Small delay to ensure different timestamp
-        import time
-        time.sleep(0.001)
-
-        # Second touch
-        TimestampMixin.touch(mock_instance)
-        second_time = mock_instance.updated_at
-
-        # Should be different times
-        assert second_time >= first_time
+from src.vgnc_internal_orm.models.base import BaseModel
 
 
 class TestBaseModelClassMethods:
