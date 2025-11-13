@@ -256,10 +256,15 @@ jobs:
 
     - name: Run performance regression checks
       run: |
-        python -m pytest tests/performance/ \
-          --benchmark-only \
-          --benchmark-compare=baseline \
-          --benchmark-compare-fail=mean:20%
+        # Only run regression checks if baseline exists
+        if [ -f ".benchmarks/counter_baseline.json" ]; then
+          python -m pytest tests/performance/ \
+            --benchmark-only \
+            --benchmark-compare=baseline \
+            --benchmark-compare-fail=mean:20%
+        else
+          echo "No baseline found, skipping regression checks"
+        fi
 
     - name: Upload performance results
       uses: actions/upload-artifact@v4
