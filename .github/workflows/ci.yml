@@ -259,7 +259,7 @@ jobs:
         python -m pytest tests/performance/ \
           --benchmark-only \
           --benchmark-compare=baseline \
-          --benchmark-compare-fail=20%
+          --benchmark-compare-fail=mean:20%
 
     - name: Upload performance results
       uses: actions/upload-artifact@v4
