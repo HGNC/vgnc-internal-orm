@@ -9,11 +9,11 @@ import io
 import json
 import os
 import sys
+import xml.etree.ElementTree as ET  # nosec B405: Only used for creating XML from internal data
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import click
-import defusedxml.ElementTree as ET
 from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -119,6 +119,7 @@ def ensure_config_loaded(ctx: click.Context) -> None:
 
 
 # Export utility functions
+# Note: Using standard xml.etree.ElementTree for creation; defusedxml is used for parsing untrusted input
 def format_species_as_xml(species_list: list[Species]) -> str:
     """Format species data as XML with proper UTF8MB4 encoding support."""
     root = ET.Element("species")
@@ -153,7 +154,10 @@ def format_species_as_xml(species_list: list[Species]) -> str:
 
 
 def format_genefam_as_xml(genefam_list: list[Genefam]) -> str:
-    """Format genefam data as XML with proper UTF8MB4 encoding support."""
+    """Format genefam data as XML with proper UTF8MB4 encoding support.
+
+    Uses standard xml.etree.ElementTree for safe creation of XML from internal data.
+    """
     root = ET.Element("genefams")
 
     for genefam in genefam_list:
@@ -183,7 +187,10 @@ def format_genefam_as_xml(genefam_list: list[Genefam]) -> str:
 
 
 def format_assembly_as_xml(assembly_list: list[Assembly]) -> str:
-    """Format assembly data as XML with proper UTF8MB4 encoding support."""
+    """Format assembly data as XML with proper UTF8MB4 encoding support.
+
+    Uses standard xml.etree.ElementTree for safe creation of XML from internal data.
+    """
     root = ET.Element("assemblies")
 
     for assembly in assembly_list:
@@ -216,7 +223,10 @@ def format_assembly_as_xml(assembly_list: list[Assembly]) -> str:
 
 
 def format_chromosomes_as_xml(chromosomes_list: list[Chromosomes]) -> str:
-    """Format chromosomes data as XML with proper UTF8MB4 encoding support."""
+    """Format chromosomes data as XML with proper UTF8MB4 encoding support.
+
+    Uses standard xml.etree.ElementTree for safe creation of XML from internal data.
+    """
     root = ET.Element("chromosomes")
 
     for chromosomes in chromosomes_list:
