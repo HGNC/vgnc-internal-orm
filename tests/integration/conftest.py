@@ -193,12 +193,16 @@ def mysql_session(mysql_engine) -> Generator[Session, None, None]:
     # Create unified metadata for testing
     unified_metadata = MetaData()
 
-    # Add all tables from both metadata registries
+    # Add all tables from both metadata registries without duplicates
+    # Start with BaseModel tables
     for table in BaseModel.metadata.tables.values():
         table.to_metadata(unified_metadata)
 
+    # Add only tables from BaseCustomModel that don't already exist
+    existing_table_names = set(unified_metadata.tables.keys())
     for table in BaseCustomModel.metadata.tables.values():
-        table.to_metadata(unified_metadata)
+        if table.name not in existing_table_names:
+            table.to_metadata(unified_metadata)
 
     # Create all tables
     unified_metadata.create_all(mysql_engine)
