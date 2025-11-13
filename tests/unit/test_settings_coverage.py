@@ -3,10 +3,6 @@
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
-
-import pytest
-from pydantic import ValidationError
 
 from src.vgnc_internal_orm.config.settings import (
     DatabaseConfig,
@@ -39,11 +35,11 @@ class TestSettingsCoverage:
             password="test_password",
             database="test_db",
             driver=DatabaseDriver.MYSQL,
-            _env_file=None
+            _env_file=None,
         )
 
         # Test that validation methods exist and can be called
-        assert hasattr(config, 'model_validate')
+        assert hasattr(config, "model_validate")
 
     def test_settings_model_validation(self):
         """Test Settings model validation."""
@@ -53,7 +49,7 @@ class TestSettingsCoverage:
                 "password": "test_password",
                 "database": "test_db",
                 "driver": DatabaseDriver.MYSQL,
-                "_env_file": None
+                "_env_file": None,
             }
         )
 
@@ -77,8 +73,8 @@ class TestSettingsCoverage:
                 "host": "localhost",
                 "port": 3306,
                 "driver": DatabaseDriver.MYSQL,
-                "_env_file": None
-            }
+                "_env_file": None,
+            },
         )
 
         assert settings.app_name == "Test App"
@@ -95,15 +91,13 @@ class TestSettingsCoverage:
             username="user",
             password="pass",
             database="test_db",
-            _env_file=None
+            _env_file=None,
         )
         assert mysql_config.driver == DatabaseDriver.MYSQL
 
         # Test SQLite driver
         sqlite_config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database="test.db",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database="test.db", _env_file=None
         )
         assert sqlite_config.driver == DatabaseDriver.SQLITE
 
@@ -126,7 +120,7 @@ class TestSettingsCoverage:
                 ssl_ca=Path(temp_path),
                 connect_timeout=30,
                 echo=True,
-                _env_file=None
+                _env_file=None,
             )
 
             assert config.host == "custom-host"
@@ -140,21 +134,25 @@ class TestSettingsCoverage:
     def test_settings_helper_methods(self):
         """Test Settings environment helper methods."""
         # Test each environment
-        for env in [Environment.DEVELOPMENT, Environment.PRODUCTION, Environment.TESTING]:
+        for env in [
+            Environment.DEVELOPMENT,
+            Environment.PRODUCTION,
+            Environment.TESTING,
+        ]:
             settings = Settings(
                 environment=env,
                 database={
                     "username": "test_user",
                     "password": "test_password",
                     "database": "test_db",
-                    "_env_file": None
-                }
+                    "_env_file": None,
+                },
             )
 
             # Test that helper methods exist
-            assert hasattr(settings, 'is_development')
-            assert hasattr(settings, 'is_production')
-            assert hasattr(settings, 'is_testing')
+            assert hasattr(settings, "is_development")
+            assert hasattr(settings, "is_production")
+            assert hasattr(settings, "is_testing")
 
     def test_database_config_edge_cases(self):
         """Test DatabaseConfig edge cases."""
@@ -164,7 +162,7 @@ class TestSettingsCoverage:
             password="pass",
             database="test_db",
             port=5432,  # Non-standard port
-            _env_file=None
+            _env_file=None,
         )
         assert config.port == 5432
 
@@ -175,7 +173,7 @@ class TestSettingsCoverage:
             database="test.db",
             driver=DatabaseDriver.SQLITE,
             echo=False,
-            _env_file=None
+            _env_file=None,
         )
         assert config.echo is False
 
@@ -187,19 +185,19 @@ class TestSettingsCoverage:
                 "username": "test_user",
                 "password": "test_password",
                 "database": "test_db",
-                "_env_file": None
-            }
+                "_env_file": None,
+            },
         )
 
         # Test that standard Pydantic methods work
-        assert hasattr(settings, 'model_dump')
-        assert hasattr(settings, 'model_dump_json')
-        assert hasattr(settings, 'model_validate')
+        assert hasattr(settings, "model_dump")
+        assert hasattr(settings, "model_dump_json")
+        assert hasattr(settings, "model_validate")
 
         # Test model_dump
         data = settings.model_dump()
-        assert 'app_name' in data
-        assert 'database' in data
+        assert "app_name" in data
+        assert "database" in data
 
         # Test model_dump_json
         json_str = settings.model_dump_json()
@@ -211,13 +209,13 @@ class TestSettingsCoverage:
             username="test_user",
             password="test_password",
             database="test_db",
-            _env_file=None
+            _env_file=None,
         )
 
         # Test secret field methods
-        assert hasattr(config.password, 'get_secret_value')
-        assert hasattr(config.database_url, 'get_secret_value')
-        assert hasattr(config.async_database_url, 'get_secret_value')
+        assert hasattr(config.password, "get_secret_value")
+        assert hasattr(config.database_url, "get_secret_value")
+        assert hasattr(config.async_database_url, "get_secret_value")
 
         # Test that secret values are not exposed in string representation
         password_str = str(config.password)

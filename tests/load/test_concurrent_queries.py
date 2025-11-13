@@ -52,7 +52,9 @@ class TestConcurrentReadOperations:
 
         # Basic result validation
         assert result.successful_requests > 0
-        assert result.error_rate < 0.015  # Allow 1.5% error rate for concurrent operations
+        assert (
+            result.error_rate < 0.015
+        )  # Allow 1.5% error rate for concurrent operations
         print(f"Throughput: {result.throughput:.2f} ops/sec")
         print(f"P95 Response Time: {result.p95_response_time*1000:.2f}ms")
 

@@ -535,7 +535,7 @@ class BaseModel(TimestampMixin, UnifiedBase):
     def set_field_value(self, field_name: str, value: Any) -> bool:
         """Set field value. Creates field if it doesn't exist."""
         # For SQLAlchemy models, prefer mapped columns
-        if hasattr(self, '__table__') and field_name in self.__table__.columns:
+        if hasattr(self, "__table__") and field_name in self.__table__.columns:
             setattr(self, field_name, value)
             return True
         # Allow setting any attribute (for flexibility with non-mapped attributes)
@@ -546,7 +546,7 @@ class BaseModel(TimestampMixin, UnifiedBase):
         """Check if model has a specific field."""
         if not hasattr(self, field_name):
             return False
-        if hasattr(self, '__table__'):
+        if hasattr(self, "__table__"):
             return field_name in self.__table__.columns
         # For non-SQLAlchemy models, just check attribute existence
         return True
@@ -739,8 +739,7 @@ class BaseModel(TimestampMixin, UnifiedBase):
         """
         # Lazy imports to avoid circular dependencies
         try:
-            from sqlalchemy import and_, or_, text
-            from sqlalchemy.orm import Session
+            from sqlalchemy import or_, text
         except ImportError as e:
             raise ImportError("SQLAlchemy is required for charset-aware search") from e
 
@@ -786,7 +785,9 @@ class BaseModel(TimestampMixin, UnifiedBase):
             return []
 
         # Combine conditions with OR and bind parameters
-        query = session.query(cls).filter(or_(*conditions)).params(search_term=search_term)
+        query = (
+            session.query(cls).filter(or_(*conditions)).params(search_term=search_term)
+        )
 
         return query.all()
 
@@ -822,8 +823,7 @@ class BaseModel(TimestampMixin, UnifiedBase):
         """
         # Lazy imports to avoid circular dependencies
         try:
-            from sqlalchemy import and_, or_, text
-            from sqlalchemy.ext.asyncio import AsyncSession
+            from sqlalchemy import or_, text
         except ImportError as e:
             raise ImportError("SQLAlchemy is required for charset-aware search") from e
 
@@ -875,122 +875,6 @@ class BaseModel(TimestampMixin, UnifiedBase):
         result = await session.execute(stmt)
 
         return result.scalars().all()
-
-    # Charset-aware query helper methods
-    @classmethod
-    def search_with_charset_support(
-        cls,
-        session: Session,
-        search_term: str,
-        *field_names: str,
-        case_sensitive: bool = False,
-        exact_match: bool = False,
-    ) -> list["BaseModel"]:
-        """
-        Search model with proper charset support for international characters.
-
-        Args:
-            session: SQLAlchemy session
-            search_term: Text to search for
-            *field_names: Field names to search in
-            case_sensitive: Whether search should be case sensitive
-            exact_match: Whether to require exact match
-
-        Returns:
-            List of matching model instances
-        """
-        from sqlalchemy import or_
-        from sqlalchemy.sql import collate
-
-        if not field_names:
-            field_names = ()  # Use empty tuple instead of list
-
-        # Build search conditions for each field
-        conditions = []
-        for field_name in field_names:
-            if hasattr(cls, field_name):
-                field = getattr(cls, field_name)
-
-                if case_sensitive:
-                    if exact_match:
-                        condition = field == search_term
-                    else:
-                        condition = field.contains(search_term)
-                else:
-                    # Use COLLATE for case-insensitive search with proper charset support
-                    if exact_match:
-                        condition = collate(field, "utf8mb4_unicode_ci") == search_term
-                    else:
-                        condition = collate(field, "utf8mb4_unicode_ci").contains(
-                            search_term
-                        )
-
-                conditions.append(condition)
-
-        if not conditions:
-            return []
-
-        # Combine conditions with OR
-        query = session.query(cls).filter(or_(*conditions))
-        return query.all()
-
-    @classmethod
-    async def asearch_with_charset_support(
-        cls,
-        session: AsyncSession,
-        search_term: str,
-        *field_names: str,
-        case_sensitive: bool = False,
-        exact_match: bool = False,
-    ) -> list["BaseModel"]:
-        """
-        Async version of search_with_charset_support.
-
-        Args:
-            session: Async SQLAlchemy session
-            search_term: Text to search for
-            *field_names: Field names to search in
-            case_sensitive: Whether search should be case sensitive
-            exact_match: Whether to require exact match
-
-        Returns:
-            List of matching model instances
-        """
-        from sqlalchemy import or_, select
-        from sqlalchemy.sql import collate
-
-        if not field_names:
-            field_names = ()  # Use empty tuple instead of list
-
-        # Build search conditions for each field
-        conditions = []
-        for field_name in field_names:
-            if hasattr(cls, field_name):
-                field = getattr(cls, field_name)
-
-                if case_sensitive:
-                    if exact_match:
-                        condition = field == search_term
-                    else:
-                        condition = field.contains(search_term)
-                else:
-                    # Use COLLATE for case-insensitive search with proper charset support
-                    if exact_match:
-                        condition = collate(field, "utf8mb4_unicode_ci") == search_term
-                    else:
-                        condition = collate(field, "utf8mb4_unicode_ci").contains(
-                            search_term
-                        )
-
-                conditions.append(condition)
-
-        if not conditions:
-            return []
-
-        # Combine conditions with OR
-        stmt = select(cls).filter(or_(*conditions))
-        result = await session.execute(stmt)
-        return list(result.scalars().all())
 
 
 class BaseCustomModel(TimestampMixin, UnifiedBase):
@@ -1143,8 +1027,7 @@ class BaseCustomModel(TimestampMixin, UnifiedBase):
         """
         # Lazy imports to avoid circular dependencies
         try:
-            from sqlalchemy import and_, or_, text
-            from sqlalchemy.orm import Session
+            from sqlalchemy import or_, text
         except ImportError as e:
             raise ImportError("SQLAlchemy is required for charset-aware search") from e
 
@@ -1190,7 +1073,9 @@ class BaseCustomModel(TimestampMixin, UnifiedBase):
             return []
 
         # Combine conditions with OR and bind parameters
-        query = session.query(cls).filter(or_(*conditions)).params(search_term=search_term)
+        query = (
+            session.query(cls).filter(or_(*conditions)).params(search_term=search_term)
+        )
 
         return query.all()
 
@@ -1226,8 +1111,7 @@ class BaseCustomModel(TimestampMixin, UnifiedBase):
         """
         # Lazy imports to avoid circular dependencies
         try:
-            from sqlalchemy import and_, or_, text
-            from sqlalchemy.ext.asyncio import AsyncSession
+            from sqlalchemy import or_, text
         except ImportError as e:
             raise ImportError("SQLAlchemy is required for charset-aware search") from e
 

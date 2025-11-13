@@ -7,11 +7,7 @@ tests/unit/test_timestamp_mixin_consolidated.py
 from datetime import UTC, datetime
 from unittest.mock import Mock
 
-import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-
-from src.vgnc_internal_orm.models.base import BaseModel, BaseCustomModel
+from src.vgnc_internal_orm.models.base import BaseCustomModel, BaseModel
 
 
 class TestBaseModelUtilityIntegration:
@@ -34,25 +30,27 @@ class TestBaseModelUtilityIntegration:
         mock_instance.get_field_value = BaseModel.get_field_value.__get__(mock_instance)
         mock_instance.set_field_value = BaseModel.set_field_value.__get__(mock_instance)
         mock_instance.has_field = BaseModel.has_field.__get__(mock_instance)
-        mock_instance.get_primary_key_value = BaseModel.get_primary_key_value.__get__(mock_instance)
+        mock_instance.get_primary_key_value = BaseModel.get_primary_key_value.__get__(
+            mock_instance
+        )
         mock_instance.is_persisted = BaseModel.is_persisted.__get__(mock_instance)
 
         # Test get_field_value
-        assert mock_instance.get_field_value('name') == "Test"
-        assert mock_instance.get_field_value('nonexistent', 'default') == "default"
+        assert mock_instance.get_field_value("name") == "Test"
+        assert mock_instance.get_field_value("nonexistent", "default") == "default"
 
         # Test set_field_value
-        result = mock_instance.set_field_value('name', 'Updated')
+        result = mock_instance.set_field_value("name", "Updated")
         assert result is True
         assert mock_instance.name == "Updated"
 
-        result = mock_instance.set_field_value('new_field', 'new_value')
+        result = mock_instance.set_field_value("new_field", "new_value")
         assert result is True
         assert mock_instance.new_field == "new_value"
 
         # Test has_field
-        assert mock_instance.has_field('name') is True
-        assert mock_instance.has_field('nonexistent') is False
+        assert mock_instance.has_field("name") is True
+        assert mock_instance.has_field("nonexistent") is False
 
         # Test get_primary_key_value
         assert mock_instance.get_primary_key_value() == 1
@@ -62,7 +60,6 @@ class TestBaseModelUtilityIntegration:
 
     def test_base_model_repr_methods(self):
         """Test BaseModel __repr__ and __str__ methods."""
-        from types import MethodType
 
         class TestModel:
             def __init__(self):
@@ -104,14 +101,14 @@ class TestBaseModelUtilityIntegration:
 
         # Test _serialize_relationship method
         mock_instance = BaseModel.__new__(BaseModel)
-        
+
         # Test with mock that has to_dict method - should call to_dict()
         mock_with_to_dict = Mock()
-        mock_with_to_dict.to_dict.return_value = {'id': 1, 'name': 'test'}
+        mock_with_to_dict.to_dict.return_value = {"id": 1, "name": "test"}
         result_rel = mock_instance._serialize_relationship(mock_with_to_dict, "iso")
-        assert result_rel == {'id': 1, 'name': 'test'}  # Should call to_dict()
+        assert result_rel == {"id": 1, "name": "test"}  # Should call to_dict()
         mock_with_to_dict.to_dict.assert_called_once_with(datetime_format="iso")
-        
+
         # Test with value that doesn't have to_dict - should return as-is
         simple_value = "simple string"
         result_simple = mock_instance._serialize_relationship(simple_value, "iso")
@@ -129,6 +126,7 @@ class TestBaseCustomModelIntegration:
 
             # Mock table structure for testing
             from sqlalchemy import Column, Integer, String
+
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
 
@@ -142,12 +140,13 @@ class TestBaseCustomModelIntegration:
             __tablename__ = "test_custom_model_basic"
 
             from sqlalchemy import Column, Integer, String
+
             custom_id = Column(String(50), primary_key=True)
 
         instance = TestCustomModelBasic(custom_id="TEST_001")
 
         # Test basic instantiation
-        assert hasattr(instance, 'custom_id')
+        assert hasattr(instance, "custom_id")
         assert instance.custom_id == "TEST_001"
 
 
@@ -158,19 +157,19 @@ class TestBaseModelClassMethodIntegration:
         """Test that BaseModel class methods exist and are callable."""
 
         # Test class methods exist
-        assert hasattr(BaseModel, 'get_table_name')
+        assert hasattr(BaseModel, "get_table_name")
         assert callable(BaseModel.get_table_name)
 
-        assert hasattr(BaseModel, 'get_column_names')
+        assert hasattr(BaseModel, "get_column_names")
         assert callable(BaseModel.get_column_names)
 
-        assert hasattr(BaseModel, 'get_primary_key_columns')
+        assert hasattr(BaseModel, "get_primary_key_columns")
         assert callable(BaseModel.get_primary_key_columns)
 
-        assert hasattr(BaseModel, 'has_column')
+        assert hasattr(BaseModel, "has_column")
         assert callable(BaseModel.has_column)
 
-        assert hasattr(BaseModel, 'get_column_type')
+        assert hasattr(BaseModel, "get_column_type")
         assert callable(BaseModel.get_column_type)
 
     def test_base_model_crud_methods_exist(self):
@@ -178,11 +177,33 @@ class TestBaseModelClassMethodIntegration:
 
         # Test CRUD methods exist
         crud_methods = [
-            'save', 'asave', 'delete', 'adelete', 'refresh', 'arefresh',
-            'expire', 'aexpire', 'get_dirty_fields', 'find_by_id', 'afind_by_id',
-            'find_all', 'afind_all', 'find_one', 'afind_one', 'create', 'acreate',
-            'get_or_create', 'aget_or_create', 'update_by_id', 'aupdate_by_id',
-            'delete_by_id', 'adelete_by_id', 'count', 'acount', 'exists', 'aexists'
+            "save",
+            "asave",
+            "delete",
+            "adelete",
+            "refresh",
+            "arefresh",
+            "expire",
+            "aexpire",
+            "get_dirty_fields",
+            "find_by_id",
+            "afind_by_id",
+            "find_all",
+            "afind_all",
+            "find_one",
+            "afind_one",
+            "create",
+            "acreate",
+            "get_or_create",
+            "aget_or_create",
+            "update_by_id",
+            "aupdate_by_id",
+            "delete_by_id",
+            "adelete_by_id",
+            "count",
+            "acount",
+            "exists",
+            "aexists",
         ]
 
         for method_name in crud_methods:
@@ -195,10 +216,17 @@ class TestBaseModelClassMethodIntegration:
 
         # Test utility methods exist
         utility_methods = [
-            'to_dict', 'to_json', 'update_from_dict', 'refresh_timestamps',
-            'arefresh_timestamps', 'validate_utf8mb4_fields', 'requires_utf8mb4',
-            'sanitize_for_basic_utf8', 'get_utf8mb4_summary', 'search_with_charset_support',
-            'asearch_with_charset_support'
+            "to_dict",
+            "to_json",
+            "update_from_dict",
+            "refresh_timestamps",
+            "arefresh_timestamps",
+            "validate_utf8mb4_fields",
+            "requires_utf8mb4",
+            "sanitize_for_basic_utf8",
+            "get_utf8mb4_summary",
+            "search_with_charset_support",
+            "asearch_with_charset_support",
         ]
 
         for method_name in utility_methods:
@@ -214,14 +242,21 @@ class TestBaseModelToDictIntegration:
         """Test to_dict method signature and basic functionality."""
 
         # Test that to_dict method exists
-        assert hasattr(BaseModel, 'to_dict')
+        assert hasattr(BaseModel, "to_dict")
         assert callable(BaseModel.to_dict)
 
         # Test method accepts expected parameters
         import inspect
+
         sig = inspect.signature(BaseModel.to_dict)
 
-        expected_params = ['exclude', 'include', 'exclude_none', 'serialize_relationships', 'datetime_format']
+        expected_params = [
+            "exclude",
+            "include",
+            "exclude_none",
+            "serialize_relationships",
+            "datetime_format",
+        ]
         for param in expected_params:
             assert param in sig.parameters, f"to_dict should accept {param} parameter"
 
@@ -229,14 +264,21 @@ class TestBaseModelToDictIntegration:
         """Test to_json method signature and basic functionality."""
 
         # Test that to_json method exists
-        assert hasattr(BaseModel, 'to_json')
+        assert hasattr(BaseModel, "to_json")
         assert callable(BaseModel.to_json)
 
         # Test method accepts expected parameters
         import inspect
+
         sig = inspect.signature(BaseModel.to_json)
 
-        expected_params = ['exclude', 'include', 'exclude_none', 'serialize_relationships', 'datetime_format']
+        expected_params = [
+            "exclude",
+            "include",
+            "exclude_none",
+            "serialize_relationships",
+            "datetime_format",
+        ]
         for param in expected_params:
             assert param in sig.parameters, f"to_json should accept {param} parameter"
 
@@ -244,16 +286,19 @@ class TestBaseModelToDictIntegration:
         """Test update_from_dict method signature and basic functionality."""
 
         # Test that update_from_dict method exists
-        assert hasattr(BaseModel, 'update_from_dict')
+        assert hasattr(BaseModel, "update_from_dict")
         assert callable(BaseModel.update_from_dict)
 
         # Test method accepts expected parameters
         import inspect
+
         sig = inspect.signature(BaseModel.update_from_dict)
 
-        expected_params = ['data', 'exclude']
+        expected_params = ["data", "exclude"]
         for param in expected_params:
-            assert param in sig.parameters, f"update_from_dict should accept {param} parameter"
+            assert (
+                param in sig.parameters
+            ), f"update_from_dict should accept {param} parameter"
 
 
 class TestBaseModelWithMockDatabase:
@@ -285,12 +330,22 @@ class TestBaseModelWithMockDatabase:
         """Test that BaseModel session-dependent methods exist."""
 
         session_methods = [
-            'refresh_timestamps', 'arefresh_timestamps', 'save', 'asave',
-            'delete', 'adelete', 'refresh', 'arefresh', 'expire', 'aexpire',
-            'get_dirty_fields'
+            "refresh_timestamps",
+            "arefresh_timestamps",
+            "save",
+            "asave",
+            "delete",
+            "adelete",
+            "refresh",
+            "arefresh",
+            "expire",
+            "aexpire",
+            "get_dirty_fields",
         ]
 
         for method_name in session_methods:
-            assert hasattr(BaseModel, method_name), f"Session method {method_name} should exist"
+            assert hasattr(
+                BaseModel, method_name
+            ), f"Session method {method_name} should exist"
             method = getattr(BaseModel, method_name)
             assert callable(method), f"Session method {method_name} should be callable"

@@ -16,8 +16,8 @@ from sqlalchemy.pool import StaticPool
 
 from vgnc_internal_orm.models.base import BaseModel
 from vgnc_internal_orm.models.species import BaseCustomModel
+
 # Import supporting models to ensure they are registered in metadata
-from vgnc_internal_orm.models.supporting import Editor, GeneStatus
 
 # Try to import testcontainers, but make it optional
 try:
@@ -78,6 +78,7 @@ def integrated_test_session(integrated_test_db):
         yield session
     finally:
         session.close()
+
 
 # ============================================================================
 # MySQL Testcontainers Fixtures

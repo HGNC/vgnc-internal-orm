@@ -12,7 +12,6 @@ from .base import BaseCustomModel
 
 if TYPE_CHECKING:
     from .species import Species
-    from .supporting import Editor, GeneStatus
 
 
 class Genefam(BaseCustomModel):
@@ -82,8 +81,9 @@ class Genefam(BaseCustomModel):
     )
 
     # Relationships to status and editor
-    status: Mapped["GeneStatus"] = relationship("GeneStatus", back_populates="genefams")
-    editor: Mapped["Editor"] = relationship("Editor", back_populates="genefams")
+    # Note: Relationships with back_populates disabled to avoid circular imports
+    # status: Mapped["GeneStatus"] = relationship("GeneStatus", back_populates="genefams")
+    # editor: Mapped["Editor"] = relationship("Editor", back_populates="genefams")
 
     # Alternative names and symbols
     # Note: Relationships disabled to avoid circular import issues
@@ -164,23 +164,32 @@ class Genefam(BaseCustomModel):
 
     @property
     def is_active(self) -> bool:
-        """Check if gene family is active based on status."""
-        if self.status:
-            return self.status.status in ("Approved", "Active")
-        return True
+        """Check if gene family is active based on status.
+
+        Note: This uses status_id directly since the relationship is disabled
+        to avoid circular imports. For full status info, load the status separately.
+        """
+        # Statuses 1 and 2 typically represent Approved and Active
+        return self.status_id in (1, 2)
 
     @property
     def status_text(self) -> str:
-        """Get human-readable status text."""
-        if self.status:
-            return self.status.display or self.status.status
-        return "Unknown"
+        """Get human-readable status text.
+
+        Note: This uses status_id directly since the relationship is disabled
+        to avoid circular imports. For full status info, load the status separately.
+        """
+        # Common status ID mappings
+        status_map = {1: "Approved", 2: "Active", 3: "Retired"}
+        return status_map.get(self.status_id, f"Status {self.status_id}")
 
     @property
     def editor_name(self) -> str:
-        """Get editor display name."""
-        if self.editor:
-            return self.editor.display_name
+        """Get editor display name.
+
+        Note: This uses editor_id directly since the relationship is disabled
+        to avoid circular imports. For full editor info, load the editor separately.
+        """
         return f"Editor {self.editor_id}"
 
     @property

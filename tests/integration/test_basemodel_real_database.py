@@ -1,15 +1,11 @@
 """Real database-integrated tests for BaseModel following sessions/factory.py success pattern."""
 
-import tempfile
 from datetime import UTC, datetime
-from unittest.mock import Mock
 
-import pytest
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy import Column, DateTime, Integer, String, Text, create_engine
+from sqlalchemy.orm import sessionmaker
 
-from src.vgnc_internal_orm.models.base import BaseModel, TimestampMixin, BaseCustomModel
+from src.vgnc_internal_orm.models.base import BaseModel
 
 
 class TestRealBaseModelInstance:
@@ -24,7 +20,7 @@ class TestRealBaseModelInstance:
         # Create a real test model that inherits from BaseModel
         class TestModel(BaseModel):
             __tablename__ = "test_model"
-            __table_args__ = {'extend_existing': True}
+            __table_args__ = {"extend_existing": True}
 
             id = Column(Integer, primary_key=True)
             name = Column(String(100), nullable=False)
@@ -48,16 +44,16 @@ class TestRealBaseModelInstance:
         test_instance = self.TestModel(
             name="Test Name",
             description="Test Description",
-            custom_field="Custom Value"
+            custom_field="Custom Value",
         )
 
         # Test instance attributes exist
-        assert hasattr(test_instance, 'id')
-        assert hasattr(test_instance, 'name')
-        assert hasattr(test_instance, 'description')
-        assert hasattr(test_instance, 'custom_field')
-        assert hasattr(test_instance, 'created_at')
-        assert hasattr(test_instance, 'updated_at')
+        assert hasattr(test_instance, "id")
+        assert hasattr(test_instance, "name")
+        assert hasattr(test_instance, "description")
+        assert hasattr(test_instance, "custom_field")
+        assert hasattr(test_instance, "created_at")
+        assert hasattr(test_instance, "updated_at")
 
         # Test touch method from TimestampMixin
         test_instance.touch()
@@ -72,8 +68,7 @@ class TestRealBaseModelInstance:
 
         # Create and save real instance
         test_instance = self.TestModel(
-            name="Database Test",
-            description="Testing database operations"
+            name="Database Test", description="Testing database operations"
         )
 
         # Test save method (execute real logic)
@@ -104,28 +99,28 @@ class TestRealBaseModelInstance:
         test_instance = self.TestModel(
             name="Field Test",
             description="Testing field utilities",
-            custom_field="Custom Value"
+            custom_field="Custom Value",
         )
 
         # Test get_field_value method (execute real logic)
-        assert test_instance.get_field_value('name') == "Field Test"
-        assert test_instance.get_field_value('description') == "Testing field utilities"
-        assert test_instance.get_field_value('nonexistent', 'default') == "default"
+        assert test_instance.get_field_value("name") == "Field Test"
+        assert test_instance.get_field_value("description") == "Testing field utilities"
+        assert test_instance.get_field_value("nonexistent", "default") == "default"
 
         # Test set_field_value method (execute real logic)
-        result = test_instance.set_field_value('name', 'Updated Name')
+        result = test_instance.set_field_value("name", "Updated Name")
         assert result is True
         assert test_instance.name == "Updated Name"
 
-        result = test_instance.set_field_value('new_field', 'New Value')
+        result = test_instance.set_field_value("new_field", "New Value")
         assert result is True
-        assert hasattr(test_instance, 'new_field')
+        assert hasattr(test_instance, "new_field")
         assert test_instance.new_field == "New Value"
 
         # Test has_field method (execute real logic)
-        assert test_instance.has_field('name') is True
-        assert test_instance.has_field('description') is True
-        assert test_instance.has_field('nonexistent') is False
+        assert test_instance.has_field("name") is True
+        assert test_instance.has_field("description") is True
+        assert test_instance.has_field("nonexistent") is False
 
         session.close()
 
@@ -140,6 +135,7 @@ class TestRealBaseModelInstance:
 
         # Test touch method
         import time
+
         time.sleep(0.001)  # Small delay
         test_instance.touch()
         assert test_instance.updated_at > initial_updated
@@ -156,9 +152,7 @@ class TestRealBaseModelInstance:
     def test_basemodel_repr_methods(self):
         """Test BaseModel __repr__ and __str__ methods with real instances."""
         test_instance = self.TestModel(
-            id=123,
-            name="Repr Test",
-            description="Testing representation methods"
+            id=123, name="Repr Test", description="Testing representation methods"
         )
 
         # Test __repr__ method (execute real logic)
@@ -182,15 +176,16 @@ class TestRealBaseCustomModel:
 
         # Create a real custom model using a separate registry to avoid contaminating shared metadata
         from datetime import datetime
-        from sqlalchemy import DateTime
+
         from sqlalchemy.orm import Mapped, mapped_column, registry
         from sqlalchemy.sql import func
-        
+
         # Use a local registry that won't contaminate the shared registry
         local_registry = registry()
-        
+
         class TimestampMixin:
             """Local timestamp mixin for test."""
+
             created_at: Mapped[datetime] = mapped_column(
                 DateTime(timezone=True),
                 server_default=func.now(),
@@ -202,12 +197,13 @@ class TestRealBaseCustomModel:
                 onupdate=func.now(),
                 nullable=False,
             )
-            
+
             def touch(self) -> None:
                 """Update the updated_at timestamp."""
                 from datetime import UTC
+
                 self.updated_at = datetime.now(UTC)
-        
+
         @local_registry.mapped
         class TestCustomModel(TimestampMixin):
             __tablename__ = "test_custom_model"
@@ -230,7 +226,7 @@ class TestRealBaseCustomModel:
             self.local_registry.metadata.drop_all(bind=self.engine)
         except Exception:
             pass  # Tables might not exist
-        
+
         self.engine.dispose()
 
     def test_basecustommodel_real_instance_creation(self):
@@ -239,18 +235,16 @@ class TestRealBaseCustomModel:
 
         # Create real custom model instance
         custom_instance = self.TestCustomModel(
-            custom_id="CUSTOM_001",
-            name="Custom Test",
-            category="Test Category"
+            custom_id="CUSTOM_001", name="Custom Test", category="Test Category"
         )
 
         # Test instance has correct attributes
-        assert hasattr(custom_instance, 'custom_id')
-        assert hasattr(custom_instance, 'name')
-        assert hasattr(custom_instance, 'category')
-        assert hasattr(custom_instance, 'created_at')
-        assert hasattr(custom_instance, 'updated_at')
-        assert not hasattr(custom_instance, 'id')  # Should not have default id
+        assert hasattr(custom_instance, "custom_id")
+        assert hasattr(custom_instance, "name")
+        assert hasattr(custom_instance, "category")
+        assert hasattr(custom_instance, "created_at")
+        assert hasattr(custom_instance, "updated_at")
+        assert not hasattr(custom_instance, "id")  # Should not have default id
 
         # Test touch method from TimestampMixin
         custom_instance.touch()
@@ -264,9 +258,7 @@ class TestRealBaseCustomModel:
 
         # Create and save custom instance
         custom_instance = self.TestCustomModel(
-            custom_id="CUSTOM_002",
-            name="Database Custom Test",
-            category="Testing"
+            custom_id="CUSTOM_002", name="Database Custom Test", category="Testing"
         )
 
         # Test database operations
@@ -278,9 +270,11 @@ class TestRealBaseCustomModel:
         assert custom_instance.created_at is not None
 
         # Test query
-        queried = session.query(self.TestCustomModel).filter_by(
-            custom_id="CUSTOM_002"
-        ).first()
+        queried = (
+            session.query(self.TestCustomModel)
+            .filter_by(custom_id="CUSTOM_002")
+            .first()
+        )
         assert queried is not None
         assert queried.name == "Database Custom Test"
 
@@ -298,7 +292,7 @@ class TestRealBaseModelClassMethods:
         # Create test model with table
         class TestClassModel(BaseModel):
             __tablename__ = "test_class_model"
-            __table_args__ = {'extend_existing': True}
+            __table_args__ = {"extend_existing": True}
 
             id = Column(Integer, primary_key=True)
             name = Column(String(100), nullable=False)
@@ -316,11 +310,11 @@ class TestRealBaseModelClassMethods:
     def test_basemodel_class_methods_exist_and_callable(self):
         """Test that BaseModel class methods exist and are callable."""
         class_methods = [
-            'get_table_name',
-            'get_column_names',
-            'get_primary_key_columns',
-            'has_column',
-            'get_column_type'
+            "get_table_name",
+            "get_column_names",
+            "get_primary_key_columns",
+            "has_column",
+            "get_column_type",
         ]
 
         for method_name in class_methods:
@@ -339,32 +333,31 @@ class TestRealBaseModelClassMethods:
         # This executes real get_column_names logic
         column_names = self.TestClassModel.get_column_names()
         assert isinstance(column_names, list)
-        assert 'id' in column_names
-        assert 'name' in column_names
-        assert 'value' in column_names
+        assert "id" in column_names
+        assert "name" in column_names
+        assert "value" in column_names
 
     def test_basemodel_get_primary_key_columns(self):
         """Test get_primary_key_columns method execution."""
         # This executes real get_primary_key_columns logic
         pk_columns = self.TestClassModel.get_primary_key_columns()
         assert isinstance(pk_columns, list)
-        assert 'id' in pk_columns
+        assert "id" in pk_columns
 
     def test_basemodel_has_column(self):
         """Test has_column method execution."""
         # This executes real has_column logic
-        assert self.TestClassModel.has_column('id') is True
-        assert self.TestClassModel.has_column('name') is True
-        assert self.TestClassModel.has_column('nonexistent') is False
+        assert self.TestClassModel.has_column("id") is True
+        assert self.TestClassModel.has_column("name") is True
+        assert self.TestClassModel.has_column("nonexistent") is False
 
     def test_basemodel_get_column_type(self):
         """Test get_column_type method execution."""
         # This executes real get_column_type logic
-        from sqlalchemy import Integer, String
 
-        id_type = self.TestClassModel.get_column_type('id')
-        name_type = self.TestClassModel.get_column_type('name')
-        nonexistent_type = self.TestClassModel.get_column_type('nonexistent')
+        id_type = self.TestClassModel.get_column_type("id")
+        name_type = self.TestClassModel.get_column_type("name")
+        nonexistent_type = self.TestClassModel.get_column_type("nonexistent")
 
         # Types should be SQLAlchemy column types
         assert id_type is not None
@@ -383,7 +376,7 @@ class TestRealBaseModelCRUDMethods:
         # Create test model for CRUD operations
         class TestCRUDModel(BaseModel):
             __tablename__ = "test_crud_model"
-            __table_args__ = {'extend_existing': True}
+            __table_args__ = {"extend_existing": True}
 
             id = Column(Integer, primary_key=True)
             name = Column(String(100), nullable=False)
@@ -402,11 +395,33 @@ class TestRealBaseModelCRUDMethods:
     def test_basemodel_crud_methods_exist_and_callable(self):
         """Test that BaseModel CRUD methods exist and are callable."""
         crud_methods = [
-            'save', 'asave', 'delete', 'adelete', 'refresh', 'arefresh',
-            'expire', 'aexpire', 'get_dirty_fields', 'find_by_id', 'afind_by_id',
-            'find_all', 'afind_all', 'find_one', 'afind_one', 'create', 'acreate',
-            'get_or_create', 'aget_or_create', 'update_by_id', 'aupdate_by_id',
-            'delete_by_id', 'adelete_by_id', 'count', 'acount', 'exists', 'aexists'
+            "save",
+            "asave",
+            "delete",
+            "adelete",
+            "refresh",
+            "arefresh",
+            "expire",
+            "aexpire",
+            "get_dirty_fields",
+            "find_by_id",
+            "afind_by_id",
+            "find_all",
+            "afind_all",
+            "find_one",
+            "afind_one",
+            "create",
+            "acreate",
+            "get_or_create",
+            "aget_or_create",
+            "update_by_id",
+            "aupdate_by_id",
+            "delete_by_id",
+            "adelete_by_id",
+            "count",
+            "acount",
+            "exists",
+            "aexists",
         ]
 
         for method_name in crud_methods:
@@ -419,11 +434,7 @@ class TestRealBaseModelCRUDMethods:
         session = self.SessionLocal()
 
         # Create test data
-        test_instance = self.TestCRUDModel(
-            name="Find Test",
-            status="active",
-            value=42
-        )
+        test_instance = self.TestCRUDModel(name="Find Test", status="active", value=42)
         session.add(test_instance)
         session.commit()
         test_id = test_instance.id
@@ -449,7 +460,7 @@ class TestRealBaseModelCRUDMethods:
         instances = [
             self.TestCRUDModel(name="Test 1", status="active"),
             self.TestCRUDModel(name="Test 2", status="inactive"),
-            self.TestCRUDModel(name="Test 3", status="active")
+            self.TestCRUDModel(name="Test 3", status="active"),
         ]
 
         for instance in instances:
@@ -471,10 +482,7 @@ class TestRealBaseModelCRUDMethods:
         session = self.SessionLocal()
 
         # Create test data
-        test_instance = self.TestCRUDModel(
-            name="Find One Test",
-            status="unique"
-        )
+        test_instance = self.TestCRUDModel(name="Find One Test", status="unique")
         session.add(test_instance)
         session.commit()
 
@@ -495,10 +503,7 @@ class TestRealBaseModelCRUDMethods:
 
         # Test create method execution
         created = self.TestCRUDModel.create(
-            session,
-            name="Created Test",
-            status="created",
-            value=100
+            session, name="Created Test", status="created", value=100
         )
 
         assert created is not None
@@ -508,7 +513,9 @@ class TestRealBaseModelCRUDMethods:
         assert created.value == 100
 
         # Verify in database
-        queried = session.query(self.TestCRUDModel).filter_by(name="Created Test").first()
+        queried = (
+            session.query(self.TestCRUDModel).filter_by(name="Created Test").first()
+        )
         assert queried is not None
         assert queried.id == created.id
 
@@ -562,7 +569,7 @@ class TestRealBaseModelUtilityMethods:
         # Create test model
         class TestUtilityModel(BaseModel):
             __tablename__ = "test_utility_model"
-            __table_args__ = {'extend_existing': True}
+            __table_args__ = {"extend_existing": True}
 
             id = Column(Integer, primary_key=True)
             name = Column(String(100), nullable=False)
@@ -580,8 +587,13 @@ class TestRealBaseModelUtilityMethods:
     def test_basemodel_utility_methods_exist_and_callable(self):
         """Test that BaseModel utility methods exist and are callable."""
         utility_methods = [
-            'to_dict', 'to_json', 'update_from_dict', 'validate_utf8mb4_fields',
-            'requires_utf8mb4', 'sanitize_for_basic_utf8', 'get_utf8mb4_summary'
+            "to_dict",
+            "to_json",
+            "update_from_dict",
+            "validate_utf8mb4_fields",
+            "requires_utf8mb4",
+            "sanitize_for_basic_utf8",
+            "get_utf8mb4_summary",
         ]
 
         for method_name in utility_methods:
@@ -595,25 +607,24 @@ class TestRealBaseModelUtilityMethods:
 
         # Create test instance
         test_instance = self.TestUtilityModel(
-            name="Dict Test",
-            json_field='{"key": "value"}'
+            name="Dict Test", json_field='{"key": "value"}'
         )
 
         # Test to_dict method execution
         result_dict = test_instance.to_dict()
         assert isinstance(result_dict, dict)
-        assert 'id' in result_dict
-        assert 'name' in result_dict
-        assert 'json_field' in result_dict
+        assert "id" in result_dict
+        assert "name" in result_dict
+        assert "json_field" in result_dict
 
         # Test with parameters
-        result_exclude = test_instance.to_dict(exclude={'json_field'})
-        assert 'json_field' not in result_exclude
-        assert 'name' in result_exclude
+        result_exclude = test_instance.to_dict(exclude={"json_field"})
+        assert "json_field" not in result_exclude
+        assert "name" in result_exclude
 
-        result_include = test_instance.to_dict(include={'name'})
-        assert 'name' in result_include
-        assert 'json_field' not in result_include
+        result_include = test_instance.to_dict(include={"name"})
+        assert "name" in result_include
+        assert "json_field" not in result_include
 
         session.close()
 
@@ -623,8 +634,7 @@ class TestRealBaseModelUtilityMethods:
 
         # Create test instance
         test_instance = self.TestUtilityModel(
-            name="JSON Test",
-            json_field='{"test": "data"}'
+            name="JSON Test", json_field='{"test": "data"}'
         )
 
         # Test to_json method execution
@@ -633,9 +643,10 @@ class TestRealBaseModelUtilityMethods:
 
         # Should be valid JSON
         import json
+
         parsed = json.loads(json_result)
         assert isinstance(parsed, dict)
-        assert parsed['name'] == "JSON Test"
+        assert parsed["name"] == "JSON Test"
 
         session.close()
 
@@ -647,25 +658,21 @@ class TestRealBaseModelUtilityMethods:
         test_instance = self.TestUtilityModel(name="Original")
 
         # Test update_from_dict method execution - only mapped columns are updated
-        update_data = {
-            'name': 'Updated Name',
-            'json_field': '{"updated": true}'
-        }
+        update_data = {"name": "Updated Name", "json_field": '{"updated": true}'}
 
         updated_fields = test_instance.update_from_dict(update_data)
         assert isinstance(updated_fields, list)
 
         # Verify updates for mapped columns
-        assert test_instance.name == 'Updated Name'
+        assert test_instance.name == "Updated Name"
         assert test_instance.json_field == '{"updated": true}'
-        
+
         # Test with exclude
         test_instance2 = self.TestUtilityModel(name="Test 2")
-        updated_fields2 = test_instance2.update_from_dict(
-            {'name': 'New Name', 'json_field': 'New JSON'},
-            exclude={'json_field'}
+        test_instance2.update_from_dict(
+            {"name": "New Name", "json_field": "New JSON"}, exclude={"json_field"}
         )
-        assert test_instance2.name == 'New Name'
+        assert test_instance2.name == "New Name"
         # json_field should not be set since it was excluded
         assert test_instance2.json_field is None
 

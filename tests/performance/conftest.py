@@ -18,7 +18,6 @@ from vgnc_internal_orm.models.base import BaseModel
 from vgnc_internal_orm.models.chromosomes import Chromosomes
 from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 
-
 # Benchmark configuration
 BENCHMARK_CONFIG = {
     # Minimum and maximum time for benchmarks (in seconds)

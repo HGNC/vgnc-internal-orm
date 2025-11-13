@@ -1,7 +1,7 @@
 """Models module for VGNC ORM."""
 
 from .assembly import Assembly
-from .base import BaseModel, BaseCustomModel
+from .base import BaseCustomModel, BaseModel
 from .chromosomes import Chromosomes
 from .genefam import Genefam
 from .species import Species

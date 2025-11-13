@@ -406,7 +406,6 @@ class TestMySQLQueryOptimization:
         # Should add STRAIGHT_JOIN for complex joins
         assert "STRAIGHT_JOIN" in str(optimized)
 
-    
 
 class TestMySQLConnectionPooling:
     """Test MySQL-specific connection pooling features."""

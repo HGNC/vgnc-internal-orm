@@ -28,7 +28,8 @@ class GeneStatus(BaseModel):
     )
 
     # Relationships
-    genefams: Mapped[list["Genefam"]] = relationship("Genefam", back_populates="status")
+    # Note: genefams relationship to Genefam is not implemented to avoid circular imports
+    # genefams: Mapped[list["Genefam"]] = relationship("Genefam", back_populates="status")
 
     def __repr__(self) -> str:
         return f"<GeneStatus(id={self.id}, status='{self.status}')>"
@@ -72,7 +73,8 @@ class Editor(BaseModel):
     )
 
     # Relationships
-    genefams: Mapped[list["Genefam"]] = relationship("Genefam", back_populates="editor")
+    # Note: genefams relationship to Genefam is not implemented to avoid circular imports
+    # genefams: Mapped[list["Genefam"]] = relationship("Genefam", back_populates="editor")
 
     def __repr__(self) -> str:
         return f"<Editor(id={self.id}, display_name='{self.display_name}')>"

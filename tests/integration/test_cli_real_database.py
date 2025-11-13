@@ -1,31 +1,30 @@
 """Real database-integrated tests for CLI following sessions/factory.py success pattern."""
 
-import tempfile
 import os
-from unittest.mock import Mock, patch
-from datetime import datetime, UTC
+import tempfile
+from datetime import UTC, datetime
+from unittest.mock import patch
 
-import pytest
 from click.testing import CliRunner
 from sqlalchemy import text
 
 from vgnc_internal_orm.cli.main import (
     cli,
+    display_species_csv,
+    display_species_json,
+    display_species_table,
     ensure_config_loaded,
-    format_species_as_xml,
-    format_genefam_as_xml,
     format_assembly_as_xml,
     format_chromosomes_as_xml,
-    display_species_table,
-    display_species_json,
-    display_species_csv,
+    format_genefam_as_xml,
+    format_species_as_xml,
     get_session,
 )
 from vgnc_internal_orm.config.settings import DatabaseConfig, DatabaseDriver
-from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
-from vgnc_internal_orm.models.genefam import Genefam
 from vgnc_internal_orm.models.assembly import Assembly
 from vgnc_internal_orm.models.chromosomes import Chromosomes
+from vgnc_internal_orm.models.genefam import Genefam
+from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 
 
 class TestRealCLIConfiguration:
@@ -40,7 +39,7 @@ class TestRealCLIConfiguration:
         configurations = [
             # SQLite configuration
             {
-                'content': '''
+                "content": """
 [database]
 driver = "sqlite"
 database = "test.db"
@@ -48,12 +47,12 @@ database = "test.db"
 [app]
 name = "SQLite CLI App"
 debug = true
-''',
-                'expected_driver': 'sqlite'
+""",
+                "expected_driver": "sqlite",
             },
             # MySQL configuration
             {
-                'content': '''
+                "content": """
 [database]
 driver = "mysql"
 username = "cli_user"
@@ -64,35 +63,32 @@ port = 3306
 
 [app]
 name = "MySQL CLI App"
-''',
-                'expected_driver': 'mysql'
+""",
+                "expected_driver": "mysql",
             },
             # SQLite async configuration
             {
-                'content': '''
+                "content": """
 [database]
 driver = "sqlite+async"
 database = "async_test.db"
 
 [app]
 name = "Async SQLite CLI App"
-''',
-                'expected_driver': 'sqlite+async'
-            }
+""",
+                "expected_driver": "sqlite+async",
+            },
         ]
 
         for config_data in configurations:
             with self.runner.isolated_filesystem():
-                with open('config.toml', 'w') as f:
-                    f.write(config_data['content'])
+                with open("config.toml", "w") as f:
+                    f.write(config_data["content"])
 
-                result = self.runner.invoke(cli, [
-                    '--config', 'config.toml',
-                    '--help'
-                ])
+                result = self.runner.invoke(cli, ["--config", "config.toml", "--help"])
 
                 assert result.exit_code == 0
-                assert 'VGNC ORM Command-line Interface' in result.output
+                assert "VGNC ORM Command-line Interface" in result.output
 
     def test_ensure_config_loaded_real_execution(self):
         """Test ensure_config_loaded with real configuration objects."""
@@ -100,10 +96,7 @@ name = "Async SQLite CLI App"
 
         # Test with SQLite configuration (should work without MySQL)
         ctx = Context(cli)
-        ctx.obj = {
-            "config_loaded": False,
-            "database_url": "sqlite:///:memory:"
-        }
+        ctx.obj = {"config_loaded": False, "database_url": "sqlite:///:memory:"}
 
         # This executes real ensure_config_loaded logic
         ensure_config_loaded(ctx)
@@ -113,16 +106,18 @@ name = "Async SQLite CLI App"
 
         # Test with environment override
         ctx_env = Context(cli)
-        ctx_env.obj = {
-            "config_loaded": False
-        }
+        ctx_env.obj = {"config_loaded": False}
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.env', delete=False) as env_file:
-            env_file.write('''
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".env", delete=False
+        ) as env_file:
+            env_file.write(
+                """
 DATABASE__DRIVER=sqlite
 DATABASE__DATABASE=env_test.db
 APP_NAME=Environment Test App
-''')
+"""
+            )
             env_file_path = env_file.name
 
         try:
@@ -140,13 +135,11 @@ APP_NAME=Environment Test App
         env_vars = {
             "DATABASE_URL": "sqlite:///:memory:",
             "VGNC_DEBUG": "true",
-            "VGNC_APP_NAME": "Environment CLI Test"
+            "VGNC_APP_NAME": "Environment CLI Test",
         }
 
         with patch.dict(os.environ, env_vars):
-            result = self.runner.invoke(cli, [
-                '--help'
-            ])
+            result = self.runner.invoke(cli, ["--help"])
 
             assert result.exit_code == 0
 
@@ -159,10 +152,7 @@ APP_NAME=Environment Test App
         ]
 
         for db_url in url_formats:
-            result = self.runner.invoke(cli, [
-                '--database-url', db_url,
-                '--help'
-            ])
+            result = self.runner.invoke(cli, ["--database-url", db_url, "--help"])
 
             assert result.exit_code == 0
 
@@ -188,13 +178,13 @@ class TestRealCLIXMLFormatting:
 
         # Verify XML structure and content
         assert isinstance(result, str)
-        assert '<species>' in result
-        assert '</species>' in result
+        assert "<species>" in result
+        assert "</species>" in result
         assert 'taxon_id="9606"' in result
-        assert '<genefam_prefix>HSA</genefam_prefix>' in result
-        assert '<display_name>Human</display_name>' in result
-        assert '<is_live>Y</is_live>' in result
-        assert '<ensembl_species_name>Homo sapiens</ensembl_species_name>' in result
+        assert "<genefam_prefix>HSA</genefam_prefix>" in result
+        assert "<display_name>Human</display_name>" in result
+        assert "<is_live>Y</is_live>" in result
+        assert "<ensembl_species_name>Homo sapiens</ensembl_species_name>" in result
 
     def test_format_genefam_as_xml_complete_data(self):
         """Test format_genefam_as_xml with complete genefam data structures."""
@@ -213,13 +203,13 @@ class TestRealCLIXMLFormatting:
 
         # Verify XML structure and content
         assert isinstance(result, str)
-        assert '<genefams>' in result
-        assert '</genefams>' in result
+        assert "<genefams>" in result
+        assert "</genefams>" in result
         assert 'genefam_id="1101"' in result
         assert 'taxon_id="9606"' in result
-        assert '<assigned_id>HGNC:1101</assigned_id>' in result
-        assert '<assigned_symbol>BRCA1</assigned_symbol>' in result
-        assert '<assigned_name>BRCA1 DNA repair associated</assigned_name>' in result
+        assert "<assigned_id>HGNC:1101</assigned_id>" in result
+        assert "<assigned_symbol>BRCA1</assigned_symbol>" in result
+        assert "<assigned_name>BRCA1 DNA repair associated</assigned_name>" in result
 
     def test_format_assembly_as_xml_complete_data(self):
         """Test format_assembly_as_xml with complete assembly data structures."""
@@ -239,13 +229,16 @@ class TestRealCLIXMLFormatting:
 
         # Verify XML structure and content
         assert isinstance(result, str)
-        assert '<assemblies>' in result
-        assert '</assemblies>' in result
+        assert "<assemblies>" in result
+        assert "</assemblies>" in result
         assert 'id="1"' in result
         assert 'taxon_id="9606"' in result
-        assert '<source>Ensembl</source>' in result
-        assert '<name>GRCh38</name>' in result
-        assert '<genbank_assembly_accession>GCA_000001405.28</genbank_assembly_accession>' in result
+        assert "<source>Ensembl</source>" in result
+        assert "<name>GRCh38</name>" in result
+        assert (
+            "<genbank_assembly_accession>GCA_000001405.28</genbank_assembly_accession>"
+            in result
+        )
 
     def test_format_chromosomes_as_xml_complete_data(self):
         """Test format_chromosomes_as_xml with complete chromosomes data structures."""
@@ -264,12 +257,12 @@ class TestRealCLIXMLFormatting:
 
         # Verify XML structure and content
         assert isinstance(result, str)
-        assert '<chromosomes>' in result
-        assert '</chromosomes>' in result
+        assert "<chromosomes>" in result
+        assert "</chromosomes>" in result
         assert 'chr_id="1"' in result
         assert 'taxon_id="9606"' in result
-        assert '<display_name>1</display_name>' in result
-        assert '<refseq_accession>NC_000001.11</refseq_accession>' in result
+        assert "<display_name>1</display_name>" in result
+        assert "<refseq_accession>NC_000001.11</refseq_accession>" in result
 
     def test_format_functions_with_multiple_items(self):
         """Test formatting functions with multiple complete data structures."""
@@ -321,8 +314,8 @@ class TestRealCLIXMLFormatting:
         # Should handle None/empty values gracefully
         assert isinstance(result, str)
         assert 'taxon_id="9606"' in result
-        assert '<genefam_prefix />' in result  # None becomes empty element
-        assert '<display_name />' in result   # Empty string becomes empty element
+        assert "<genefam_prefix />" in result  # None becomes empty element
+        assert "<display_name />" in result  # Empty string becomes empty element
 
 
 class TestRealCLIDisplayFunctions:
@@ -408,25 +401,24 @@ class TestRealCLIDisplayFunctions:
         display_species_json([species])
         display_species_csv([species])
 
+
 class TestRealGetSessionFunction:
     """Real get_session function tests with actual database connections."""
 
     def test_get_session_sqlite_memory_database(self):
         """Test get_session with SQLite in-memory database."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database=":memory:",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
         )
 
         # This executes real get_session logic with in-memory database
         session = get_session(config, "sqlite:///:memory:")
 
         assert session is not None
-        assert hasattr(session, 'execute')
-        assert hasattr(session, 'commit')
-        assert hasattr(session, 'rollback')
-        assert hasattr(session, 'close')
+        assert hasattr(session, "execute")
+        assert hasattr(session, "commit")
+        assert hasattr(session, "rollback")
+        assert hasattr(session, "close")
 
         # Test actual database operations
         result = session.execute(text("SELECT 1 as test_value"))
@@ -435,15 +427,22 @@ class TestRealGetSessionFunction:
         assert rows[0][0] == 1
 
         # Test table creation
-        session.execute(text("CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)"))
+        session.execute(
+            text("CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)")
+        )
         session.commit()
 
         # Test data insertion
-        session.execute(text("INSERT INTO test_table (name) VALUES (:name)"), {"name": "test_name"})
+        session.execute(
+            text("INSERT INTO test_table (name) VALUES (:name)"), {"name": "test_name"}
+        )
         session.commit()
 
         # Verify data
-        result = session.execute(text("SELECT name FROM test_table WHERE name = :name"), {"name": "test_name"})
+        result = session.execute(
+            text("SELECT name FROM test_table WHERE name = :name"),
+            {"name": "test_name"},
+        )
         row = result.fetchone()
         assert row[0] == "test_name"
 
@@ -452,9 +451,7 @@ class TestRealGetSessionFunction:
     def test_get_session_sqlite_file_database(self):
         """Test get_session with SQLite file database."""
         config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE,
-            database="test_file.db",
-            _env_file=None
+            driver=DatabaseDriver.SQLITE, database="test_file.db", _env_file=None
         )
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -469,11 +466,16 @@ class TestRealGetSessionFunction:
             session.execute(text("CREATE TABLE file_test (id INTEGER, content TEXT)"))
             session.commit()
 
-            session.execute(text("INSERT INTO file_test (id, content) VALUES (:id, :content)"), {"id": 1, "content": "test_content"})
+            session.execute(
+                text("INSERT INTO file_test (id, content) VALUES (:id, :content)"),
+                {"id": 1, "content": "test_content"},
+            )
             session.commit()
 
             # Verify
-            result = session.execute(text("SELECT content FROM file_test WHERE id = :id"), {"id": 1})
+            result = session.execute(
+                text("SELECT content FROM file_test WHERE id = :id"), {"id": 1}
+            )
             row = result.fetchone()
             assert row[0] == "test_content"
 
@@ -486,11 +488,23 @@ class TestRealGetSessionFunction:
         """Test get_session with different database configurations."""
         configurations = [
             # Basic SQLite
-            DatabaseConfig(driver=DatabaseDriver.SQLITE, database="test.db", _env_file=None),
+            DatabaseConfig(
+                driver=DatabaseDriver.SQLITE, database="test.db", _env_file=None
+            ),
             # SQLite with timeout
-            DatabaseConfig(driver=DatabaseDriver.SQLITE, database="timeout.db", timeout=30.0, _env_file=None),
+            DatabaseConfig(
+                driver=DatabaseDriver.SQLITE,
+                database="timeout.db",
+                timeout=30.0,
+                _env_file=None,
+            ),
             # SQLite with connection options
-            DatabaseConfig(driver=DatabaseDriver.SQLITE, database="options.db", pool_size=5, _env_file=None),
+            DatabaseConfig(
+                driver=DatabaseDriver.SQLITE,
+                database="options.db",
+                pool_size=5,
+                _env_file=None,
+            ),
         ]
 
         for config in configurations:
@@ -511,10 +525,12 @@ class TestRealGetSessionFunction:
             url_formats = [
                 "sqlite:///:memory:",
                 "sqlite:///file::memory:?cache=shared",
-                f"sqlite:///{os.path.join(tmpdir, 'test.db')}"
+                f"sqlite:///{os.path.join(tmpdir, 'test.db')}",
             ]
 
-            config = DatabaseConfig(driver=DatabaseDriver.SQLITE, database="default.db", _env_file=None)
+            config = DatabaseConfig(
+                driver=DatabaseDriver.SQLITE, database="default.db", _env_file=None
+            )
 
             for url in url_formats:
                 # This executes real get_session URL parsing logic
@@ -542,28 +558,25 @@ class TestRealCLICommandIntegration:
         test_scenarios = [
             # Basic SQLite
             {
-                'args': ['--database-url', 'sqlite:///:memory:', '--help'],
-                'expected_exit': 0
+                "args": ["--database-url", "sqlite:///:memory:", "--help"],
+                "expected_exit": 0,
             },
             # With config file
-            {
-                'args': ['--verbose', '--help'],
-                'expected_exit': 0
-            },
+            {"args": ["--verbose", "--help"], "expected_exit": 0},
             # With verbose flag
             {
-                'args': ['--verbose', '--database-url', 'sqlite:///:memory:', '--help'],
-                'expected_exit': 0
-            }
+                "args": ["--verbose", "--database-url", "sqlite:///:memory:", "--help"],
+                "expected_exit": 0,
+            },
         ]
 
         for scenario in test_scenarios:
-            result = self.runner.invoke(cli, scenario['args'])
-            assert result.exit_code == scenario['expected_exit']
+            result = self.runner.invoke(cli, scenario["args"])
+            assert result.exit_code == scenario["expected_exit"]
 
     def test_cli_config_file_integration(self):
         """Test CLI with real configuration file integration."""
-        config_content = '''
+        config_content = """
 [database]
 driver = "sqlite"
 database = "cli_integration_test.db"
@@ -577,19 +590,18 @@ log_level = "INFO"
 [session]
 pool_size = 10
 max_overflow = 20
-'''
+"""
 
         with self.runner.isolated_filesystem():
-            with open('integration_config.toml', 'w') as f:
+            with open("integration_config.toml", "w") as f:
                 f.write(config_content)
 
-            result = self.runner.invoke(cli, [
-                '--config', 'integration_config.toml',
-                '--help'
-            ])
+            result = self.runner.invoke(
+                cli, ["--config", "integration_config.toml", "--help"]
+            )
 
             assert result.exit_code == 0
-            assert 'VGNC ORM Command-line Interface' in result.output
+            assert "VGNC ORM Command-line Interface" in result.output
 
     def test_cli_environment_integration(self):
         """Test CLI with environment variable integration."""
@@ -597,27 +609,23 @@ max_overflow = 20
             "VGNC_DATABASE_DRIVER": "sqlite",
             "VGNC_DATABASE_DATABASE": "env_test.db",
             "VGNC_APP_NAME": "Environment CLI Test",
-            "VGNC_DEBUG": "true"
+            "VGNC_DEBUG": "true",
         }
 
         with patch.dict(os.environ, env_vars):
-            result = self.runner.invoke(cli, ['--help'])
+            result = self.runner.invoke(cli, ["--help"])
             assert result.exit_code == 0
 
     def test_cli_error_handling_integration(self):
         """Test CLI error handling with real configurations."""
         # Test with invalid database URL format
-        result = self.runner.invoke(cli, [
-            '--database-url', 'invalid://url',
-            '--help'
-        ])
+        result = self.runner.invoke(cli, ["--database-url", "invalid://url", "--help"])
         # Should still show help despite invalid URL
         assert result.exit_code == 0
 
         # Test with non-existent config file
-        result = self.runner.invoke(cli, [
-            '--config', 'nonexistent_config.toml',
-            '--help'
-        ])
+        result = self.runner.invoke(
+            cli, ["--config", "nonexistent_config.toml", "--help"]
+        )
         # May fail gracefully or show help
         assert result.exit_code in [0, 1, 2]

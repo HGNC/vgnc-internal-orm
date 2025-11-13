@@ -331,7 +331,10 @@ class Species(BaseCustomModel):
                 if isinstance(field_value, str):
                     # Use CharsetValidator for text fields
                     from ..utils.mysql_features import CharsetValidator
-                    validation_results[field_name] = CharsetValidator.validate_text_encoding(field_value)
+
+                    validation_results[field_name] = (
+                        CharsetValidator.validate_text_encoding(field_value)
+                    )
                 else:
                     # Non-text field or None value
                     validation_results[field_name] = {
@@ -348,5 +351,4 @@ class Species(BaseCustomModel):
                     "error": f"Field '{field_name}' does not exist",
                 }
 
-  
         return validation_results
