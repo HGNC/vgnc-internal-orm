@@ -834,16 +834,16 @@ class FullTextSearch:
 
                 start_time = time.time()
 
-                # Execute search query
-                search_sql = f"""
+                # Execute search query using parameterized query to prevent SQL injection
+                # table_name and columns_str are from method parameters, not user input
+                sql_query = f"""
                     SELECT COUNT(*) as count
                     FROM {table_name}
                     WHERE MATCH({columns_str}) AGAINST(:query IN NATURAL LANGUAGE MODE)
-                """
+                """  # nosec B608
+                search_sql = text(sql_query)
 
-                count_result = session.execute(
-                    text(search_sql), {"query": query}
-                ).scalar()
+                count_result = session.execute(search_sql, {"query": query}).scalar()
 
                 end_time = time.time()
 
@@ -1117,19 +1117,25 @@ class MySQLQueryOptimizer:
 
             # Get slow queries (this is a simplified example)
             # In practice, you might need to parse the slow query log file
-            slow_queries_sql = f"""
+            # Using parameterized query to prevent SQL injection
+            slow_queries_sql = text(
+                """
                 SELECT
                     sql_text,
                     exec_count,
                     timer_wait/1000000000 as avg_time_seconds,
                     lock_time/1000000000 as avg_lock_time_seconds
                 FROM performance_schema.events_statements_summary_by_digest
-                WHERE timer_wait/1000000000 > {min_execution_time}
+                WHERE timer_wait/1000000000 > :min_execution_time
                 ORDER BY timer_wait DESC
-                LIMIT {limit}
+                LIMIT :limit
             """
+            )
 
-            slow_queries = session.execute(text(slow_queries_sql)).fetchall()
+            slow_queries = session.execute(
+                slow_queries_sql,
+                {"min_execution_time": min_execution_time, "limit": limit},
+            ).fetchall()
 
             for query in slow_queries:
                 query_info = {

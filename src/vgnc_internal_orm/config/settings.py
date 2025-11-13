@@ -456,7 +456,8 @@ class Settings(BaseSettings):
     )
 
     # API settings (if applicable)
-    api_host: str = Field(default="0.0.0.0", description="API host")
+    # Set to localhost (127.0.0.1) by default for security; override for distributed deployments
+    api_host: str = Field(default="127.0.0.1", description="API host")
     api_port: int = Field(default=8000, ge=1, le=65535, description="API port")
 
     # Cache settings

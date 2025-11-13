@@ -9,14 +9,11 @@ import io
 import json
 import os
 import sys
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import click
-
-if TYPE_CHECKING:
-    pass
+import defusedxml.ElementTree as ET
 from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -25,6 +22,9 @@ from vgnc_internal_orm.models.assembly import Assembly
 from vgnc_internal_orm.models.chromosomes import Chromosomes
 from vgnc_internal_orm.models.genefam import Genefam
 from vgnc_internal_orm.models.species import Species
+
+if TYPE_CHECKING:
+    pass
 
 
 @click.group()
