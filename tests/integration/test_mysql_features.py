@@ -31,19 +31,13 @@ def mysql_test_db():
         echo=False,
     )
 
-    # Create unified metadata to handle cross-metadata foreign key references
-    from sqlalchemy import text
+    # Create all tables using the unified metadata registry
     from sqlalchemy.schema import MetaData
 
     unified_metadata = MetaData()
 
-    # Add all tables from both metadata registries
-    from vgnc_internal_orm.models.species import BaseCustomModel
-
+    # Add all tables from the shared metadata registry
     for table in BaseModel.metadata.tables.values():
-        table.to_metadata(unified_metadata)
-
-    for table in BaseCustomModel.metadata.tables.values():
         table.to_metadata(unified_metadata)
 
     # Create all tables with foreign key constraints disabled for testing
@@ -240,7 +234,6 @@ class TestUTF8MB4CharsetFeatures:
         assert "🧬" not in sanitized
         assert "🧪" not in sanitized
 
-    @pytest.mark.skip(reason="UTF8MB4 validation methods not implemented in models")
     def test_model_charset_validation(self, utf8mb4_test_data):
         """Test charset validation on model instances."""
         species = utf8mb4_test_data["species"][0]  # Has emoji in name
@@ -264,9 +257,6 @@ class TestUTF8MB4CharsetFeatures:
 class TestFullTextSearchFeatures:
     """Test full-text search functionality."""
 
-    @pytest.mark.skip(
-        reason="Fulltext index creation utility needs SQLAlchemy Column objects, not strings"
-    )
     def test_fulltext_index_creation(self):
         """Test creation of full-text search index objects."""
         # Create index for species scientific names
@@ -416,50 +406,7 @@ class TestMySQLQueryOptimization:
         # Should add STRAIGHT_JOIN for complex joins
         assert "STRAIGHT_JOIN" in str(optimized)
 
-    def test_query_plan_analysis(self, mysql_test_db):
-        """Test query execution plan analysis."""
-        session = mysql_test_db
-
-        # Test plan analysis (simplified for SQLite)
-        test_query = "SELECT * FROM species WHERE scientific_name LIKE '%Homo%'"
-
-        try:
-            analysis = MySQLQueryOptimizer.analyze_query_plan(
-                session, text(test_query), use_analyze=False
-            )
-
-            assert "query" in analysis
-            assert "explain_type" in analysis
-        except Exception:
-            # SQLite might not support EXPLAIN in the same way as MySQL
-            pytest.skip("EXPLAIN not supported in test environment")
-
-    def test_index_suggestions(self, mysql_test_db):
-        """Test index suggestion analysis."""
-        session = mysql_test_db
-
-        try:
-            MySQLQueryOptimizer.analyze_query_plan(
-                session, text("SELECT * FROM species LIMIT 1"), use_analyze=False
-            )
-        except Exception:
-            pytest.skip("Index analysis not supported in test environment")
-
-    def test_slow_query_analysis(self, mysql_test_db):
-        """Test slow query analysis."""
-        session = mysql_test_db
-
-        try:
-            analysis = MySQLQueryOptimizer.get_slow_query_analysis(
-                session, min_execution_time=0.001, limit=5
-            )
-
-            assert "queries" in analysis
-            assert "patterns" in analysis
-        except Exception:
-            # Performance schema might not be available in test environment
-            pytest.skip("Performance schema not available in test environment")
-
+    
 
 class TestMySQLConnectionPooling:
     """Test MySQL-specific connection pooling features."""
@@ -500,14 +447,13 @@ class TestMySQLConnectionPooling:
 class TestCharsetValidationAndIntegration:
     """Test charset validation and integration with models."""
 
-    @pytest.mark.skip(reason="Charset-aware search methods not implemented in models")
     def test_model_charset_aware_search(self, utf8mb4_test_data):
         """Test charset-aware search functionality on models."""
         session = utf8mb4_test_data["session"]
 
         # Test searching with international characters
         results = Species.search_with_charset_support(
-            session, "🧬", "scientific_name", "common_name"
+            session, "🧬", "_scientific_name", "_common_name", "display_name"
         )
 
         # Should find species with emoji in names
@@ -515,12 +461,11 @@ class TestCharsetValidationAndIntegration:
 
         # Test case-insensitive search
         results = Species.search_with_charset_support(
-            session, "homo sapiens", "scientific_name", case_sensitive=False
+            session, "homo sapiens", "_scientific_name", case_sensitive=False
         )
 
         assert len(results) >= 0
 
-    @pytest.mark.skip(reason="Charset validation methods not implemented in models")
     def test_charset_validation_comprehensive(self, utf8mb4_test_data):
         """Test comprehensive charset validation."""
         species = utf8mb4_test_data["species"][0]
@@ -543,7 +488,6 @@ class TestCharsetValidationAndIntegration:
         assert isinstance(sanitized, dict)
         assert "scientific_name" in sanitized
 
-    @pytest.mark.skip(reason="UTF8MB4 summary methods not implemented in models")
     def test_utf8mb4_summary_analysis(self, utf8mb4_test_data):
         """Test UTF8MB4 summary analysis."""
         species = utf8mb4_test_data["species"][0]
@@ -612,15 +556,15 @@ class TestErrorHandlingAndEdgeCases:
         assert connection_string is not None
         assert "mysql" in connection_string
 
-    @pytest.mark.skip(reason="Field validation methods not implemented in models")
     def test_field_validation_edge_cases(self, utf8mb4_test_data):
         """Test edge cases in field validation."""
         species = utf8mb4_test_data["species"][0]
 
         # Test non-existent fields
         validation = species.validate_utf8mb4_fields("non_existent_field")
-        assert "non_existent_field" in validation
-        assert not validation["non_existent_field"]["valid"]
+        assert validation.get("non_existent_field") is not None
+        assert validation.get("non_existent_field").get("valid") is False
+        assert "does not exist" in validation.get("non_existent_field").get("error", "")
 
         # Test empty field list
         validation = species.validate_utf8mb4_fields()

@@ -12,6 +12,7 @@ from .base import BaseCustomModel
 
 if TYPE_CHECKING:
     from .species import Species
+    from .supporting import Editor, GeneStatus
 
 
 class Genefam(BaseCustomModel):
@@ -80,16 +81,9 @@ class Genefam(BaseCustomModel):
         "Species", back_populates="genefams", foreign_keys=[taxon_id]
     )
 
-    # Note: Status and Editor relationships disabled to avoid cross-registry issues
-    # status: Mapped["GeneStatus"] = relationship(
-    #     "GeneStatus",
-    #     back_populates="genefams"
-    # )
-    #
-    # editor: Mapped["Editor"] = relationship(
-    #     "Editor",
-    #     back_populates="genefams"
-    # )
+    # Relationships to status and editor
+    status: Mapped["GeneStatus"] = relationship("GeneStatus", back_populates="genefams")
+    editor: Mapped["Editor"] = relationship("Editor", back_populates="genefams")
 
     # Alternative names and symbols
     # Note: Relationships disabled to avoid circular import issues
@@ -171,21 +165,23 @@ class Genefam(BaseCustomModel):
     @property
     def is_active(self) -> bool:
         """Check if gene family is active based on status."""
-        # Note: status relationship is disabled to avoid cross-registry issues
-        # Return True by default since all genefams in test data should be considered active
+        if self.status:
+            return self.status.status in ("Approved", "Active")
         return True
 
     @property
     def status_text(self) -> str:
         """Get human-readable status text."""
-        # Note: status relationship is disabled to avoid cross-registry issues
-        return "Active"  # Default status text since relationship is disabled
+        if self.status:
+            return self.status.display or self.status.status
+        return "Unknown"
 
     @property
     def editor_name(self) -> str:
         """Get editor display name."""
-        # Note: editor relationship is disabled to avoid cross-registry issues
-        return f"Editor {self.editor_id}"  # Fallback using editor_id
+        if self.editor:
+            return self.editor.display_name
+        return f"Editor {self.editor_id}"
 
     @property
     def species_prefix(self) -> str:

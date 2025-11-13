@@ -22,7 +22,7 @@ from sqlalchemy.pool import StaticPool
 from vgnc_internal_orm.models.assembly import Assembly
 from vgnc_internal_orm.models.base import BaseModel
 from vgnc_internal_orm.models.chromosomes import Chromosomes
-from vgnc_internal_orm.models.species import BaseCustomModel, Species, SpeciesLiveStatus
+from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 
 # Load testing configuration
 LOAD_TEST_CONFIG = {
@@ -122,20 +122,22 @@ def load_test_db():
     engine = create_engine(
         "sqlite:///load_test.db",
         poolclass=StaticPool,
-        connect_args={"check_same_thread": False},
+        connect_args={
+            "check_same_thread": False,
+            "timeout": 20,
+        },
         echo=False,
+        # Disable deprecated datetime adapter warnings
+        native_datetime=True,
     )
 
-    # Create unified metadata for testing
+    # Create all tables using the unified metadata registry
     from sqlalchemy.schema import MetaData
 
     unified_metadata = MetaData()
 
-    # Add all tables from both metadata registries
+    # Add all tables from the shared metadata registry
     for table in BaseModel.metadata.tables.values():
-        table.to_metadata(unified_metadata)
-
-    for table in BaseCustomModel.metadata.tables.values():
         table.to_metadata(unified_metadata)
 
     # Create all tables
@@ -149,6 +151,8 @@ def load_test_db():
     finally:
         # Drop tables for clean state
         unified_metadata.drop_all(engine)
+        # Dispose engine to close all connections
+        engine.dispose()
         # Clean up the database file
         import os
 

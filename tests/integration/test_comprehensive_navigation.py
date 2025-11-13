@@ -20,6 +20,7 @@ from vgnc_internal_orm.models.assembly import Assembly
 from vgnc_internal_orm.models.chromosomes import Chromosomes
 from vgnc_internal_orm.models.genefam import Genefam
 from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
+from vgnc_internal_orm.models.supporting import Editor, GeneStatus
 
 # Orthology models removed - they don't exist in the actual database
 
@@ -1319,7 +1320,12 @@ class TestNavigationErrorHandling:
 
         # Try to create a chromosome with duplicate unique constraint
         # Check if we have any chromosomes in test data
-        chromosomes = comprehensive_test_data.get("chromosomes", [])
+        chromosomes_by_species = comprehensive_test_data.get("chromosomes_by_species", {})
+        # Flatten all chromosomes from all species into a single list
+        chromosomes = []
+        for species_chroms in chromosomes_by_species.values():
+            chromosomes.extend(species_chroms)
+
         if not chromosomes:
             # Skip this test if no chromosomes available
             pytest.skip("No chromosomes available for constraint violation test")
@@ -1358,10 +1364,6 @@ class TestNavigationErrorHandling:
 
     def test_navigation_with_session_isolation(self, test_db, comprehensive_test_data):
         """Test that navigation works correctly with session isolation."""
-        # Skip this test as it requires complex foreign key reference tables
-        pytest.skip(
-            "Session isolation test requires gene_status and editor reference tables"
-        )
         session1 = test_db
         session2 = sessionmaker(bind=test_db.bind)()
 
