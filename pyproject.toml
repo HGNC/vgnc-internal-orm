@@ -64,6 +64,9 @@ mysql = [
 sqlite = [
     "aiosqlite>=0.19.0",
 ]
+performance = [
+    "pytest-benchmark[histogram]>=4.0.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/vgnc/vgnc-internal-orm"
