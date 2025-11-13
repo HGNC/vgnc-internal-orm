@@ -149,7 +149,7 @@ def format_species_as_xml(species_list: list[Species]) -> str:
 
     # Pretty print XML
     ET.indent(root, space="  ")
-    return ET.tostring(root, encoding="unicode")
+    return str(ET.tostring(root, encoding="unicode"))
 
 
 def format_genefam_as_xml(genefam_list: list[Genefam]) -> str:
@@ -179,7 +179,7 @@ def format_genefam_as_xml(genefam_list: list[Genefam]) -> str:
 
     # Pretty print XML
     ET.indent(root, space="  ")
-    return ET.tostring(root, encoding="unicode")
+    return str(ET.tostring(root, encoding="unicode"))
 
 
 def format_assembly_as_xml(assembly_list: list[Assembly]) -> str:
@@ -212,7 +212,7 @@ def format_assembly_as_xml(assembly_list: list[Assembly]) -> str:
 
     # Pretty print XML
     ET.indent(root, space="  ")
-    return ET.tostring(root, encoding="unicode")
+    return str(ET.tostring(root, encoding="unicode"))
 
 
 def format_chromosomes_as_xml(chromosomes_list: list[Chromosomes]) -> str:
@@ -246,7 +246,7 @@ def format_chromosomes_as_xml(chromosomes_list: list[Chromosomes]) -> str:
 
     # Pretty print XML
     ET.indent(root, space="  ")
-    return ET.tostring(root, encoding="unicode")
+    return str(ET.tostring(root, encoding="unicode"))
 
 
 @cli.command()
