@@ -65,9 +65,12 @@ MANIFEST
 .coverage
 .coverage.*
 htmlcov/
+htmlcov*/
 .tox/
 .nox/
 coverage.xml
+coverage*.xml
+coverage*.json
 *.cover
 .hypothesis/
 test-results/
