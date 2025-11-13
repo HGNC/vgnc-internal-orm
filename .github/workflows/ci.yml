@@ -67,7 +67,7 @@ jobs:
         cache: 'pip'
 
     - name: Cache pip dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ matrix.cache-key }}-${{ hashFiles('**/pyproject.toml') }}
@@ -116,7 +116,7 @@ jobs:
         esac
 
     - name: Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: test-results-${{ matrix.python-version }}-${{ matrix.test-type }}
@@ -142,7 +142,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Cache dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-unit-${{ hashFiles('**/pyproject.toml') }}
@@ -162,7 +162,7 @@ jobs:
           --junit-xml=test-results/unit.xml
 
     - name: Upload unit test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: unit-test-results-${{ matrix.python-version }}
@@ -188,7 +188,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Cache dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-integration-${{ hashFiles('**/pyproject.toml') }}
@@ -209,7 +209,7 @@ jobs:
           --junit-xml=test-results/integration.xml
 
     - name: Upload integration test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: integration-test-results-${{ matrix.python-version }}
@@ -235,7 +235,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Cache dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-performance-${{ hashFiles('**/pyproject.toml') }}
@@ -263,7 +263,7 @@ jobs:
           --benchmark-compare-fail=20%
 
     - name: Upload performance results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: performance-test-results
         path: |
@@ -301,7 +301,7 @@ jobs:
         python-version: "3.13"
 
     - name: Cache dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-load-${{ hashFiles('**/pyproject.toml') }}
@@ -320,7 +320,7 @@ jobs:
           --output test-results/load-test-${{ matrix.test-scenario.name }}.json
 
     - name: Upload load test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: load-test-results-${{ matrix.test-scenario.name }}
         path: test-results/load-test-${{ matrix.test-scenario.name }}.json
@@ -367,7 +367,7 @@ jobs:
         pip-audit --output-format=json --output-file=test-results/dependency-audit.json || true
 
     - name: Upload quality check results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: quality-check-results
         path: test-results/
@@ -408,7 +408,7 @@ jobs:
         python -c "import vgnc_internal_orm; print('Package installed successfully')"
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: build-artifacts-${{ matrix.python-version }}
         path: dist/
@@ -431,7 +431,7 @@ jobs:
         python-version: "3.13"
 
     - name: Download all test results
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: all-test-results/
 
@@ -458,7 +458,7 @@ jobs:
           }
 
     - name: Upload test summary
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-summary
         path: test-summary.md
