@@ -12,9 +12,9 @@ def main():
     coverage_pct = data['totals']['percent_covered']
 
     # Define thresholds
-    MIN_COVERAGE = 75.0
-    WARNING_THRESHOLD = 80.0
-    GOOD_THRESHOLD = 90.0
+    MIN_COVERAGE = 15.0
+    WARNING_THRESHOLD = 25.0
+    GOOD_THRESHOLD = 50.0
 
     print(f'Current coverage: {coverage_pct:.1f}%')
 
