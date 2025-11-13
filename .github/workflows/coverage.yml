@@ -93,7 +93,7 @@ jobs:
         # The .coverage file should already contain all test coverage data
         # Generate combined reports from the accumulated coverage data
         python -m coverage xml -o coverage-combined.xml
-        python -m coverage html htmlcov-combined
+        python -m coverage html -d htmlcov-combined
         python -m coverage json -o coverage-combined.json
 
     - name: Generate coverage summary
