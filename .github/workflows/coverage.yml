@@ -214,7 +214,7 @@ jobs:
 
     - name: Generate coverage badge
       run: |
-        pip install coverage-badge anybadge
+        pip install anybadge
         python .github/scripts/generate_coverage_badge.py
 
     - name: Upload coverage badge
