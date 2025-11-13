@@ -789,12 +789,12 @@ class BaseModel(TimestampMixin, UnifiedBase):
             session.query(cls).filter(or_(*conditions)).params(search_term=search_term)
         )
 
-        return query.all()
+        return query.all()  # type: ignore[return-value]
 
     @classmethod
     async def asearch_with_charset_support(
         cls,
-        session: "AsyncSession",  # type: ignore[name-defined]
+        session: "AsyncSession",
         search_term: str,
         *field_names: str,
         case_sensitive: bool = False,
@@ -874,7 +874,7 @@ class BaseModel(TimestampMixin, UnifiedBase):
         stmt = select(cls).where(or_(*conditions)).params(search_term=search_term)
         result = await session.execute(stmt)
 
-        return result.scalars().all()
+        return result.scalars().all()  # type: ignore[return-value]
 
 
 class BaseCustomModel(TimestampMixin, UnifiedBase):
@@ -1082,7 +1082,7 @@ class BaseCustomModel(TimestampMixin, UnifiedBase):
     @classmethod
     async def asearch_with_charset_support(
         cls,
-        session: "AsyncSession",  # type: ignore[name-defined]
+        session: "AsyncSession",
         search_term: str,
         *field_names: str,
         case_sensitive: bool = False,
@@ -1162,4 +1162,4 @@ class BaseCustomModel(TimestampMixin, UnifiedBase):
         stmt = select(cls).where(or_(*conditions)).params(search_term=search_term)
         result = await session.execute(stmt)
 
-        return result.scalars().all()
+        return result.scalars().all()  # type: ignore[return-value]

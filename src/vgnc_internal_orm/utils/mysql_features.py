@@ -493,21 +493,21 @@ class FullTextSearch:
             def __init__(
                 self,
                 name: str,
-                *columns,
+                *columns: str,
                 mysql_prefix: str | None = None,
                 mysql_with_parser: str | None = None,
-                **kwargs,
-            ):
-                super().__init__(name, **kwargs)
+                **kwargs: object,
+            ) -> None:
+                super().__init__(name, **kwargs)  # type: ignore[arg-type]
                 self.column_names = columns
                 self.mysql_prefix = mysql_prefix
                 self.mysql_with_parser = mysql_with_parser
 
             @property
-            def columns(self):
+            def columns(self) -> list[object]:  # type: ignore[override]
                 # Return mock column objects with name attributes
                 class MockColumn:
-                    def __init__(self, name: str):
+                    def __init__(self, name: str) -> None:
                         self.name = name
 
                 return [MockColumn(col) for col in self.column_names]
