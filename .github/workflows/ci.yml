@@ -108,8 +108,7 @@ jobs:
             python -m pytest tests/performance/ \
               --junit-xml=test-results/performance-${{ matrix.python-version }}.xml \
               --benchmark-only \
-              --benchmark-json=test-results/benchmark-${{ matrix.python-version }}.json \
-              --benchmark-html=test-results/benchmark-${{ matrix.python-version }}.html
+              --benchmark-json=test-results/benchmark-${{ matrix.python-version }}.json
             ;;
         esac
 
@@ -252,7 +251,6 @@ jobs:
         python -m pytest tests/performance/ \
           --benchmark-only \
           --benchmark-json=test-results/benchmark.json \
-          --benchmark-html=test-results/benchmark.html \
           --benchmark-histogram=test-results/benchmark-histogram \
           --benchmark-save=baseline
 
@@ -269,7 +267,6 @@ jobs:
         name: performance-test-results
         path: |
           test-results/benchmark.json
-          test-results/benchmark.html
           test-results/benchmark-histogram
         retention-days: 7
 
