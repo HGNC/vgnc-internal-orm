@@ -38,6 +38,9 @@ jobs:
 
     - name: Run unit tests with coverage
       run: |
+        # Initialize coverage data
+        python -m coverage erase
+
         PYTHONPATH=src python -m pytest tests/unit/ \
           --cov=vgnc_internal_orm \
           --cov-report=xml:coverage-unit.xml \
@@ -46,8 +49,14 @@ jobs:
           --cov-context=test \
           --cov-config=pyproject.toml
 
+        # Save unit test coverage data
+        cp .coverage .coverage.unit
+
     - name: Run integration tests with coverage
       run: |
+        # Restore unit test coverage and start with append mode
+        cp .coverage.unit .coverage
+
         PYTHONPATH=src python -m pytest tests/integration/ \
           --cov=vgnc_internal_orm \
           --cov-append \
@@ -57,8 +66,14 @@ jobs:
           --cov-context=test \
           --cov-config=pyproject.toml
 
+        # Save combined coverage data
+        cp .coverage .coverage.combined
+
     - name: Run performance tests with coverage
       run: |
+        # Restore combined coverage and continue with append mode
+        cp .coverage.combined .coverage
+
         PYTHONPATH=src python -m pytest tests/performance/ \
           --cov=vgnc_internal_orm \
           --cov-append \
@@ -69,7 +84,11 @@ jobs:
 
     - name: Combine coverage reports
       run: |
-        python -m coverage combine
+        # List coverage files to see what we have
+        ls -la .coverage*
+
+        # The .coverage file should already contain all test coverage data
+        # Generate combined reports from the accumulated coverage data
         python -m coverage xml -o coverage-combined.xml
         python -m coverage html -o htmlcov-combined
         python -m coverage json -o coverage-combined.json
