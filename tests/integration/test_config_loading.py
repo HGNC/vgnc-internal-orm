@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from vgnc_internal_orm.config.settings import DatabaseConfig, Settings
+from vgnc_internal_orm.config.settings import DatabaseConfig, DatabaseDriver, Settings
 
 
 class TestConfigLoadingIntegration:
@@ -216,6 +216,7 @@ DEBUG=false
         with pytest.raises(ValueError):
             DatabaseConfig(
                 username="user",
+                driver=DatabaseDriver.MYSQL,  # Explicitly set to ensure validation triggers
                 # Missing password and database
             )
 

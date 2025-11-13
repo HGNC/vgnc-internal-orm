@@ -522,15 +522,23 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         return default if value is None else value
 
     def set_field_value(self, field_name: str, value: Any) -> bool:
-        """Set field value if field exists."""
-        if hasattr(self, field_name) and field_name in self.__table__.columns:
+        """Set field value. Creates field if it doesn't exist."""
+        # For SQLAlchemy models, prefer mapped columns
+        if hasattr(self, '__table__') and field_name in self.__table__.columns:
             setattr(self, field_name, value)
             return True
-        return False
+        # Allow setting any attribute (for flexibility with non-mapped attributes)
+        setattr(self, field_name, value)
+        return True
 
     def has_field(self, field_name: str) -> bool:
         """Check if model has a specific field."""
-        return hasattr(self, field_name) and field_name in self.__table__.columns
+        if not hasattr(self, field_name):
+            return False
+        if hasattr(self, '__table__'):
+            return field_name in self.__table__.columns
+        # For non-SQLAlchemy models, just check attribute existence
+        return True
 
     def get_primary_key_value(self) -> Any:
         """Get the primary key value of the model."""
