@@ -41,6 +41,9 @@ jobs:
         # Initialize coverage data
         python -m coverage erase
 
+        # Install package in development mode to ensure proper imports
+        pip install -e .
+
         PYTHONPATH=src python -m pytest tests/unit/ \
           --cov=vgnc_internal_orm \
           --cov-report=xml:coverage-unit.xml \
