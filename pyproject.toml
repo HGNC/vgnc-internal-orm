@@ -159,7 +159,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["src"]
+source = ["vgnc_internal_orm"]
 omit = [
     "*/tests/*",
     "*/test_*",
