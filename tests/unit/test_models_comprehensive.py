@@ -546,17 +546,7 @@ class TestModelConstraints:
             test_db_session.add(assembly)
             test_db_session.commit()
 
-    @pytest.mark.skip(
-        reason="Circular import issue with GeneStatus/Genefam relationships - architectural limitation"
-    )
-    def test_unique_constraints(self, test_db_session, sample_species):
-        """Test unique constraints."""
-        # Test duplicate genefam ID
-        # Note: This test is skipped due to SQLAlchemy circular import issues
-        # between GeneStatus and Genefam models. The core functionality works
-        # but the test setup triggers mapper configuration conflicts.
-        pass
-
+    
 
 class TestModelQueries:
     """Tests for complex model queries."""

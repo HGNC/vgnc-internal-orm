@@ -86,9 +86,21 @@ def benchmark_db():
     try:
         yield session, engine
     finally:
-        session.close()
-        # Drop tables for clean state
-        unified_metadata.drop_all(engine)
+        try:
+            session.close()
+        except Exception:
+            pass  # Session might already be closed
+        try:
+            # Drop tables for clean state
+            unified_metadata.drop_all(engine)
+        except Exception:
+            pass  # Engine might have issues
+        finally:
+            # Always dispose engine to close all connections
+            try:
+                engine.dispose()
+            except Exception:
+                pass  # Engine might already be disposed
 
 
 @pytest.fixture(scope="function")
@@ -111,6 +123,13 @@ def benchmark_session(benchmark_db):
             transaction.rollback()
         except Exception:
             pass  # Transaction might already be rolled back
+        # Ensure proper session cleanup to prevent ResourceWarnings
+        # Note: Don't close session or dispose engine here - benchmark_db fixture handles that
+        # Just make sure any pending operations are cleaned up
+        try:
+            session.expire_all()
+        except Exception:
+            pass  # Session might already be closed
 
 
 @pytest.fixture(scope="function")

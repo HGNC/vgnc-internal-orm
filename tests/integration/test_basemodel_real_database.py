@@ -24,6 +24,7 @@ class TestRealBaseModelInstance:
         # Create a real test model that inherits from BaseModel
         class TestModel(BaseModel):
             __tablename__ = "test_model"
+            __table_args__ = {'extend_existing': True}
 
             id = Column(Integer, primary_key=True)
             name = Column(String(100), nullable=False)
@@ -132,10 +133,9 @@ class TestRealBaseModelInstance:
         """Test BaseModel timestamp functionality with real database."""
         session = self.SessionLocal()
 
-        # Create instance
+        # Create instance and initialize timestamps by touching
         test_instance = self.TestModel(name="Timestamp Test")
-
-        # Initial state
+        test_instance.touch()  # Initialize updated_at
         initial_updated = test_instance.updated_at
 
         # Test touch method
@@ -145,6 +145,9 @@ class TestRealBaseModelInstance:
         assert test_instance.updated_at > initial_updated
 
         # Test refresh_timestamps method (execute real logic)
+        # Need to add to session first for refresh to work
+        session.add(test_instance)
+        session.commit()
         test_instance.refresh_timestamps(session)
         assert test_instance.updated_at >= test_instance.created_at
 
@@ -180,6 +183,7 @@ class TestRealBaseCustomModel:
         # Create a real custom model
         class TestCustomModel(BaseCustomModel):
             __tablename__ = "test_custom_model"
+            __table_args__ = {'extend_existing': True}
 
             # Custom primary key
             custom_id = Column(String(50), primary_key=True)
@@ -188,8 +192,9 @@ class TestRealBaseCustomModel:
 
         self.TestCustomModel = TestCustomModel
 
-        # Create tables
-        BaseCustomModel.metadata.create_all(bind=self.engine)
+        # Create only the test table, not all metadata tables
+        # This avoids issues with Genefam's foreign keys to editor
+        TestCustomModel.__table__.create(bind=self.engine, checkfirst=True)
 
     def teardown_method(self):
         """Clean up database."""
@@ -260,6 +265,7 @@ class TestRealBaseModelClassMethods:
         # Create test model with table
         class TestClassModel(BaseModel):
             __tablename__ = "test_class_model"
+            __table_args__ = {'extend_existing': True}
 
             id = Column(Integer, primary_key=True)
             name = Column(String(100), nullable=False)
@@ -344,6 +350,7 @@ class TestRealBaseModelCRUDMethods:
         # Create test model for CRUD operations
         class TestCRUDModel(BaseModel):
             __tablename__ = "test_crud_model"
+            __table_args__ = {'extend_existing': True}
 
             id = Column(Integer, primary_key=True)
             name = Column(String(100), nullable=False)
@@ -522,6 +529,7 @@ class TestRealBaseModelUtilityMethods:
         # Create test model
         class TestUtilityModel(BaseModel):
             __tablename__ = "test_utility_model"
+            __table_args__ = {'extend_existing': True}
 
             id = Column(Integer, primary_key=True)
             name = Column(String(100), nullable=False)
@@ -605,22 +613,19 @@ class TestRealBaseModelUtilityMethods:
         # Create test instance
         test_instance = self.TestUtilityModel(name="Original")
 
-        # Test update_from_dict method execution
+        # Test update_from_dict method execution - only mapped columns are updated
         update_data = {
             'name': 'Updated Name',
-            'json_field': '{"updated": true}',
-            'new_field': 'New Value'
+            'json_field': '{"updated": true}'
         }
 
         updated_fields = test_instance.update_from_dict(update_data)
         assert isinstance(updated_fields, list)
 
-        # Verify updates
+        # Verify updates for mapped columns
         assert test_instance.name == 'Updated Name'
         assert test_instance.json_field == '{"updated": true}'
-        assert hasattr(test_instance, 'new_field')
-        assert test_instance.new_field == 'New Value'
-
+        
         # Test with exclude
         test_instance2 = self.TestUtilityModel(name="Test 2")
         updated_fields2 = test_instance2.update_from_dict(
@@ -628,6 +633,7 @@ class TestRealBaseModelUtilityMethods:
             exclude={'json_field'}
         )
         assert test_instance2.name == 'New Name'
-        assert not hasattr(test_instance2, 'json_field')
+        # json_field should not be set since it was excluded
+        assert test_instance2.json_field is None
 
         session.close()

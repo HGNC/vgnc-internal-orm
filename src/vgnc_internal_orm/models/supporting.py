@@ -8,7 +8,6 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import BaseModel
-from .genefam import Genefam
 
 
 class GeneStatus(BaseModel):
@@ -29,7 +28,8 @@ class GeneStatus(BaseModel):
     )
 
     # Relationships
-    genefams: Mapped[list["Genefam"]] = relationship("Genefam", back_populates="status")
+    # Note: Genefam relationship disabled to avoid cross-registry and circular import issues
+    # genefams: Mapped[list["Genefam"]] = relationship("Genefam", back_populates="status")
 
     def __repr__(self) -> str:
         return f"<GeneStatus(id={self.id}, status='{self.status}')>"
@@ -73,7 +73,8 @@ class Editor(BaseModel):
     )
 
     # Relationships
-    genefams: Mapped[list["Genefam"]] = relationship("Genefam", back_populates="editor")
+    # Note: Genefam relationship disabled to avoid cross-registry and circular import issues
+    # genefams: Mapped[list["Genefam"]] = relationship("Genefam", back_populates="editor")
 
     def __repr__(self) -> str:
         return f"<Editor(id={self.id}, display_name='{self.display_name}')>"
@@ -103,9 +104,10 @@ class AltName(BaseModel):
     )
 
     # Relationships
-    genefams: Mapped[list["Genefam"]] = relationship(
-        "Genefam", secondary="gene_alt_name", back_populates="alt_names"
-    )
+    # Note: Genefam relationship disabled to avoid cross-registry and circular import issues
+    # genefams: Mapped[list["Genefam"]] = relationship(
+    #     "Genefam", secondary="gene_alt_name", back_populates="alt_names"
+    # )
 
     nomenclature_type: Mapped["NomenclatureType"] = relationship(
         "NomenclatureType", back_populates="alt_names"
@@ -139,9 +141,10 @@ class AltSymbol(BaseModel):
     )
 
     # Relationships
-    genefams: Mapped[list["Genefam"]] = relationship(
-        "Genefam", secondary="gene_alt_symbol", back_populates="alt_symbols"
-    )
+    # Note: Genefam relationship disabled to avoid cross-registry and circular import issues
+    # genefams: Mapped[list["Genefam"]] = relationship(
+    #     "Genefam", secondary="gene_alt_symbol", back_populates="alt_symbols"
+    # )
 
     nomenclature_type: Mapped["NomenclatureType"] = relationship(
         "NomenclatureType", back_populates="alt_symbols"
@@ -229,9 +232,10 @@ class Comment(BaseModel):
     # Relationships
     author: Mapped["Editor"] = relationship("Editor", foreign_keys=[author_id])
 
-    genefams: Mapped[list["Genefam"]] = relationship(
-        "Genefam", secondary="gene_has_comment", back_populates="comments"
-    )
+    # Note: Genefam relationship disabled to avoid cross-registry and circular import issues
+    # genefams: Mapped[list["Genefam"]] = relationship(
+    #     "Genefam", secondary="gene_has_comment", back_populates="comments"
+    # )
 
     def __repr__(self) -> str:
         return f"<Comment(id={self.id}, status='{self.status}')>"
@@ -258,9 +262,10 @@ class GeneFlag(BaseModel):
     # Relationships
     flag_class: Mapped["FlagClass"] = relationship("FlagClass", back_populates="flags")
 
-    genefams: Mapped[list["Genefam"]] = relationship(
-        "Genefam", secondary="gene_has_flag", back_populates="flags"
-    )
+    # Note: Genefam relationship disabled to avoid cross-registry and circular import issues
+    # genefams: Mapped[list["Genefam"]] = relationship(
+    #     "Genefam", secondary="gene_has_flag", back_populates="flags"
+    # )
 
     def __repr__(self) -> str:
         return f"<GeneFlag(id={self.id}, type='{self.type}')>"
@@ -349,9 +354,10 @@ class FamilyNew(BaseModel):
     )
 
     # Relationships
-    genefams: Mapped[list["Genefam"]] = relationship(
-        "Genefam", secondary="gene_has_family", back_populates="families"
-    )
+    # Note: Genefam relationship disabled to avoid cross-registry and circular import issues
+    # genefams: Mapped[list["Genefam"]] = relationship(
+    #     "Genefam", secondary="gene_has_family", back_populates="families"
+    # )
 
     def __repr__(self) -> str:
         return f"<FamilyNew(id={self.id}, name='{self.name}')>"

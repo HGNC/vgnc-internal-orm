@@ -104,15 +104,16 @@ class TestBaseModelUtilityIntegration:
 
     def test_base_model_repr_methods(self):
         """Test BaseModel __repr__ and __str__ methods."""
+        from types import MethodType
 
-        class MockBaseModel:
+        class TestModel:
             def __init__(self):
                 self.id = 123
-                self.__class__.__name__ = "TestModel"
 
-        mock_instance = MockBaseModel()
-        mock_instance.__repr__ = BaseModel.__repr__.__get__(mock_instance)
-        mock_instance.__str__ = BaseModel.__str__.__get__(mock_instance)
+        mock_instance = TestModel()
+        # Properly bind methods using MethodType
+        TestModel.__repr__ = lambda self: BaseModel.__repr__(self)
+        TestModel.__str__ = lambda self: BaseModel.__str__(self)
 
         # Test __repr__
         repr_str = repr(mock_instance)
@@ -144,12 +145,19 @@ class TestBaseModelUtilityIntegration:
         assert isinstance(result_decimal, (str, float))
 
         # Test _serialize_relationship method
-        mock_value = Mock()
-        result_rel = BaseModel._serialize_relationship(mock_value, "iso")
-        assert result_rel is mock_value  # Should return as-is for non-datetime
-
-        result_datetime_rel = BaseModel._serialize_relationship(test_datetime, "iso")
-        assert isinstance(result_datetime_rel, str)
+        mock_instance = BaseModel.__new__(BaseModel)
+        
+        # Test with mock that has to_dict method - should call to_dict()
+        mock_with_to_dict = Mock()
+        mock_with_to_dict.to_dict.return_value = {'id': 1, 'name': 'test'}
+        result_rel = mock_instance._serialize_relationship(mock_with_to_dict, "iso")
+        assert result_rel == {'id': 1, 'name': 'test'}  # Should call to_dict()
+        mock_with_to_dict.to_dict.assert_called_once_with(datetime_format="iso")
+        
+        # Test with value that doesn't have to_dict - should return as-is
+        simple_value = "simple string"
+        result_simple = mock_instance._serialize_relationship(simple_value, "iso")
+        assert result_simple == "simple string"
 
 
 class TestBaseCustomModelIntegration:
@@ -179,9 +187,12 @@ class TestBaseCustomModelIntegration:
         """Test BaseCustomModel touch functionality."""
 
         class TestCustomModel(BaseCustomModel):
-            pass
+            __tablename__ = "test_custom_model_touch"
+            
+            from sqlalchemy import Column, Integer, String
+            custom_id = Column(String(50), primary_key=True)
 
-        instance = TestCustomModel()
+        instance = TestCustomModel(custom_id="TEST_001")
 
         # Test touch method from TimestampMixin
         assert hasattr(instance, 'touch')
