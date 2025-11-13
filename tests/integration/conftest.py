@@ -16,6 +16,8 @@ from sqlalchemy.pool import StaticPool
 
 from vgnc_internal_orm.models.base import BaseModel
 from vgnc_internal_orm.models.species import BaseCustomModel
+# Import supporting models to ensure they are registered in metadata
+from vgnc_internal_orm.models.supporting import Editor, GeneStatus
 
 # Try to import testcontainers, but make it optional
 try:
@@ -29,27 +31,24 @@ except ImportError:
 
 @pytest.fixture(scope="function")
 def integrated_test_db():
-    """Create a test database with all models properly integrated.
-
-    This fixture handles the complex foreign key dependencies between
-    BaseModel and BaseCustomModel metadata registries by creating
-    a unified metadata approach similar to Alembic.
-    """
+    """Create a test database with all models properly integrated."""
     engine = create_engine(
         "sqlite:///:memory:",
         poolclass=StaticPool,
-        connect_args={"check_same_thread": False},
+        connect_args={
+            "check_same_thread": False,
+            "timeout": 20,
+        },
         echo=False,
+        # Disable deprecated datetime adapter warnings
+        native_datetime=True,
     )
 
-    # Create unified metadata to resolve cross-registry foreign key dependencies
+    # Create all tables using the unified metadata registry
     unified_metadata = MetaData()
 
-    # Add all tables from both metadata registries to unified metadata
+    # Add all tables from the shared metadata registry
     for table in BaseModel.metadata.tables.values():
-        table.to_metadata(unified_metadata)
-
-    for table in BaseCustomModel.metadata.tables.values():
         table.to_metadata(unified_metadata)
 
     # Create all tables with foreign key constraints disabled for testing
@@ -79,53 +78,6 @@ def integrated_test_session(integrated_test_db):
         yield session
     finally:
         session.close()
-
-
-def create_unified_metadata() -> MetaData:
-    """Create unified metadata containing all model tables.
-
-    This utility function can be used by tests that need direct access
-    to the unified metadata for custom table creation or inspection.
-
-    Returns:
-        MetaData: Unified metadata containing all model tables
-    """
-    unified_metadata = MetaData()
-
-    # Add all tables from both metadata registries
-    for table in BaseModel.metadata.tables.values():
-        table.to_metadata(unified_metadata)
-
-    for table in BaseCustomModel.metadata.tables.values():
-        table.to_metadata(unified_metadata)
-
-    return unified_metadata
-
-
-def create_test_engine_with_unified_metadata(echo: bool = False):
-    """Create a test engine with all tables created from unified metadata.
-
-    This utility function provides a complete test database setup
-    for tests that need direct engine access.
-
-    Args:
-        echo: Whether to enable SQL echo for debugging
-
-    Returns:
-        Tuple[Engine, MetaData]: Engine with all tables created and unified metadata
-    """
-    engine = create_engine(
-        "sqlite:///:memory:",
-        poolclass=StaticPool,
-        connect_args={"check_same_thread": False},
-        echo=echo,
-    )
-
-    unified_metadata = create_unified_metadata()
-    unified_metadata.create_all(engine)
-
-    return engine, unified_metadata
-
 
 # ============================================================================
 # MySQL Testcontainers Fixtures

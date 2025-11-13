@@ -1,10 +1,10 @@
 """Models module for VGNC ORM."""
 
 from .assembly import Assembly
-from .base import BaseModel
+from .base import BaseModel, BaseCustomModel
 from .chromosomes import Chromosomes
 from .genefam import Genefam
-from .species import BaseCustomModel, Species
+from .species import Species
 from .supporting import (
     AltName,
     AltSymbol,
@@ -21,6 +21,7 @@ from .supporting import (
 
 __all__ = [
     "BaseModel",
+    "BaseCustomModel",
     "Genefam",
     "Species",
     "Chromosomes",

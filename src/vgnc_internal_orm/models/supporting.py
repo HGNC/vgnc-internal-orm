@@ -28,8 +28,7 @@ class GeneStatus(BaseModel):
     )
 
     # Relationships
-    # Note: Genefam relationship disabled to avoid cross-registry and circular import issues
-    # genefams: Mapped[list["Genefam"]] = relationship("Genefam", back_populates="status")
+    genefams: Mapped[list["Genefam"]] = relationship("Genefam", back_populates="status")
 
     def __repr__(self) -> str:
         return f"<GeneStatus(id={self.id}, status='{self.status}')>"
@@ -73,8 +72,7 @@ class Editor(BaseModel):
     )
 
     # Relationships
-    # Note: Genefam relationship disabled to avoid cross-registry and circular import issues
-    # genefams: Mapped[list["Genefam"]] = relationship("Genefam", back_populates="editor")
+    genefams: Mapped[list["Genefam"]] = relationship("Genefam", back_populates="editor")
 
     def __repr__(self) -> str:
         return f"<Editor(id={self.id}, display_name='{self.display_name}')>"
@@ -104,7 +102,7 @@ class AltName(BaseModel):
     )
 
     # Relationships
-    # Note: Genefam relationship disabled to avoid cross-registry and circular import issues
+    # Note: Genefam relationship to alt_names is not currently implemented
     # genefams: Mapped[list["Genefam"]] = relationship(
     #     "Genefam", secondary="gene_alt_name", back_populates="alt_names"
     # )
@@ -141,7 +139,7 @@ class AltSymbol(BaseModel):
     )
 
     # Relationships
-    # Note: Genefam relationship disabled to avoid cross-registry and circular import issues
+    # Note: Genefam relationship to alt_symbols is not currently implemented
     # genefams: Mapped[list["Genefam"]] = relationship(
     #     "Genefam", secondary="gene_alt_symbol", back_populates="alt_symbols"
     # )
@@ -232,7 +230,7 @@ class Comment(BaseModel):
     # Relationships
     author: Mapped["Editor"] = relationship("Editor", foreign_keys=[author_id])
 
-    # Note: Genefam relationship disabled to avoid cross-registry and circular import issues
+    # Note: Genefam relationship to comments is not currently implemented
     # genefams: Mapped[list["Genefam"]] = relationship(
     #     "Genefam", secondary="gene_has_comment", back_populates="comments"
     # )
@@ -262,7 +260,7 @@ class GeneFlag(BaseModel):
     # Relationships
     flag_class: Mapped["FlagClass"] = relationship("FlagClass", back_populates="flags")
 
-    # Note: Genefam relationship disabled to avoid cross-registry and circular import issues
+    # Note: Genefam relationship to flags is not currently implemented
     # genefams: Mapped[list["Genefam"]] = relationship(
     #     "Genefam", secondary="gene_has_flag", back_populates="flags"
     # )
@@ -354,7 +352,7 @@ class FamilyNew(BaseModel):
     )
 
     # Relationships
-    # Note: Genefam relationship disabled to avoid cross-registry and circular import issues
+    # Note: Genefam relationship to families is not currently implemented
     # genefams: Mapped[list["Genefam"]] = relationship(
     #     "Genefam", secondary="gene_has_family", back_populates="families"
     # )

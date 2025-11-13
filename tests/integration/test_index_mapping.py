@@ -30,18 +30,13 @@ def test_db():
         echo=False,
     )
 
-    # Create unified metadata to handle cross-metadata foreign key references
+    # Create all tables using the unified metadata registry
     from sqlalchemy.schema import MetaData
 
     unified_metadata = MetaData()
 
-    # Add all tables from both metadata registries
-    from vgnc_internal_orm.models.species import BaseCustomModel
-
+    # Add all tables from the shared metadata registry
     for table in BaseModel.metadata.tables.values():
-        table.to_metadata(unified_metadata)
-
-    for table in BaseCustomModel.metadata.tables.values():
         table.to_metadata(unified_metadata)
 
     # Create all tables with foreign key constraints disabled for testing

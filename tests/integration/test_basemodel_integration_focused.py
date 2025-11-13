@@ -186,13 +186,13 @@ class TestBaseCustomModelIntegration:
     def test_base_custom_model_touch_functionality(self):
         """Test BaseCustomModel touch functionality."""
 
-        class TestCustomModel(BaseCustomModel):
+        class TestCustomModelTouch(BaseCustomModel):
             __tablename__ = "test_custom_model_touch"
             
             from sqlalchemy import Column, Integer, String
             custom_id = Column(String(50), primary_key=True)
 
-        instance = TestCustomModel(custom_id="TEST_001")
+        instance = TestCustomModelTouch(custom_id="TEST_001")
 
         # Test touch method from TimestampMixin
         assert hasattr(instance, 'touch')

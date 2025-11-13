@@ -43,7 +43,18 @@ class TimestampMixin:
         self.updated_at = datetime.now(UTC)
 
 
-class BaseModel(TimestampMixin, DeclarativeBase):
+class UnifiedBase(DeclarativeBase):
+    """Shared declarative base for all models.
+
+    This unified base class is used by all models in the system, ensuring
+    they all use the same metadata registry. This prevents circular import
+    issues that arise from having separate metadata registries.
+    """
+
+    __abstract__ = True
+
+
+class BaseModel(TimestampMixin, UnifiedBase):
     """Base model class with integer ``id`` primary key and rich helpers."""
 
     __abstract__ = True
@@ -696,6 +707,175 @@ class BaseModel(TimestampMixin, DeclarativeBase):
 
         return summary
 
+    @classmethod
+    def search_with_charset_support(
+        cls,
+        session: Session,
+        search_term: str,
+        *field_names: str,
+        case_sensitive: bool = False,
+        exact_match: bool = False,
+    ) -> list["BaseCustomModel"]:
+        """Search records with proper charset and collation support.
+
+        This method provides charset-aware searching for UTF8MB4 fields,
+        ensuring proper handling of international characters and emoji.
+        It automatically applies the appropriate MySQL COLLATE clauses
+        for optimal search results with UTF8MB4 encoded data.
+
+        Args:
+            session: SQLAlchemy session object
+            search_term: Search term to look for
+            *field_names: Field names to search in
+            case_sensitive: Whether to perform case-sensitive search
+            exact_match: Whether to require exact match (vs contains)
+
+        Returns:
+            List of matching records
+
+        Raises:
+            ValueError: If no field names provided
+            ImportError: If SQLAlchemy is not available
+        """
+        # Lazy imports to avoid circular dependencies
+        try:
+            from sqlalchemy import and_, or_, text
+            from sqlalchemy.orm import Session
+        except ImportError as e:
+            raise ImportError("SQLAlchemy is required for charset-aware search") from e
+
+        if not field_names:
+            raise ValueError("At least one field name must be provided")
+
+        if not hasattr(cls, "__tablename__"):
+            raise ValueError("Model must have a __tablename__ attribute")
+
+        table_name = cls.__tablename__
+        conditions = []
+
+        for field_name in field_names:
+            if not hasattr(cls, field_name):
+                continue
+
+            if exact_match:
+                if case_sensitive:
+                    # Use COLLATE utf8mb4_bin for case-sensitive exact match
+                    condition = text(
+                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_bin = :search_term"
+                    )
+                else:
+                    # Use COLLATE utf8mb4_general_ci for case-insensitive exact match
+                    condition = text(
+                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_general_ci = :search_term"
+                    )
+            else:
+                if case_sensitive:
+                    # Use COLLATE utf8mb4_bin for case-sensitive contains search
+                    condition = text(
+                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_bin LIKE CONCAT('%', :search_term, '%')"
+                    )
+                else:
+                    # Use COLLATE utf8mb4_general_ci for case-insensitive contains search
+                    condition = text(
+                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_general_ci LIKE CONCAT('%', :search_term, '%')"
+                    )
+
+            conditions.append(condition)
+
+        if not conditions:
+            return []
+
+        # Combine conditions with OR and bind parameters
+        query = session.query(cls).filter(or_(*conditions)).params(search_term=search_term)
+
+        return query.all()
+
+    @classmethod
+    async def asearch_with_charset_support(
+        cls,
+        session: "AsyncSession",  # type: ignore[name-defined]
+        search_term: str,
+        *field_names: str,
+        case_sensitive: bool = False,
+        exact_match: bool = False,
+    ) -> list["BaseCustomModel"]:
+        """Async version of search_with_charset_support.
+
+        This method provides charset-aware searching for UTF8MB4 fields,
+        ensuring proper handling of international characters and emoji.
+        It automatically applies the appropriate MySQL COLLATE clauses
+        for optimal search results with UTF8MB4 encoded data.
+
+        Args:
+            session: SQLAlchemy async session object
+            search_term: Search term to look for
+            *field_names: Field names to search in
+            case_sensitive: Whether to perform case-sensitive search
+            exact_match: Whether to require exact match (vs contains)
+
+        Returns:
+            List of matching records
+
+        Raises:
+            ValueError: If no field names provided
+            ImportError: If SQLAlchemy is not available
+        """
+        # Lazy imports to avoid circular dependencies
+        try:
+            from sqlalchemy import and_, or_, text
+            from sqlalchemy.ext.asyncio import AsyncSession
+        except ImportError as e:
+            raise ImportError("SQLAlchemy is required for charset-aware search") from e
+
+        if not field_names:
+            raise ValueError("At least one field name must be provided")
+
+        if not hasattr(cls, "__tablename__"):
+            raise ValueError("Model must have a __tablename__ attribute")
+
+        table_name = cls.__tablename__
+        conditions = []
+
+        for field_name in field_names:
+            if not hasattr(cls, field_name):
+                continue
+
+            if exact_match:
+                if case_sensitive:
+                    # Use COLLATE utf8mb4_bin for case-sensitive exact match
+                    condition = text(
+                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_bin = :search_term"
+                    )
+                else:
+                    # Use COLLATE utf8mb4_general_ci for case-insensitive exact match
+                    condition = text(
+                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_general_ci = :search_term"
+                    )
+            else:
+                if case_sensitive:
+                    # Use COLLATE utf8mb4_bin for case-sensitive contains search
+                    condition = text(
+                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_bin LIKE CONCAT('%', :search_term, '%')"
+                    )
+                else:
+                    # Use COLLATE utf8mb4_general_ci for case-insensitive contains search
+                    condition = text(
+                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_general_ci LIKE CONCAT('%', :search_term, '%')"
+                    )
+
+            conditions.append(condition)
+
+        if not conditions:
+            return []
+
+        # Combine conditions with OR and execute
+        from sqlalchemy import select
+
+        stmt = select(cls).where(or_(*conditions)).params(search_term=search_term)
+        result = await session.execute(stmt)
+
+        return result.scalars().all()
+
     # Charset-aware query helper methods
     @classmethod
     def search_with_charset_support(
@@ -813,11 +993,289 @@ class BaseModel(TimestampMixin, DeclarativeBase):
         return list(result.scalars().all())
 
 
-class BaseCustomModel(TimestampMixin, DeclarativeBase):
+class BaseCustomModel(TimestampMixin, UnifiedBase):
     """Base class for tables with composite/natural primary keys.
 
     Provides timestamps and ``touch`` but intentionally omits the auto
     integer ``id`` and the CRUD helpers that assume it.
+
+    Note: BaseCustomModel now uses the same metadata registry as BaseModel
+    (UnifiedBase) to eliminate circular import issues.
     """
 
     __abstract__ = True
+
+    def requires_utf8mb4(self, *field_names: str) -> dict[str, bool]:
+        """
+        Check if specified text fields contain characters requiring UTF8MB4.
+
+        Args:
+            *field_names: Names of text fields to check
+
+        Returns:
+            Dictionary mapping field names to boolean indicating UTF8MB4 requirement
+        """
+        from ..utils.mysql_features import UTF8MB4Handler
+
+        results = {}
+        for field_name in field_names:
+            if hasattr(self, field_name):
+                value = getattr(self, field_name)
+                if isinstance(value, str):
+                    results[field_name] = UTF8MB4Handler.requires_utf8mb4(value)
+                else:
+                    results[field_name] = False
+            else:
+                results[field_name] = False
+
+        return results
+
+    def sanitize_for_basic_utf8(
+        self, *field_names: str, replacement: str = "?"
+    ) -> dict[str, str]:
+        """
+        Sanitize specified text fields by replacing UTF8MB4-only characters.
+
+        Args:
+            *field_names: Names of text fields to sanitize
+            replacement: Character to use as replacement
+
+        Returns:
+            Dictionary mapping field names to sanitized values
+        """
+        from ..utils.mysql_features import UTF8MB4Handler
+
+        results = {}
+        for field_name in field_names:
+            if hasattr(self, field_name):
+                value = getattr(self, field_name)
+                if isinstance(value, str):
+                    results[field_name] = UTF8MB4Handler.sanitize_for_basic_utf8(
+                        value, replacement
+                    )
+                else:
+                    results[field_name] = value
+            else:
+                results[field_name] = (
+                    ""  # Empty string instead of None for str return type
+                )
+
+        return results
+
+    def get_utf8mb4_summary(self) -> dict[str, Any]:
+        """
+        Get a summary of UTF8MB4 requirements for all text fields in the model.
+
+        Returns:
+            Summary with UTF8MB4 analysis for all text fields
+        """
+        from ..utils.mysql_features import UTF8MB4Handler
+
+        summary: dict[str, Any] = {
+            "model": self.__class__.__name__,
+            "total_text_fields": 0,
+            "utf8mb4_required_fields": 0,
+            "fields_requiring_utf8mb4": [],
+            "all_fields_support_utf8mb4": True,
+            "emoji_count": 0,
+            "total_characters": 0,
+        }
+
+        # Check all text columns
+        for column in self.__table__.columns:
+            if isinstance(column.type, (String, Text)):
+                summary["total_text_fields"] = summary["total_text_fields"] + 1
+
+                field_name = column.name
+                if hasattr(self, field_name):
+                    value = getattr(self, field_name)
+                    if isinstance(value, str):
+                        summary["total_characters"] = summary["total_characters"] + len(
+                            value
+                        )
+
+                        if UTF8MB4Handler.requires_utf8mb4(value):
+                            summary["utf8mb4_required_fields"] = (
+                                summary["utf8mb4_required_fields"] + 1
+                            )
+                            summary["fields_requiring_utf8mb4"].append(field_name)
+                            summary["all_fields_support_utf8mb4"] = False
+
+                        # Count emoji characters
+                        for char in value:
+                            char_code = ord(char)
+                            for start, end in UTF8MB4Handler.EMOJI_RANGES:
+                                if start <= char_code <= end:
+                                    summary["emoji_count"] = summary["emoji_count"] + 1
+                                    break
+
+        return summary
+
+    @classmethod
+    def search_with_charset_support(
+        cls,
+        session: Session,
+        search_term: str,
+        *field_names: str,
+        case_sensitive: bool = False,
+        exact_match: bool = False,
+    ) -> list["BaseCustomModel"]:
+        """Search records with proper charset and collation support.
+
+        This method provides charset-aware searching for UTF8MB4 fields,
+        ensuring proper handling of international characters and emoji.
+        It automatically applies the appropriate MySQL COLLATE clauses
+        for optimal search results with UTF8MB4 encoded data.
+
+        Args:
+            session: SQLAlchemy session object
+            search_term: Search term to look for
+            *field_names: Field names to search in
+            case_sensitive: Whether to perform case-sensitive search
+            exact_match: Whether to require exact match (vs contains)
+
+        Returns:
+            List of matching records
+
+        Raises:
+            ValueError: If no field names provided
+            ImportError: If SQLAlchemy is not available
+        """
+        # Lazy imports to avoid circular dependencies
+        try:
+            from sqlalchemy import and_, or_, text
+            from sqlalchemy.orm import Session
+        except ImportError as e:
+            raise ImportError("SQLAlchemy is required for charset-aware search") from e
+
+        if not field_names:
+            raise ValueError("At least one field name must be provided")
+
+        if not hasattr(cls, "__tablename__"):
+            raise ValueError("Model must have a __tablename__ attribute")
+
+        table_name = cls.__tablename__
+        conditions = []
+
+        for field_name in field_names:
+            if not hasattr(cls, field_name):
+                continue
+
+            if exact_match:
+                if case_sensitive:
+                    # Use COLLATE utf8mb4_bin for case-sensitive exact match
+                    condition = text(
+                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_bin = :search_term"
+                    )
+                else:
+                    # Use COLLATE utf8mb4_general_ci for case-insensitive exact match
+                    condition = text(
+                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_general_ci = :search_term"
+                    )
+            else:
+                if case_sensitive:
+                    # Use COLLATE utf8mb4_bin for case-sensitive contains search
+                    condition = text(
+                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_bin LIKE CONCAT('%', :search_term, '%')"
+                    )
+                else:
+                    # Use COLLATE utf8mb4_general_ci for case-insensitive contains search
+                    condition = text(
+                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_general_ci LIKE CONCAT('%', :search_term, '%')"
+                    )
+
+            conditions.append(condition)
+
+        if not conditions:
+            return []
+
+        # Combine conditions with OR and bind parameters
+        query = session.query(cls).filter(or_(*conditions)).params(search_term=search_term)
+
+        return query.all()
+
+    @classmethod
+    async def asearch_with_charset_support(
+        cls,
+        session: "AsyncSession",  # type: ignore[name-defined]
+        search_term: str,
+        *field_names: str,
+        case_sensitive: bool = False,
+        exact_match: bool = False,
+    ) -> list["BaseCustomModel"]:
+        """Async version of search_with_charset_support.
+
+        This method provides charset-aware searching for UTF8MB4 fields,
+        ensuring proper handling of international characters and emoji.
+        It automatically applies the appropriate MySQL COLLATE clauses
+        for optimal search results with UTF8MB4 encoded data.
+
+        Args:
+            session: SQLAlchemy async session object
+            search_term: Search term to look for
+            *field_names: Field names to search in
+            case_sensitive: Whether to perform case-sensitive search
+            exact_match: Whether to require exact match (vs contains)
+
+        Returns:
+            List of matching records
+
+        Raises:
+            ValueError: If no field names provided
+            ImportError: If SQLAlchemy is not available
+        """
+        # Lazy imports to avoid circular dependencies
+        try:
+            from sqlalchemy import and_, or_, text
+            from sqlalchemy.ext.asyncio import AsyncSession
+        except ImportError as e:
+            raise ImportError("SQLAlchemy is required for charset-aware search") from e
+
+        if not field_names:
+            raise ValueError("At least one field name must be provided")
+
+        if not hasattr(cls, "__tablename__"):
+            raise ValueError("Model must have a __tablename__ attribute")
+
+        table_name = cls.__tablename__
+        conditions = []
+
+        for field_name in field_names:
+            if not hasattr(cls, field_name):
+                continue
+
+            if exact_match:
+                if case_sensitive:
+                    # Use COLLATE utf8mb4_bin for case-sensitive exact match
+                    condition = text(
+                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_bin = :search_term"
+                    )
+                else:
+                    # Use COLLATE utf8mb4_general_ci for case-insensitive exact match
+                    condition = text(
+                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_general_ci = :search_term"
+                    )
+            else:
+                if case_sensitive:
+                    # Use COLLATE utf8mb4_bin for case-sensitive contains search
+                    condition = text(
+                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_bin LIKE CONCAT('%', :search_term, '%')"
+                    )
+                else:
+                    # Use COLLATE utf8mb4_general_ci for case-insensitive contains search
+                    condition = text(
+                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_general_ci LIKE CONCAT('%', :search_term, '%')"
+                    )
+
+            conditions.append(condition)
+
+        if not conditions:
+            return []
+
+        # Combine conditions with OR and execute
+        from sqlalchemy import select
+
+        stmt = select(cls).where(or_(*conditions)).params(search_term=search_term)
+        result = await session.execute(stmt)
+
+        return result.scalars().all()

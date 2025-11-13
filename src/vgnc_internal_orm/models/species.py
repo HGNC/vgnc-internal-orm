@@ -326,36 +326,27 @@ class Species(BaseCustomModel):
         validation_results = {}
 
         for field_name in field_names:
-            field_value = getattr(self, field_name, None)
-
-            # Check if field exists and has a value
-            if field_value is None:
-                validation_results[field_name] = {
-                    "valid": True,
-                    "message": "Field is null or missing",
-                    "has_unicode": False,
-                }
-                continue
-
-            # Check for UTF8MB4 compatibility (supports 4-byte Unicode)
-            try:
-                # Encode to UTF-8 and check if 4-byte sequences are present
-                encoded = field_value.encode("utf-8")
-                has_4byte = any(b > 0xF0 for b in encoded)
-
-                validation_results[field_name] = {
-                    "valid": True,
-                    "message": "Field supports UTF8MB4 encoding",
-                    "has_unicode": has_4byte,
-                    "length": len(field_value),
-                    "encoded_length": len(encoded),
-                }
-            except UnicodeError as e:
+            if hasattr(self, field_name):
+                field_value = getattr(self, field_name, None)
+                if isinstance(field_value, str):
+                    # Use CharsetValidator for text fields
+                    from ..utils.mysql_features import CharsetValidator
+                    validation_results[field_name] = CharsetValidator.validate_text_encoding(field_value)
+                else:
+                    # Non-text field or None value
+                    validation_results[field_name] = {
+                        "valid": True,
+                        "encoding": "utf-8",
+                        "message": "Field is not a text field or is null",
+                        "has_unicode": False,
+                    }
+            else:
+                # Field doesn't exist - follow BaseCustomModel pattern
                 validation_results[field_name] = {
                     "valid": False,
-                    "message": f"UTF8MB4 encoding error: {str(e)}",
-                    "has_unicode": False,
-                    "error": str(e),
+                    "encoding": "utf-8",
+                    "error": f"Field '{field_name}' does not exist",
                 }
 
+  
         return validation_results

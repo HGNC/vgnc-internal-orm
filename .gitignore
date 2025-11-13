@@ -137,3 +137,5 @@ docker-compose.override.yml
 
 CLAUDE.md
 docs/_build/
+file::memory:
+tests/integration/test_basemodel_integration_focused.py.bak

@@ -486,8 +486,34 @@ class FullTextSearch:
         if not index_name:
             index_name = f"fti_{table_name}_{'_'.join(columns)}"
 
+        # Create a custom Index class that can handle string column names
+        # for MySQL FULLTEXT indexes. This creates index metadata that
+        # can be used with MySQL-specific DDL generation.
+        class FullTextIndex(Index):
+            def __init__(
+                self,
+                name: str,
+                *columns,
+                mysql_prefix: str | None = None,
+                mysql_with_parser: str | None = None,
+                **kwargs,
+            ):
+                super().__init__(name, **kwargs)
+                self.column_names = columns
+                self.mysql_prefix = mysql_prefix
+                self.mysql_with_parser = mysql_with_parser
+
+            @property
+            def columns(self):
+                # Return mock column objects with name attributes
+                class MockColumn:
+                    def __init__(self, name: str):
+                        self.name = name
+
+                return [MockColumn(col) for col in self.column_names]
+
         # Create index with MySQL-specific DDL
-        index = Index(
+        index = FullTextIndex(
             index_name,
             *columns,
             mysql_prefix="FULLTEXT",

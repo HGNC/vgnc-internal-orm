@@ -16,10 +16,7 @@ from sqlalchemy.pool import StaticPool
 from vgnc_internal_orm.models.assembly import Assembly
 from vgnc_internal_orm.models.base import BaseModel
 from vgnc_internal_orm.models.chromosomes import Chromosomes
-from vgnc_internal_orm.models.species import BaseCustomModel, Species, SpeciesLiveStatus
-
-# Skip supporting models due to circular import issues
-# from vgnc_internal_orm.models.supporting import GeneStatus, Editor
+from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 
 
 # Benchmark configuration
@@ -60,20 +57,22 @@ def benchmark_db():
     engine = create_engine(
         "sqlite:///:memory:",
         poolclass=StaticPool,
-        connect_args={"check_same_thread": False},
+        connect_args={
+            "check_same_thread": False,
+            "timeout": 20,
+        },
         echo=False,  # Set to True for SQL debugging in benchmarks
+        # Disable deprecated datetime adapter warnings
+        native_datetime=True,
     )
 
-    # Create unified metadata for testing
+    # Create all tables using the unified metadata registry
     from sqlalchemy.schema import MetaData
 
     unified_metadata = MetaData()
 
-    # Add all tables from both metadata registries
+    # Add all tables from the shared metadata registry
     for table in BaseModel.metadata.tables.values():
-        table.to_metadata(unified_metadata)
-
-    for table in BaseCustomModel.metadata.tables.values():
         table.to_metadata(unified_metadata)
 
     # Create all tables
@@ -136,11 +135,6 @@ def benchmark_session(benchmark_db):
 def populated_benchmark_db(benchmark_db):
     """Create a benchmark database with realistic test data."""
     session, engine = benchmark_db
-
-    # Skip supporting data creation to avoid circular import issues
-    # GeneStatus and Editor have circular relationships with Genefam
-    # This is acceptable for performance testing with core models
-    pass
 
     # Create species data
     species_data = [
