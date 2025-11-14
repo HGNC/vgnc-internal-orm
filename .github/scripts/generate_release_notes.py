@@ -107,9 +107,15 @@ class ReleaseNotesGenerator:
         section = f"## {self.descriptions['breaking']}\n\n"
 
         for change in breaking_changes:
-            commit_hash = change['hash']
-            description = change['description']
+            commit_hash = change.get('hash', '')
+            description = change.get('description', '')
             scope = change.get('scope', '')
+
+            # Handle None values safely
+            if description is None:
+                description = ''
+            if commit_hash is None:
+                commit_hash = ''
 
             if scope:
                 line = f"- **({scope})** {description} ({commit_hash})\n"
@@ -131,8 +137,14 @@ class ReleaseNotesGenerator:
 
         for feature in features:
             scope = feature.get('scope')
-            description = feature['description']
-            commit_hash = feature['hash']
+            description = feature.get('description', '')
+            commit_hash = feature.get('hash', '')
+
+            # Handle None values safely
+            if description is None:
+                description = ''
+            if commit_hash is None:
+                commit_hash = ''
 
             if scope:
                 if scope not in features_by_scope:
@@ -166,8 +178,14 @@ class ReleaseNotesGenerator:
 
         for fix in fixes:
             scope = fix.get('scope')
-            description = fix['description']
-            commit_hash = fix['hash']
+            description = fix.get('description', '')
+            commit_hash = fix.get('hash', '')
+
+            # Handle None values safely
+            if description is None:
+                description = ''
+            if commit_hash is None:
+                commit_hash = ''
 
             if scope:
                 if scope not in fixes_by_scope:
@@ -198,8 +216,16 @@ class ReleaseNotesGenerator:
 
         for change in other_changes:
             commit_type = change.get('type', 'other')
-            commit_hash = change['hash']
-            description = change['description']
+            commit_hash = change.get('hash', '')
+            description = change.get('description', '')
+
+            # Handle None values safely
+            if description is None:
+                description = ''
+            if commit_hash is None:
+                commit_hash = ''
+            if commit_type is None:
+                commit_type = 'other'
 
             if commit_type not in changes_by_type:
                 changes_by_type[commit_type] = []
@@ -207,7 +233,10 @@ class ReleaseNotesGenerator:
 
         section = ""
 
-        for commit_type, changes in sorted(changes_by_type.items()):
+        # Sort keys safely, ensuring all are strings
+        sorted_keys = sorted([str(k) for k in changes_by_type.keys() if k is not None])
+        for commit_type in sorted_keys:
+            changes = changes_by_type[commit_type]
             if commit_type in self.descriptions and commit_type not in ['feat', 'fix', 'breaking']:
                 section += f"## {self.descriptions[commit_type]}\n\n"
                 for description, commit_hash in changes:
@@ -313,7 +342,9 @@ def main():
             print(notes)
 
     except Exception as e:
+        import traceback
         print(f"Error generating release notes: {e}", file=sys.stderr)
+        print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
         return 1
 
     return 0
