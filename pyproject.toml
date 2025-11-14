@@ -4,9 +4,9 @@ version = "0.2.0"
 description = "Internal ORM library for VGNC database operations with SQLAlchemy and Pydantic integration"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "CC0-1.0"}
+license = {text = "MIT"}
 authors = [
-    {name = "VGNC Development Team", email = "dev@vgnc.com"}
+    {name = "HGNC Development Team", email = "hgnc@genenames.org"}
 ]
 keywords = ["orm", "sqlalchemy", "pydantic", "database", "vgnc"]
 classifiers = [
