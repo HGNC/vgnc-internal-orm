@@ -112,10 +112,24 @@ jobs:
         CURRENT="${{ steps.version.outputs.current-version }}"
         BUMP="${{ steps.bump.outputs.bump }}"
 
+        # Skip version calculation if no bump
+        if [[ "$BUMP" == "none" || -z "$BUMP" ]]; then
+          echo "No version bump needed"
+          echo "new-version=" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
         # Parse semver and bump
         NEW_VERSION=$(python .github/scripts/bump_version.py \
           --current "$CURRENT" \
           --bump "$BUMP")
+
+        # Validate we got a valid version
+        if [[ -z "$NEW_VERSION" ]]; then
+          echo "Error: Failed to calculate new version"
+          echo "new-version=" >> $GITHUB_OUTPUT
+          exit 1
+        fi
 
         echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT
         echo "New version will be: $NEW_VERSION"
@@ -123,6 +137,9 @@ jobs:
     - name: Check if release is needed
       id: check
       run: |
+        # Get the calculated new version
+        NEW_VERSION="${{ steps.new-version.outputs.new-version }}"
+
         # Check if we have meaningful changes that require a release
         HAS_CHANGES=$(python -c "
         import json
@@ -153,11 +170,11 @@ jobs:
         elif [[ "$FORCE_RELEASE" == "false" ]]; then
           SHOULD_RELEASE=false
           echo "Dry run mode - skipping release creation"
-        elif [[ "$HAS_CHANGES" == "True" ]]; then
+        elif [[ -n "$NEW_VERSION" && "$HAS_CHANGES" == "True" ]]; then
           SHOULD_RELEASE=true
-          echo "Changes detected that warrant a release"
+          echo "Changes detected that warrant a release: $NEW_VERSION"
         else
-          echo "No release-worthy changes detected"
+          echo "No release-worthy changes detected (NEW_VERSION: '$NEW_VERSION', HAS_CHANGES: '$HAS_CHANGES')"
         fi
 
         echo "should-release=$SHOULD_RELEASE" >> $GITHUB_OUTPUT
