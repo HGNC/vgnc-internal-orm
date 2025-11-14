@@ -22,13 +22,13 @@ def update_pyproject_version(file_path: str, new_version: str) -> bool:
         True if successful, False otherwise
     """
     try:
-        file_path = Path(file_path)
-        if not file_path.exists():
+        file_path_obj = Path(file_path)
+        if not file_path_obj.exists():
             print(f"Error: File not found: {file_path}", file=sys.stderr)
             return False
 
         # Read the file
-        content = file_path.read_text(encoding='utf-8')
+        content = file_path_obj.read_text(encoding='utf-8')
 
         # Update version using regex to maintain TOML formatting
         # Look for version = "x.x.x" in [project] section
@@ -51,7 +51,7 @@ def update_pyproject_version(file_path: str, new_version: str) -> bool:
             return False
 
         # Write back to file
-        file_path.write_text(updated_content, encoding='utf-8')
+        file_path_obj.write_text(updated_content, encoding='utf-8')
 
         print(f"✅ Updated version to {new_version} in {file_path}")
         return True
@@ -73,8 +73,8 @@ def verify_version_update(file_path: str, expected_version: str) -> bool:
         True if version matches expected, False otherwise
     """
     try:
-        file_path = Path(file_path)
-        content = file_path.read_text(encoding='utf-8')
+        file_path_obj = Path(file_path)
+        content = file_path_obj.read_text(encoding='utf-8')
 
         # Extract version
         version_match = re.search(r'version\s*=\s*"([^"]*)"', content)

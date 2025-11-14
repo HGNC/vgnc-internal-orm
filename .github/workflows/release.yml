@@ -229,6 +229,12 @@ jobs:
           --release-notes-file release-notes.md \
           --version "${{ needs.version-analysis.outputs.new-version }}"
 
+    - name: Update version references in documentation
+      run: |
+        python .github/scripts/update_version_references.py \
+          --version "${{ needs.version-analysis.outputs.new-version }}" \
+          --path .
+
     - name: Validate updated files
       run: |
         # Verify version was updated correctly
@@ -260,7 +266,7 @@ jobs:
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
 
-        git add pyproject.toml CHANGELOG.md
+        git add pyproject.toml CHANGELOG.md README.md docs/
 
         # Check if there are changes to commit
         if git diff --staged --quiet; then
@@ -270,6 +276,7 @@ jobs:
 
         - Update version in pyproject.toml
         - Add changelog entry for ${{ needs.version-analysis.outputs.new-version }}
+        - Update version references in documentation files
 
         🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
