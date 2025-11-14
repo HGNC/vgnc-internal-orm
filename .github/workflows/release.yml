@@ -293,7 +293,7 @@ jobs:
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
 
-        git add pyproject.toml CHANGELOG.md README.md docs/
+        git add pyproject.toml CHANGELOG.md README.md docs/ release-notes.md
 
         # Check if there are changes to commit
         if git diff --staged --quiet; then
@@ -304,6 +304,7 @@ jobs:
         - Update version in pyproject.toml
         - Add changelog entry for ${{ needs.version-analysis.outputs.new-version }}
         - Update version references in documentation files
+        - Add release-notes.md for ${{ needs.version-analysis.outputs.new-version }}
 
         🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
