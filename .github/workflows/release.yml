@@ -129,13 +129,18 @@ jobs:
         with open('analysis.json', 'r') as f:
             data = json.load(f)
 
-        # Check if there are any conventional commits
-        has_conventional = any(data['conventional_commits'].values())
-        has_breaking = data['breaking_changes'] > 0
-        has_features = data['features'] > 0
-        has_fixes = data['fixes'] > 0
+        # Safely access nested data with defaults
+        stats = data.get('stats', {})
+        conventional_commits = stats.get('conventional_commits', {})
+        breaking_changes = stats.get('breaking_changes', 0)
+        features = stats.get('features', 0)
+        fixes = stats.get('fixes', 0)
 
-        should_release = has_conventional and (has_breaking or has_features or has_fixes)
+        # Check if there are any conventional commits
+        has_conventional = any(conventional_commits.values())
+        has_versionable = breaking_changes > 0 or features > 0 or fixes > 0
+
+        should_release = has_conventional and has_versionable
         print(should_release)
         ")
 
