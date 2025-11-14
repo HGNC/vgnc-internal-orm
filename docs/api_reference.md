@@ -54,7 +54,7 @@ Examples: see `cli.md`.
 ## Migrations & Safety
 
 - `vgnc_internal_orm.migrations.safety`: `validate_migration_safety()`, `print_safety_report()`, `MigrationSafetyValidator`
-- `scripts/migration_workflow.py`: `MigrationWorkflow` (create/test/rollback/validate/status, integrates safety module)
+- `.github/scripts/migration_workflow.py`: `MigrationWorkflow` (create/test/rollback/validate/status, integrates safety module)
 - Alembic revision scripts: `alembic/versions/*`
 
 Examples: see `migration_workflow.md`, `migrations_safety.md`.

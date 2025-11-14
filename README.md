@@ -40,10 +40,21 @@ Comprehensive SQLAlchemy 2.0 ORM toolkit for VGNC-style gene nomenclature data: 
 # Install from PyPI (when available)
 pip install vgnc-internal-orm
 
+# Install from GitHub (latest development version)
+pip install git+https://github.com/vgnc/vgnc-internal-orm.git
+
 # Install with optional dependencies
 pip install vgnc-internal-orm[mysql]      # MySQL support
 pip install vgnc-internal-orm[dev]       # Development tools
 pip install vgnc-internal-orm[test]      # Testing tools
+
+# Using uv (modern Python package manager)
+uv install vgnc-internal-orm
+uv install vgnc-internal-orm[mysql]
+uv install vgnc-internal-orm[dev]
+
+# Install from GitHub with uv
+uv install git+https://github.com/vgnc/vgnc-internal-orm.git
 ```
 
 ### Basic Usage
@@ -152,13 +163,13 @@ alembic upgrade head
 alembic downgrade -1
 
 # Validate migration safety before production
-python scripts/migration_workflow.py validate
+python .github/scripts/migration_workflow.py validate
 
 # Test migration on development database
-python scripts/migration_workflow.py test
+python .github/scripts/migration_workflow.py test
 
 # Get migration status
-python scripts/migration_workflow.py status
+python .github/scripts/migration_workflow.py status
 ```
 
 ### Migration Safety
@@ -179,21 +190,33 @@ python scripts/migration_workflow.py status
 git clone https://github.com/vgnc/vgnc-internal-orm.git
 cd vgnc-internal-orm
 
-# Install in development mode
+# Option 1: Using pip (traditional)
 pip install -e ".[dev]"
+
+# Option 2: Using uv (modern, faster)
+uv sync --dev
+# or equivalently:
+uv install -e ".[dev]"
 
 # Install pre-commit hooks
 pre-commit install
 
 # Run tests
 pytest
+# or with uv:
+uv run pytest
 
 # Run linting
 ruff check src/
 black src/
+# or with uv:
+uv run ruff check src/
+uv run black src/
 
 # Run type checking
 mypy src/
+# or with uv:
+uv run mypy src/
 ```
 
 ### Testing
@@ -251,7 +274,7 @@ We welcome contributions! Please follow these steps:
 6. **Migration Safety**: For schema changes, run migration safety checks:
 
    ```bash
-   python scripts/migration_workflow.py validate
+   python .github/scripts/migration_workflow.py validate
    ```
 
 ### Development Guidelines

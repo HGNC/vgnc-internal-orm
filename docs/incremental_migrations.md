@@ -8,34 +8,34 @@ The incremental migration system provides a safe, tested workflow for making dat
 
 ## Migration Workflow Script
 
-The project includes a comprehensive migration workflow script at `scripts/migration_workflow.py` that provides all necessary tools for migration management.
+The project includes a comprehensive migration workflow script at `.github/scripts/migration_workflow.py` that provides all necessary tools for migration management.
 
 ### Available Commands
 
 ```bash
 # Show current migration status
-python scripts/migration_workflow.py status
+python .github/scripts/migration_workflow.py status
 
 # Create a new migration
-python scripts/migration_workflow.py create "add_user_email_field"
+python .github/scripts/migration_workflow.py create "add_user_email_field"
 
 # Test migration on clean database
-python scripts/migration_workflow.py test
+python .github/scripts/migration_workflow.py test
 
 # Test specific migration revision
-python scripts/migration_workflow.py test --revision abc123def456
+python .github/scripts/migration_workflow.py test --revision abc123def456
 
 # Test rollback functionality
-python scripts/migration_workflow.py test-rollback --steps 1
+python .github/scripts/migration_workflow.py test-rollback --steps 1
 
 # Validate migration safety
-python scripts/migration_workflow.py validate
+python .github/scripts/migration_workflow.py validate
 
 # Validate specific migration file
-python scripts/migration_workflow.py validate --file alembic/versions/abc123def456_add_field.py
+python .github/scripts/migration_workflow.py validate --file alembic/versions/abc123def456_add_field.py
 
 # Show deployment checklist
-python scripts/migration_workflow.py checklist
+python .github/scripts/migration_workflow.py checklist
 ```
 
 ## Standard Development Workflow
@@ -60,7 +60,7 @@ class Species(BaseCustomModel):
 ### 2. Generate Migration
 
 ```bash
-python scripts/migration_workflow.py create "add_common_name_to_species"
+python .github/scripts/migration_workflow.py create "add_common_name_to_species"
 ```
 
 This will:
@@ -89,7 +89,7 @@ def downgrade() -> None:
 ### 4. Test Migration
 
 ```bash
-python scripts/migration_workflow.py test
+python .github/scripts/migration_workflow.py test
 ```
 
 This will:
@@ -102,7 +102,7 @@ This will:
 ### 5. Test Rollback
 
 ```bash
-python scripts/migration_workflow.py test-rollback --steps 1
+python .github/scripts/migration_workflow.py test-rollback --steps 1
 ```
 
 This ensures your migration can be safely rolled back if needed.
@@ -110,7 +110,7 @@ This ensures your migration can be safely rolled back if needed.
 ### 6. Validate Safety
 
 ```bash
-python scripts/migration_workflow.py validate
+python .github/scripts/migration_workflow.py validate
 ```
 
 This checks for:
@@ -134,13 +134,13 @@ Always test migrations locally before deploying:
 
 ```bash
 # Test current migrations
-python scripts/migration_workflow.py test
+python .github/scripts/migration_workflow.py test
 
 # Test rollback
-python scripts/migration_workflow.py test-rollback --steps 2
+python .github/scripts/migration_workflow.py test-rollback --steps 2
 
 # Test with specific database
-DATABASE_URL="mysql://user:pass@localhost:3306/test_db" python scripts/migration_workflow.py test
+DATABASE_URL="mysql://user:pass@localhost:3306/test_db" python .github/scripts/migration_workflow.py test
 ```
 
 ### Staging Environment Testing
@@ -225,7 +225,7 @@ The workflow automatically detects:
 Before deploying to production:
 
 ```bash
-python scripts/migration_workflow.py checklist
+python .github/scripts/migration_workflow.py checklist
 ```
 
 ✅ Backup database before proceeding
@@ -297,7 +297,7 @@ def downgrade() -> None:
 
 ```bash
    # Check current state
-   python scripts/migration_workflow.py status
+   python .github/scripts/migration_workflow.py status
 
    # Force stamp to specific revision (use carefully)
    alembic stamp <revision_id>
@@ -358,8 +358,9 @@ alembic show <revision_id>
 ## File Structure
 
 ```text
-scripts/
-└── migration_workflow.py          # Main migration workflow script
+.github/
+└── scripts/
+    └── migration_workflow.py      # Main migration workflow script
 
 alembic/
 ├── versions/                       # Migration files
@@ -386,9 +387,9 @@ The migration workflow can be integrated into CI/CD pipelines:
 # Example GitHub Actions workflow
 - name: Test Database Migrations
   run: |
-    python scripts/migration_workflow.py test
-    python scripts/migration_workflow.py test-rollback
-    python scripts/migration_workflow.py validate
+    python .github/scripts/migration_workflow.py test
+    python .github/scripts/migration_workflow.py test-rollback
+    python .github/scripts/migration_workflow.py validate
     pytest tests/test_incremental_migrations.py -v
 ```
 
