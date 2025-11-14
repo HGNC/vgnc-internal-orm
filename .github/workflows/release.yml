@@ -232,35 +232,114 @@ jobs:
       with:
         name: release-analysis
 
+    - name: Debug environment variables
+      run: |
+        echo "🔍 Environment Debug:"
+        echo "  All env vars starting with NEEDS_:"
+        env | grep "^NEEDS_" | sort
+        echo ""
+        echo "🔍 Job outputs available:"
+        echo "  needs.version-analysis.outputs.new-version: '${{ needs.version-analysis.outputs.new-version }}'"
+        echo "  needs.version-analysis.outputs.should-release: '${{ needs.version-analysis.outputs.should-release }}'"
+        echo "  needs.version-analysis.outputs.current-version: '${{ needs.version-analysis.outputs.current-version }}'"
+        echo "  needs.version-analysis.outputs.version-bump: '${{ needs.version-analysis.outputs.version-bump }}'"
+
     - name: Validate version before update
       run: |
+        # Force output to show what's actually being received
+        set -x
         NEW_VERSION="${{ needs.version-analysis.outputs.new-version }}"
-        if [[ -z "$NEW_VERSION" ]]; then
-          echo "❌ ERROR: NEW_VERSION is empty - cannot proceed with release"
-          echo "This should not happen - please check the version-analysis job logs"
+        set +x
+
+        echo "🔍 Direct assignment test:"
+        echo "  NEW_VERSION variable: '$NEW_VERSION'"
+        echo "  Length: ${#NEW_VERSION}"
+        echo "  Is empty: $([ -z "$NEW_VERSION" ] && echo "YES" || echo "NO")"
+
+        if [[ -z "$NEW_VERSION" || "$NEW_VERSION" == "" ]]; then
+          echo "❌ ERROR: NEW_VERSION is empty or unset"
+          echo "💡 Attempting fallback calculation..."
+
+          # Fallback: calculate version directly here
+          CURRENT_VERSION="${{ needs.version-analysis.outputs.current-version }}"
+          BUMP="${{ needs.version-analysis.outputs.version-bump }}"
+
+          echo "  Current version: $CURRENT_VERSION"
+          echo "  Version bump: $BUMP"
+
+          if [[ -n "$BUMP" && "$BUMP" != "none" && "$BUMP" != "" ]]; then
+            echo "💡 Calculating fallback version..."
+            NEW_VERSION=$(python .github/scripts/bump_version.py --current "$CURRENT_VERSION" --bump "$BUMP")
+            echo "💡 Fallback NEW_VERSION: $NEW_VERSION"
+          else
+            echo "❌ Cannot calculate fallback version"
+            exit 1
+          fi
+        fi
+
+        if [[ -z "$NEW_VERSION" || "$NEW_VERSION" == "" ]]; then
+          echo "❌ ERROR: Still no valid NEW_VERSION after fallback attempt"
           exit 1
         fi
-        echo "✅ Valid NEW_VERSION detected: $NEW_VERSION"
+
+        echo "✅ Valid NEW_VERSION available: $NEW_VERSION"
 
     - name: Update version in pyproject.toml
       run: |
+        # Re-calculate NEW_VERSION in case of GitHub Actions output issue
+        CURRENT_VERSION="${{ needs.version-analysis.outputs.current-version }}"
+        BUMP="${{ needs.version-analysis.outputs.version-bump }}"
+
+        # Use the already-calculated version if available, otherwise recalculate
         NEW_VERSION="${{ needs.version-analysis.outputs.new-version }}"
+        if [[ -z "$NEW_VERSION" || "$NEW_VERSION" == "" ]]; then
+          echo "💡 Recalculating NEW_VERSION due to GitHub Actions output issue..."
+          if [[ -n "$BUMP" && "$BUMP" != "none" && "$BUMP" != "" ]]; then
+            NEW_VERSION=$(python .github/scripts/bump_version.py --current "$CURRENT_VERSION" --bump "$BUMP")
+          else
+            echo "❌ Cannot recalculate version - bump is: '$BUMP'"
+            exit 1
+          fi
+        fi
+
+        echo "📝 Using NEW_VERSION: $NEW_VERSION"
         python .github/scripts/update_version.py \
           --version "$NEW_VERSION" \
           --file pyproject.toml
 
     - name: Update CHANGELOG.md
       run: |
+        # Use the same version calculation logic
+        CURRENT_VERSION="${{ needs.version-analysis.outputs.current-version }}"
+        BUMP="${{ needs.version-analysis.outputs.version-bump }}"
+        NEW_VERSION="${{ needs.version-analysis.outputs.new-version }}"
+
+        if [[ -z "$NEW_VERSION" || "$NEW_VERSION" == "" ]]; then
+          echo "💡 Recalculating NEW_VERSION for CHANGELOG update..."
+          NEW_VERSION=$(python .github/scripts/bump_version.py --current "$CURRENT_VERSION" --bump "$BUMP")
+        fi
+
         python .github/scripts/update_changelog.py \
           --changelog-file CHANGELOG.md \
           --release-notes-file release-notes.md \
-          --version "${{ needs.version-analysis.outputs.new-version }}"
+          --version "$NEW_VERSION"
 
     - name: Update version references in documentation
       run: |
+        # Use the same version calculation logic
+        CURRENT_VERSION="${{ needs.version-analysis.outputs.current-version }}"
+        BUMP="${{ needs.version-analysis.outputs.version-bump }}"
+        NEW_VERSION="${{ needs.version-analysis.outputs.new-version }}"
+
+        if [[ -z "$NEW_VERSION" || "$NEW_VERSION" == "" ]]; then
+          echo "💡 Recalculating NEW_VERSION for documentation update..."
+          NEW_VERSION=$(python .github/scripts/bump_version.py --current "$CURRENT_VERSION" --bump "$BUMP")
+        fi
+
         python .github/scripts/update_version_references.py \
-          --version "${{ needs.version-analysis.outputs.new-version }}" \
-          --path .
+          --old-version "$CURRENT_VERSION" \
+          --new-version "$NEW_VERSION" \
+          --root .
 
     - name: Validate updated files
       run: |
@@ -271,7 +350,15 @@ jobs:
             data = tomllib.load(f)
             print(data['project']['version'])
         ")
+        # Calculate expected version safely
+        CURRENT_VERSION="${{ needs.version-analysis.outputs.current-version }}"
+        BUMP="${{ needs.version-analysis.outputs.version-bump }}"
         EXPECTED_VERSION="${{ needs.version-analysis.outputs.new-version }}"
+
+        if [[ -z "$EXPECTED_VERSION" || "$EXPECTED_VERSION" == "" ]]; then
+          echo "💡 Recalculating EXPECTED_VERSION for validation..."
+          EXPECTED_VERSION=$(python .github/scripts/bump_version.py --current "$CURRENT_VERSION" --bump "$BUMP")
+        fi
 
         if [[ "$UPDATED_VERSION" != "$EXPECTED_VERSION" ]]; then
           echo "❌ Version update failed: got $UPDATED_VERSION, expected $EXPECTED_VERSION"
@@ -299,12 +386,22 @@ jobs:
         if git diff --staged --quiet; then
           echo "No changes to commit"
         else
-          git commit -m "chore: bump version to ${{ needs.version-analysis.outputs.new-version }}
+          # Calculate version for commit message
+        CURRENT_VERSION="${{ needs.version-analysis.outputs.current-version }}"
+        BUMP="${{ needs.version-analysis.outputs.version-bump }}"
+        VERSION_FOR_COMMIT="${{ needs.version-analysis.outputs.new-version }}"
+
+        if [[ -z "$VERSION_FOR_COMMIT" || "$VERSION_FOR_COMMIT" == "" ]]; then
+          echo "💡 Recalculating VERSION_FOR_COMMIT for commit message..."
+          VERSION_FOR_COMMIT=$(python .github/scripts/bump_version.py --current "$CURRENT_VERSION" --bump "$BUMP")
+        fi
+
+        git commit -m "chore: bump version to $VERSION_FOR_COMMIT
 
         - Update version in pyproject.toml
-        - Add changelog entry for ${{ needs.version-analysis.outputs.new-version }}
+        - Add changelog entry for $VERSION_FOR_COMMIT
         - Update version references in documentation files
-        - Add release-notes.md for ${{ needs.version-analysis.outputs.new-version }}
+        - Add release-notes.md for $VERSION_FOR_COMMIT"
 
         🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
@@ -314,7 +411,17 @@ jobs:
 
     - name: Create Git tag
       run: |
+        # Calculate version for tag
+        CURRENT_VERSION="${{ needs.version-analysis.outputs.current-version }}"
+        BUMP="${{ needs.version-analysis.outputs.version-bump }}"
         VERSION="${{ needs.version-analysis.outputs.new-version }}"
+
+        if [[ -z "$VERSION" || "$VERSION" == "" ]]; then
+          echo "💡 Recalculating VERSION for git tag..."
+          VERSION=$(python .github/scripts/bump_version.py --current "$CURRENT_VERSION" --bump "$BUMP")
+        fi
+
+        echo "🏷️ Creating git tag for version: $VERSION"
         git tag -a "v$VERSION" -m "Release v$VERSION"
         git push origin "v$VERSION"
 
