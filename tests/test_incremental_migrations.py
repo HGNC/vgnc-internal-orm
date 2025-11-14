@@ -12,11 +12,13 @@ from alembic.config import Config
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-# Add project root to Python path for script imports
+# Import the migration workflow module - use relative import with sys.path manipulation
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / ".github" / "scripts"))
+sys.path.insert(0, str(project_root / "scripts"))  # Fallback location
 
-from migration_workflow import MigrationWorkflow
+import migration_workflow
+MigrationWorkflow = migration_workflow.MigrationWorkflow
 
 
 @pytest.fixture
