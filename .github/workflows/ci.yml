@@ -319,11 +319,11 @@ jobs:
 
     - name: Run load test - ${{ matrix.test-scenario.name }}
       run: |
-        python scripts/simple_load_test.py \
+        cd .github/scripts && python simple_load_test.py \
           --test lookup \
           --users ${{ matrix.test-scenario.users }} \
           --duration ${{ matrix.test-scenario.duration }} \
-          --output test-results/load-test-${{ matrix.test-scenario.name }}.json
+          --output ../../test-results/load-test-${{ matrix.test-scenario.name }}.json
 
     - name: Upload load test results
       uses: actions/upload-artifact@v4

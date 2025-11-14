@@ -45,14 +45,14 @@ issues = validate_migration_safety('alembic/versions/001_initial.py', production
 
 ### Integrated with Workflow
 
-The safety module is automatically invoked by `scripts/migration_workflow.py`:
+The safety module is automatically invoked by `.github/scripts/migration_workflow.py`:
 
 ```bash
 # Validates migration using safety module (script)
-python scripts/migration_workflow.py validate --file alembic/versions/001_initial.py
+python .github/scripts/migration_workflow.py validate --file alembic/versions/001_initial.py
 
 # Test migration (includes safety validation) (script)
-python scripts/migration_workflow.py test --revision <rev_id>
+python .github/scripts/migration_workflow.py test --revision <rev_id>
 
 # Using CLI (alternative interface)
 vgnc-cli migration validate --file alembic/versions/001_initial.py
