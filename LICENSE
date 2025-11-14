@@ -1,93 +1,21 @@
-CC0 1.0 Universal
+MIT License
 
-    Statement of Purpose
+Copyright (c) 2024 HGNC
 
-The laws of most jurisdictions throughout the world automatically confer
-exclusive Copyright and Related Rights (defined below) upon the creator
-and subsequent owner(s) (each and all, an "owner") of an original work of
-authorship and/or a database (each, a "Work").
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-Certain owners wish to permanently relinquish those rights to a Work for
-the purpose of contributing to a commons of creative, cultural and
-scientific works ("Commons") that the public can reliably and without fear
-of later claims of infringement build upon, modify, incorporate in other
-works, reuse and redistribute as freely as possible in any form
-whatsoever and for any purposes, including without limitation commercial
-purposes. These owners may contribute to the Commons to promote the
-ideal of a free culture and the further production of creative, cultural
-and scientific works, or to gain reputation or greater distribution for
-their Work in part through the use and efforts of others.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-For these and/or other purposes and motivations, and without any
-expectation of additional consideration or compensation, the person
-associating CC0 with a Work (the "Affirmer"), to the extent that he or she
-is an owner of Copyright and Related Rights in the Work, voluntarily
-elects to apply CC0 to the Work and publicly distribute the Work under its
-terms, with knowledge of his or her Copyright and Related Rights in the
-Work and the meaning and intended legal effect of CC0 on those rights.
-
-    1. Copyright and Related Rights.
-
-    A Work made available under CC0 may be protected by copyright and
-    related or neighboring rights ("Copyright and Related Rights").
-    Copyright and Related Rights include, but are not limited to, the
-    following:
-
-      i. the right to reproduce, adapt, distribute, perform, display,
-         communicate, and translate a Work;
-
-     ii. the right to remunerate for, and otherwise control, the
-         exploitation of a Work, including the exclusive rights to
-         exercise the rights set forth in (i) above throughout the world
-         and for the full duration of the applicable copyright and
-         related rights;
-
-    iii. the right to collect royalties for any exercise of the
-         foregoing rights; and
-
-      iv. the right to sue for infringement of the foregoing rights.
-
-    2. Scope of CC0.
-
-    2.1. Affirmer hereby applies CC0 to the Work, and hereby
-    relinquishes all of his or her rights to the Work
-    worldwide under copyright law, including all related and
-    neighboring rights, to the extent allowed by law.
-
-    2.2. Affirmer makes no warranties with respect to the Work,
-    and disclaims all liability for damages arising from its use
-    to the fullest extent permitted by law.
-
-    2.3. To the extent possible, Affirmer hereby grants all
-    persons a worldwide, royalty-free, non-exclusive, irrevocable,
-    and unrestricted license to exercise all rights in the Work
-    without any compensation or attribution required.
-
-    3. Public Domain Fallback.
-
-    3.1. In the event that the Work is not already in the public
-    domain on account of its term of copyright having expired,
-    Affirmer hereby dedicates the Work to the public domain.
-
-    3.2. To the extent possible, Affirmer hereby grants all
-    persons a worldwide, royalty-free, non-exclusive, irrevocable,
-    and unrestricted license to exercise all rights in the Work
-    without any compensation or attribution required.
-
-    4. Limitations and Disclaimers.
-
-    4.1. CC0 does not affect any rights other than copyright and
-    related rights, and does not affect any other legal rights or
-    obligations.
-
-    4.2. CC0 may not be effective in all jurisdictions, and the
-    Affirmer makes no representation that the Work is free of all
-    copyright or other intellectual property rights.
-
-    4.3. To the extent possible, Affirmer hereby disclaims all
-    warranties with respect to the Work, and disclaims all liability
-    for damages arising from its use to the fullest extent permitted
-    by law.
-
-For more information, please see
-<https://creativecommons.org/publicdomain/zero/1.0/>
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
