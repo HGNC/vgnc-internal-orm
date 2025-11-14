@@ -137,7 +137,6 @@ docker-compose.override.yml
 
 # GitHub Actions temporary files
 analysis.json
-release-notes.md
 
 # UV/pip cache
 .uv_cache/
