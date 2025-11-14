@@ -238,8 +238,14 @@ class ReleaseNotesGenerator:
 
         # Add version change info
         if current_version != new_version:
-            if new_version > current_version:
-                footer += f"\n**Version bump:** v{current_version} → v{new_version}\n"
+            try:
+                # Try to import version bumper for proper comparison
+                from packaging import version as pkg_version
+                if pkg_version.parse(new_version) > pkg_version.parse(current_version):
+                    footer += f"\n**Version bump:** v{current_version} → v{new_version}\n"
+            except ImportError:
+                # Fallback: just show the version change
+                footer += f"\n**Version change:** v{current_version} → v{new_version}\n"
 
         footer += "\n"
         return footer
