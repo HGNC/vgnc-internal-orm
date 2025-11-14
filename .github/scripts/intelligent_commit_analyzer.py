@@ -43,11 +43,19 @@ class IntelligentCommitAnalyzer:
     def __init__(self):
         # File patterns that indicate different types of changes
         self.API_PATTERNS = [
-            r'src/.*\.py$',                    # Source code
-            r'src/vgnc_internal_orm/.*',        # ORM models and core
-            r'.*__init__\.py$',               # Public API exports
-            r'.*/api/.*',                      # API-related files
-            r'.*/models/.*',                   # Database models
+            r'^src/.*\.py$',                  # Source code (must start with src/)
+            r'^src/vgnc_internal_orm/.*',      # ORM models and core
+            r'^src/.*__init__\.py$',          # Public API exports
+        ]
+
+        # Exclude patterns to avoid analyzing our own scripts
+        self.EXCLUDE_PATTERNS = [
+            r'^\.github/',                     # GitHub workflows and scripts
+            r'^docs/',                         # Documentation files
+            r'^.*\.md$',                       # Markdown files
+            r'^.*\.yml$', r'^.*\.yaml$',       # YAML files
+            r'^.*\.json$',                     # JSON files
+            r'^.*\.txt$',                      # Text files
         ]
 
         self.CONFIG_PATTERNS = [
@@ -72,20 +80,20 @@ class IntelligentCommitAnalyzer:
         ]
 
         self.BREAKING_CHANGE_INDICATORS = [
-            # Function/API removals
-            r'def\s+\w+.*:\s*#.*removed',
-            r'class\s+\w+.*:\s*#.*removed',
+            # Function/API removals (more specific)
+            r'^-\s*def\s+\w+.*:\s*#.*removed',
+            r'^-\s*class\s+\w+.*:\s*#.*removed',
 
-            # Import removals
-            r'^-\s*from\s+\w+',
-            r'^-\s*import\s+\w+',
+            # Import removals (more specific)
+            r'^-\s*from\s+[\w\.]+import\s+\w+',
+            r'^-\s*import\s+[\w\.]+',
 
-            # Major refactoring patterns
-            r'#.*BREAKING',
-            r'#.*deprecated.*remov',
+            # Breaking change annotations in commit messages only
+            r'BREAKING CHANGE:',
+            r'BREAKING-CHANGE:',
 
-            # API signature changes
-            r'def\s+(\w+)\([^)]*\):.*->.*def\s+\1\([^)]*\):',  # Parameter changes
+            # API signature changes (more restrictive)
+            r'^-\s*def\s+(\w+)\([^)]*\):.*\n^\+\s*def\s+\1\([^)]*\):',  # Parameter changes across lines
         ]
 
         self.FEATURE_INDICATORS = [
@@ -107,19 +115,16 @@ class IntelligentCommitAnalyzer:
         ]
 
         self.BUG_FIX_INDICATORS = [
-            # Fix-related keywords in commit messages
-            r'fix|bug|issue|error|problem|crash|fail|exception',
-
-            # Code change patterns that suggest fixes
-            r'^\+.*#.*fix',
-            r'^\+.*#.*bug',
+            # Code change patterns that suggest fixes (more specific)
+            r'^\+\s*#.*fix.*bug',
+            r'^\+\s*#.*bug.*fix',
             r'^-\s*#.*bug',
-            r'^-\s*#.*todo',
+            r'^-\s*#.*todo.*bug',
 
-            # Exception handling additions
-            r'^\+\s*try:',
-            r'^\+\s*except\s+\w+',
-            r'^\+\s*raise\s+\w+',
+            # Exception handling additions (more restrictive)
+            r'^\+\s*except\s+\w+Error:',
+            r'^\+\s*except\s+\w+Exception:',
+            r'^\+\s*raise\s+\w+Error',
         ]
 
     def get_file_changes(self, commit_range: str) -> List[FileChange]:
@@ -186,6 +191,12 @@ class IntelligentCommitAnalyzer:
 
     def _matches_patterns(self, file_path: str, patterns: List[str]) -> bool:
         """Check if file path matches any of the given patterns."""
+        # First check if file should be excluded
+        for pattern in self.EXCLUDE_PATTERNS:
+            if re.search(pattern, file_path):
+                return False
+
+        # Then check if it matches the desired patterns
         for pattern in patterns:
             if re.search(pattern, file_path):
                 return True
@@ -194,9 +205,36 @@ class IntelligentCommitAnalyzer:
     def analyze_content_changes(self, commit_range: str) -> Dict[str, Any]:
         """Analyze actual content changes for breaking changes and features."""
         try:
-            # Get full diff
+            # Get file changes first to filter
+            file_changes = self.get_file_changes(commit_range)
+
+            # Only analyze source code files
+            source_files = [c for c in file_changes if c.is_api and not self._should_exclude(c.path)]
+
+            if not source_files:
+                return {
+                    'breaking_changes': 0,
+                    'features': 0,
+                    'bug_fixes': 0,
+                    'breaking_details': [],
+                    'feature_details': [],
+                    'bug_fix_details': [],
+                }
+
+            # Get diff for only source files
+            diff_files = [f.path for f in source_files]
+            if not diff_files:
+                return {
+                    'breaking_changes': 0,
+                    'features': 0,
+                    'bug_fixes': 0,
+                    'breaking_details': [],
+                    'feature_details': [],
+                    'bug_fix_details': [],
+                }
+
             result = subprocess.run(
-                ['git', 'diff', commit_range],
+                ['git', 'diff', commit_range, '--'] + diff_files,
                 capture_output=True,
                 text=True,
                 check=True
@@ -204,31 +242,32 @@ class IntelligentCommitAnalyzer:
 
             diff_content = result.stdout
 
-            # Look for breaking changes
+            # Look for breaking changes (more conservative)
             breaking_changes = []
             for pattern in self.BREAKING_CHANGE_INDICATORS:
-                matches = re.findall(pattern, diff_content, re.MULTILINE | re.IGNORECASE)
+                matches = re.findall(pattern, diff_content, re.MULTILINE)
                 breaking_changes.extend(matches)
 
-            # Look for new features
+            # Look for new features (only in source files)
             features = []
             for pattern in self.FEATURE_INDICATORS:
                 matches = re.findall(pattern, diff_content, re.MULTILINE)
-                features.extend(matches)
+                # Filter out matches from comments
+                features.extend([m for m in matches if not m.strip().startswith('#')])
 
-            # Look for bug fixes
+            # Look for bug fixes (more conservative)
             bug_fixes = []
             for pattern in self.BUG_FIX_INDICATORS:
-                matches = re.findall(pattern, diff_content, re.MULTILINE | re.IGNORECASE)
+                matches = re.findall(pattern, diff_content, re.MULTILINE)
                 bug_fixes.extend(matches)
 
             return {
                 'breaking_changes': len(breaking_changes),
                 'features': len(features),
                 'bug_fixes': len(bug_fixes),
-                'breaking_details': breaking_changes[:5],  # First 5 examples
-                'feature_details': features[:10],  # First 10 examples
-                'bug_fix_details': bug_fixes[:10],  # First 10 examples
+                'breaking_details': breaking_changes[:3],  # First 3 examples
+                'feature_details': features[:5],  # First 5 examples
+                'bug_fix_details': bug_fixes[:5],  # First 5 examples
             }
 
         except subprocess.CalledProcessError:
@@ -240,6 +279,13 @@ class IntelligentCommitAnalyzer:
                 'feature_details': [],
                 'bug_fix_details': [],
             }
+
+    def _should_exclude(self, file_path: str) -> bool:
+        """Check if file should be excluded from analysis."""
+        for pattern in self.EXCLUDE_PATTERNS:
+            if re.search(pattern, file_path):
+                return True
+        return False
 
     def analyze_commit_messages(self, messages: List[str]) -> Dict[str, Any]:
         """Analyze commit messages for semantic information."""
@@ -267,13 +313,13 @@ class IntelligentCommitAnalyzer:
                 if '!' in message or 'BREAKING' in message.upper():
                     analysis['breaking_keywords'] += 1
 
-            # Check for keywords in non-conventional commits
+            # Check for keywords in non-conventional commits (more specific)
             message_lower = message.lower()
-            if any(keyword in message_lower for keyword in ['breaking', 'remove', 'delete', 'deprecate']):
+            if any(keyword in message_lower for keyword in ['breaking change', 'remove api', 'delete function', 'deprecat']):
                 analysis['breaking_keywords'] += 1
-            if any(keyword in message_lower for keyword in ['add', 'new', 'implement', 'feature', 'support']):
+            elif any(keyword in message_lower for keyword in ['add new', 'implement', 'new feature', 'support']):
                 analysis['feature_keywords'] += 1
-            if any(keyword in message_lower for keyword in ['fix', 'bug', 'issue', 'error', 'problem', 'resolve']):
+            elif any(keyword in message_lower for keyword in ['fix bug', 'fix issue', 'resolve error', 'bug fix']):
                 analysis['fix_keywords'] += 1
 
         return analysis
