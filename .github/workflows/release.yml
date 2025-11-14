@@ -112,25 +112,35 @@ jobs:
         CURRENT="${{ steps.version.outputs.current-version }}"
         BUMP="${{ steps.bump.outputs.bump }}"
 
-        # Skip version calculation if no bump
-        if [[ "$BUMP" == "none" || -z "$BUMP" ]]; then
-          echo "No version bump needed"
+        echo "🔢 Version Debug:"
+        echo "  Current: $CURRENT"
+        echo "  Bump: $BUMP"
+        echo "  Bump type check: $([ "$BUMP" == "none" ] && echo "IS NONE" || echo "IS NOT NONE")"
+        echo "  Bump empty check: $([ -z "$BUMP" ] && echo "IS EMPTY" || echo "IS NOT EMPTY")"
+
+        # Skip version calculation ONLY if bump is explicitly 'none'
+        if [[ "$BUMP" == "none" ]]; then
+          echo "⏭️ No version bump needed (bump type is 'none')"
           echo "new-version=" >> $GITHUB_OUTPUT
+          echo "Exiting version calculation - no bump needed"
           exit 0
         fi
 
         # Parse semver and bump
+        echo "📈 Calculating new version with bump: $BUMP"
         NEW_VERSION=$(python .github/scripts/bump_version.py \
           --current "$CURRENT" \
           --bump "$BUMP")
 
         # Validate we got a valid version
         if [[ -z "$NEW_VERSION" ]]; then
-          echo "Error: Failed to calculate new version"
+          echo "❌ Error: Failed to calculate new version"
+          echo "🔧 Debug - CURRENT: '$CURRENT', BUMP: '$BUMP'"
           echo "new-version=" >> $GITHUB_OUTPUT
           exit 1
         fi
 
+        echo "✅ Version calculated successfully: $NEW_VERSION"
         echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT
         echo "New version will be: $NEW_VERSION"
 
