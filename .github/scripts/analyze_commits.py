@@ -19,8 +19,8 @@ class CommitInfo:
     """Information about a single commit."""
     hash: str
     message: str
-    type: str = None
-    scope: str = None
+    type: str | None = None
+    scope: str | None = None
     breaking: bool = False
     description: str = ""
 
@@ -56,7 +56,7 @@ class CommitAnalyzer:
         re.MULTILINE
     )
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.commits: List[CommitInfo] = []
         self.stats: Dict[str, Any] = {
             'total_commits': 0,
