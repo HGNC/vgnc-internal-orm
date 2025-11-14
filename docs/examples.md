@@ -7,7 +7,13 @@ Runnable, minimal examples demonstrating common tasks. Run from repo root.
 - Python environment with the project installed.
 
 ```bash
+# Using pip
 pip install -e ".[test,performance]"
+
+# Using uv (modern Python package manager)
+uv install -e ".[test,performance]"
+# or equivalently:
+uv sync --extra test --extra performance
 ```
 
 - Database configuration via environment variables or `.env` for non-SQLite drivers. See `configuration.md`.

@@ -1,6 +1,6 @@
 """Association tables for the VGNC ORM system.
 
-This module defines association tables that exist in the actual genefam_production database.
+This module defines association tables that exist in VGNC-style databases.
 These tables handle many-to-many relationships between the main models.
 """
 

@@ -3,7 +3,7 @@
 Invoke with module path or entrypoint:
 
 ```bash
-python -m vgnc_internal_orm.cli query-species --limit 20 --format table
+python -m vgnc_internal_orm.cli.main query-species --limit 20 --format table
 ```
 
 Or using the installed command:
@@ -14,16 +14,17 @@ vgnc-cli query-species --limit 20 --format table
 
 ## Global Options
 
-- `--db-url` override connection string.
-- `--config-path` explicit settings file path.
+- `--database-url` or `-d`: Override database connection string
+- `--config` or `-c`: Explicit configuration file path
+- `--verbose` or `-v`: Enable verbose output
 
 ## Commands
 
-- `query-species`: list species (filters TBD in code evolution).
-- `query-genefams`: list gene families.
-- `query-genefam-species`: join families ↔ species.
-- `export`: bulk export of specified entity set (CSV/JSON/XML).
-- `export-query`: custom query export.
+- `query-species`: List species with filtering and sorting options
+- `query-genefams`: List gene families with filtering
+- `query-genefam-species`: Query species associated with a specific gene family
+- `export`: Bulk export of specified entity (species, genefams, assemblies, chromosomes) in CSV/JSON/XML
+- `export-query`: Execute custom SQL query and export results
 
 ## Formats
 
@@ -32,17 +33,17 @@ vgnc-cli query-species --limit 20 --format table
 ## Example Export
 
 ```bash
-python -m vgnc_internal_orm.cli export --entity species --format csv > species.csv
+vgnc-cli export --entity species --format csv --output species.csv
 ```
 
 ## Filtered Query Example
 
 ```bash
-python -m vgnc_internal_orm.cli export-query --sql "SELECT taxon_id, display_name FROM species WHERE is_live=1 LIMIT 100" --format json
+vgnc-cli export-query --query "SELECT taxon_id, display_name FROM species WHERE is_live=1 LIMIT 100" --format json --output species.json
 ```
 
 ## XML Output Example
 
 ```bash
-python -m vgnc_internal_orm.cli query-genefams --limit 10 --format xml > families.xml
+vgnc-cli query-genefams --limit 10 --format xml > families.xml
 ```

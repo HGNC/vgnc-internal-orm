@@ -1,6 +1,6 @@
 """Species model for the VGNC ORM system.
 
-This model represents the species table from the actual genefam_production database.
+This model represents the species table from VGNC-style databases.
 """
 
 from enum import Enum as PyEnum

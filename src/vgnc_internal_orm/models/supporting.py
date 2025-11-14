@@ -1,6 +1,6 @@
 """Supporting models for the VGNC ORM system.
 
-These models represent supporting tables from the actual genefam_production database
+These models represent supporting tables from VGNC-style databases
 that are referenced by the main models.
 """
 

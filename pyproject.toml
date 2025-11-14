@@ -69,10 +69,10 @@ performance = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/vgnc/vgnc-internal-orm"
-Documentation = "https://github.com/vgnc/vgnc-internal-orm/docs"
-Repository = "https://github.com/vgnc/vgnc-internal-orm.git"
-"Bug Tracker" = "https://github.com/vgnc/vgnc-internal-orm/issues"
+Homepage = "https://github.com/HGNC/vgnc-internal-orm"
+Documentation = "https://github.com/HGNC/vgnc-internal-orm/tree/main/docs"
+Repository = "https://github.com/HGNC/vgnc-internal-orm.git"
+"Bug Tracker" = "https://github.com/HGNC/vgnc-internal-orm/issues"
 
 [project.scripts]
 vgnc-cli = "vgnc_internal_orm.cli.main:cli"

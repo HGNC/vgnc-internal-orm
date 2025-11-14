@@ -65,7 +65,7 @@ alembic downgrade <revision_id>
 **Always validate migrations before production deployment:**
 
 ```bash
-python scripts/migration_workflow.py validate
+python .github/scripts/migration_workflow.py validate
 ```
 
 This checks for:
@@ -82,7 +82,7 @@ See `docs/migrations_safety.md` for comprehensive safety guidelines.
 For step-by-step guidance on creating, testing, and deploying migrations:
 
 1. Read `docs/migration_workflow.md` for the full process
-2. Use `scripts/migration_workflow.py` for interactive revision creation
+2. Use `.github/scripts/migration_workflow.py` for interactive revision creation
 3. Run safety validation before deploying
 4. Test on staging environment first
 5. Back up production data before applying
