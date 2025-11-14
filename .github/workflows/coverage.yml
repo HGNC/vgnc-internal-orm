@@ -217,7 +217,7 @@ jobs:
         name: coverage-badge
         path: coverage-badge.svg
 
-      - name: Checkout for badge commit
+    - name: Checkout for badge commit
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
