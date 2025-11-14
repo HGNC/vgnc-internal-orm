@@ -1,0 +1,131 @@
+{
+  "versioning": {
+    "follows_semver": true,
+    "semver_url": "https://semver.org/",
+    "current_version_in": "pyproject.toml"
+  },
+  "commits": {
+    "conventional_commits": {
+      "specification": "https://www.conventionalcommits.org/",
+      "enabled": true,
+      "types": {
+        "feat": {
+          "description": "New feature (backward compatible)",
+          "bump": "minor",
+          "emoji": "✨"
+        },
+        "fix": {
+          "description": "Bug fix (backward compatible)",
+          "bump": "patch",
+          "emoji": "🐛"
+        },
+        "docs": {
+          "description": "Documentation changes only",
+          "bump": "none",
+          "emoji": "📚"
+        },
+        "style": {
+          "description": "Code style changes (formatting, etc.)",
+          "bump": "none",
+          "emoji": "💎"
+        },
+        "refactor": {
+          "description": "Code refactoring (no functional changes)",
+          "bump": "none",
+          "emoji": "🔨"
+        },
+        "perf": {
+          "description": "Performance improvements",
+          "bump": "patch",
+          "emoji": "⚡"
+        },
+        "test": {
+          "description": "Test-related changes",
+          "bump": "none",
+          "emoji": "🧪"
+        },
+        "build": {
+          "description": "Build system or dependency changes",
+          "bump": "patch",
+          "emoji": "📦"
+        },
+        "ci": {
+          "description": "CI configuration changes",
+          "bump": "none",
+          "emoji": "🤖"
+        },
+        "chore": {
+          "description": "Maintenance tasks (no user-facing changes)",
+          "bump": "none",
+          "emoji": "🧹"
+        },
+        "revert": {
+          "description": "Revert previous changes",
+          "bump": "patch",
+          "emoji": "⏪"
+        }
+      },
+      "breaking_change_indicators": [
+        "BREAKING CHANGE:",
+        "BREAKING-CHANGE:",
+        "!"
+      ]
+    },
+    "ignore_patterns": [
+      "^Merge pull request",
+      "^Merge branch",
+      "^Initial commit",
+      "^chore\\(release\\):"
+    ]
+  },
+  "release": {
+    "branches": ["main"],
+    "trigger": "push",
+    "automatic_release": true,
+    "create_github_release": true,
+    "create_git_tag": true,
+    "update_changelog": true,
+    "changelog_file": "CHANGELOG.md",
+    "changelog_format": "keepachangelog"
+  },
+  "workflow": {
+    "name": "Semantic Release",
+    "file": ".github/workflows/release.yml",
+    "triggers": {
+      "push": {
+        "branches": ["main"]
+      },
+      "workflow_dispatch": {
+        "force_release": {
+          "description": "Force a release (skip version check)",
+          "type": "boolean",
+          "default": false
+        },
+        "release_type": {
+          "description": "Release type (if forcing)",
+          "type": "choice",
+          "default": "patch",
+          "options": ["patch", "minor", "major"]
+        }
+      }
+    },
+    "permissions": {
+      "contents": "write",
+      "pull-requests": "write"
+    }
+  },
+  "validation": {
+    "version_format": "semantic",
+    "require_conventional_commits": true,
+    "min_changes_for_release": 1,
+    "allow_force_release": true
+  },
+  "scripts": {
+    "analyze_commits": ".github/scripts/analyze_commits.py",
+    "determine_version_bump": ".github/scripts/determine_version_bump.py",
+    "bump_version": ".github/scripts/bump_version.py",
+    "generate_release_notes": ".github/scripts/generate_release_notes.py",
+    "update_version": ".github/scripts/update_version.py",
+    "update_changelog": ".github/scripts/update_changelog.py"
+  }
+}
