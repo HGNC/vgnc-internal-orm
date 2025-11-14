@@ -24,30 +24,51 @@ class VersionBumpDeterminer:
 
     def determine_bump(self, analysis_data: Dict[str, Any]) -> str:
         """
-        Determine version bump based on commit analysis.
+        Determine version bump based on enhanced commit analysis (conventional + intelligent).
 
-        Rules (following semver.org and conventional commits):
-        - MAJOR: Breaking changes
-        - MINOR: New features (backward compatible)
-        - PATCH: Bug fixes (backward compatible)
+        Rules (following semver.org with intelligent fallback):
+        - MAJOR: Breaking changes (detected via conventional commits or code analysis)
+        - MINOR: New features (detected via conventional commits or code analysis)
+        - PATCH: Bug fixes (detected via conventional commits or code analysis)
         - NONE: No version-worthy changes
         """
         stats = analysis_data.get('stats', {})
 
+        # Get conventional commit analysis
         breaking_changes = stats.get('breaking_changes', 0)
         features = stats.get('features', 0)
         fixes = stats.get('fixes', 0)
 
-        # Check for any conventional commits
         conventional_commits = stats.get('conventional_commits', {})
         has_conventional = any(conventional_commits.values())
 
+        # Check for intelligent analysis if available
+        intelligent_analysis = analysis_data.get('intelligent_analysis', {})
+        if intelligent_analysis:
+            intelligent_features = intelligent_analysis['content_analysis']['features']
+            intelligent_fixes = intelligent_analysis['content_analysis']['bug_fixes']
+            intelligent_breaking = intelligent_analysis['content_analysis']['breaking_changes']
+
+            # Combine conventional and intelligent findings
+            total_features = features + intelligent_features
+            total_fixes = fixes + intelligent_fixes
+            total_breaking = breaking_changes + intelligent_breaking
+
+            # Use intelligent version bump if available
+            if intelligent_analysis.get('version_bump') and intelligent_analysis['version_bump'] != 'none':
+                return intelligent_analysis['version_bump']
+        else:
+            # Use only conventional analysis
+            total_features = features
+            total_fixes = fixes
+            total_breaking = breaking_changes
+
         # Determine bump based on semver rules
-        if breaking_changes > 0:
+        if total_breaking > 0:
             return 'major'
-        elif features > 0:
+        elif total_features > 0:
             return 'minor'
-        elif fixes > 0:
+        elif total_fixes > 0:
             return 'patch'
         elif has_conventional:
             # Has conventional commits but no features or fixes
@@ -55,7 +76,13 @@ class VersionBumpDeterminer:
             # These don't require version bumps according to semver
             return 'none'
         else:
-            # No conventional commits detected
+            # Check for API changes that might indicate a patch
+            api_changes = stats.get('api_changes', 0)
+            config_changes = stats.get('config_changes', 0)
+
+            if api_changes > 0 or config_changes > 0:
+                return 'patch'  # Default to patch for significant changes
+
             return 'none'
 
     def get_bump_reason(self, analysis_data: Dict[str, Any], bump_type: str) -> str:

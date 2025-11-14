@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Analyze git commits to extract conventional commit information and determine version bumps.
-Follows conventional commits specification: https://www.conventionalcommits.org/
+Enhanced commit analyzer that combines conventional commit analysis with intelligent code analysis.
+Automatically detects change types even when commit messages don't follow conventional format.
 """
 
 import argparse
@@ -9,6 +9,7 @@ import json
 import re
 import subprocess
 import sys
+import os
 from typing import Dict, List, Any
 from dataclasses import dataclass
 
@@ -25,7 +26,7 @@ class CommitInfo:
 
 
 class CommitAnalyzer:
-    """Analyzes git commits following conventional commit specification."""
+    """Enhanced commit analyzer that combines conventional and intelligent analysis."""
 
     # Conventional commit types
     CONVENTIONAL_TYPES = {
@@ -240,13 +241,76 @@ def main():
     # Generate analysis
     analysis = analyzer.get_analysis_summary()
 
+    # Perform intelligent analysis as fallback/backup
+    has_conventional_commits = any(analysis['stats']['conventional_commits'].values())
+
+    if not has_conventional_commits or args.verbose:
+        # Import and run intelligent analyzer
+        try:
+            sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+            from intelligent_commit_analyzer import IntelligentCommitAnalyzer
+
+            intelligent_analyzer = IntelligentCommitAnalyzer()
+            intelligent_analysis = intelligent_analyzer.generate_intelligent_analysis(args.range)
+
+            # Merge intelligent analysis with conventional analysis
+            analysis['intelligent_analysis'] = intelligent_analysis
+
+            # Update stats with intelligent findings if no conventional commits
+            if not has_conventional_commits:
+                # Enhance stats with intelligent analysis
+                analysis['stats'].update({
+                    'intelligent_features': intelligent_analysis['content_analysis']['features'],
+                    'intelligent_fixes': intelligent_analysis['content_analysis']['bug_fixes'],
+                    'intelligent_breaking': intelligent_analysis['content_analysis']['breaking_changes'],
+                    'api_changes': len(intelligent_analysis['categorized_changes']['api_changes']),
+                    'config_changes': len(intelligent_analysis['categorized_changes']['config_changes']),
+                })
+
+                # Update categorized commits with intelligent findings
+                analysis['categorized_commits']['features'].extend([
+                    {
+                        'hash': 'intelligent',
+                        'description': f"Auto-detected feature: {detail[:80]}...",
+                        'scope': 'auto-detect'
+                    }
+                    for detail in intelligent_analysis['content_analysis']['feature_details'][:3]
+                ])
+
+                analysis['categorized_commits']['fixes'].extend([
+                    {
+                        'hash': 'intelligent',
+                        'description': f"Auto-detected fix: {detail[:80]}...",
+                        'scope': 'auto-detect'
+                    }
+                    for detail in intelligent_analysis['content_analysis']['bug_fix_details'][:5]
+                ])
+
+                if intelligent_analysis['content_analysis']['breaking_changes'] > 0:
+                    analysis['categorized_commits']['breaking_changes'].extend([
+                        {
+                            'hash': 'intelligent',
+                            'description': f"Auto-detected breaking change: {detail[:80]}...",
+                            'scope': 'auto-detect'
+                        }
+                        for detail in intelligent_analysis['content_analysis']['breaking_details'][:3]
+                    ])
+
+                print("🤖 Intelligent analysis completed", file=sys.stderr)
+
+        except ImportError as e:
+            print(f"⚠️  Intelligent analysis not available: {e}", file=sys.stderr)
+        except Exception as e:
+            print(f"⚠️  Intelligent analysis failed: {e}", file=sys.stderr)
+
     # Add summary for quick reference
     analysis['summary'] = {
         'total': analysis['stats']['total_commits'],
         'breaking': analysis['stats']['breaking_changes'],
         'features': analysis['stats']['features'],
         'fixes': analysis['stats']['fixes'],
-        'has_conventional': any(analysis['stats']['conventional_commits'].values()),
+        'has_conventional': has_conventional_commits,
+        'intelligent_mode': not has_conventional_commits,
         'recommended_bump': None  # Will be determined by another script
     }
 
