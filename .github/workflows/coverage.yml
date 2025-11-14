@@ -219,3 +219,44 @@ jobs:
       with:
         name: coverage-badge
         path: coverage-badge.svg
+
+    - name: Checkout for README update
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update README with coverage badge
+      run: |
+        # Move coverage badge to root directory
+        mv coverage-badge.svg ./ || echo "No coverage badge found to move"
+
+        # Add coverage badge to README at the top
+        if [ -f "coverage-badge.svg" ]; then
+          # Create badge markdown
+          BADGE_MD="![Coverage](coverage-badge.svg)"
+
+          # Check if badge already exists in README
+          if grep -q "coverage-badge.svg" README.md; then
+            echo "Coverage badge already exists in README.md"
+          else
+            # Add badge at the top after the title
+            temp_file=$(mktemp)
+            line_num=2  # After the main title line
+
+            awk -v badge="$BADGE_MD" -v line="$line_num" '
+              NR == line {print badge; print $0; next}
+              {print}
+            ' README.md > "$temp_file"
+
+            mv "$temp_file" README.md
+            echo "Added coverage badge to README.md"
+          fi
+
+          # Configure git and commit changes
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add README.md coverage-badge.svg
+          git diff --staged --quiet || git commit -m "Update coverage badge in README [skip ci]"
+        else
+          echo "No coverage badge found to add to README"
+        fi

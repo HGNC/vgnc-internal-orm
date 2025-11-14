@@ -4,7 +4,7 @@ Comprehensive SQLAlchemy 2.0 ORM toolkit for VGNC-style gene nomenclature data: 
 
 **Version:** 0.2.0
 **Python:** 3.11+
-**License:** MIT
+**License:** CC0
 
 ## Features
 
@@ -272,7 +272,7 @@ pytest tests/performance/ --benchmark-only
 
 ## License
 
-MIT License - see LICENSE file for details.
+CC0 License - see LICENSE file for details.
 
 ## Project Links
 
