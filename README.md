@@ -6,7 +6,7 @@ Comprehensive SQLAlchemy 2.0 ORM toolkit for VGNC-style gene nomenclature data: 
 
 **Version:** 0.2.0
 **Python:** 3.11+
-**License:** CC0
+**License:** MIT
 
 ## Features
 
@@ -47,7 +47,7 @@ Comprehensive SQLAlchemy 2.0 ORM toolkit for VGNC-style gene nomenclature data: 
 pip install vgnc-internal-orm
 
 # Install from GitHub (latest development version)
-pip install git+https://github.com/vgnc/vgnc-internal-orm.git
+pip install git+https://github.com/HGNC/vgnc-internal-orm.git
 
 # Install with optional dependencies
 pip install vgnc-internal-orm[mysql]      # MySQL support
@@ -60,7 +60,7 @@ uv install vgnc-internal-orm[mysql]
 uv install vgnc-internal-orm[dev]
 
 # Install from GitHub with uv
-uv install git+https://github.com/vgnc/vgnc-internal-orm.git
+uv install git+https://github.com/HGNC/vgnc-internal-orm.git
 ```
 
 ### Basic Usage
@@ -94,7 +94,7 @@ async with sf.get_async_session() as session:
 vgnc-cli query-species --limit 5 --format table
 
 # Export data to JSON
-vgnc-cli export --table species --format json --output species.json
+vgnc-cli export --entity species --format json --output species.json
 
 # Run with custom configuration
 VGNC_ENVIRONMENT=production vgnc-cli query-species --limit 10
@@ -160,6 +160,35 @@ Database schema changes are managed with Alembic. The `alembic/` directory conta
 - **Baseline Details**: `docs/alembic_baseline.md` for initial schema
 - **Incremental Process**: `docs/incremental_migrations.md` for safe evolution
 
+### Quick Runbook (Make Targets)
+
+```bash
+# Create a new revision (autogenerate/manual per script prompts)
+make migrate-create MSG="add species index"
+
+# Test the latest (or a specific) revision on a temp DB
+make migrate-test               # latest
+make migrate-test REV="<rev_id>"
+
+# Validate a specific migration file with the safety checks
+make migrate-validate FILE=alembic/versions/<revision_file>.py
+
+# Show Alembic status
+make migrate-status
+
+# Test rollback steps (default 1). Optional REV to target a specific revision
+make migrate-test-rollback STEPS=1
+make migrate-test-rollback STEPS=1 REV="<rev_id>"
+```
+
+These targets call `.github/scripts/migration_workflow.py` under the hood using `uv run`.
+To test against a non-SQLite DB, set `DATABASE_URL` before running, e.g.:
+
+```bash
+export DATABASE_URL="mysql+pymysql://user:pass@127.0.0.1:3306/vgnc_dev"
+make migrate-test
+```
+
 ### Common Operations
 
 ```bash
@@ -200,7 +229,7 @@ python .github/scripts/migration_workflow.py status
 
 ```bash
 # Clone repository
-git clone https://github.com/vgnc/vgnc-internal-orm.git
+git clone https://github.com/HGNC/vgnc-internal-orm.git
 cd vgnc-internal-orm
 
 # Option 1: Using pip (traditional)
@@ -308,13 +337,13 @@ pytest tests/performance/ --benchmark-only
 
 ## License
 
-CC0 License - see LICENSE file for details.
+MIT License - see LICENSE file for details.
 
 ## Project Links
 
-- **Repository**: <https://github.com/vgnc/vgnc-internal-orm>
-- **Issues**: <https://github.com/vgnc/vgnc-internal-orm/issues>
-- **Documentation**: <https://github.com/vgnc/vgnc-internal-orm/docs>
+- **Repository**: <https://github.com/HGNC/vgnc-internal-orm>
+- **Issues**: <https://github.com/HGNC/vgnc-internal-orm/issues>
+- **Documentation**: <https://github.com/HGNC/vgnc-internal-orm/docs>
 - **PyPI**: <https://pypi.org/project/vgnc-internal-orm/> (when published)
 
 ## Support
@@ -324,4 +353,4 @@ For questions and support:
 - 📖 **Documentation**: See the `docs/` directory
 - 🐛 **Bug Reports**: Open an issue on GitHub
 - 💬 **Discussions**: Use GitHub Discussions (when enabled)
-- 📧 **Contact**: VGNC Development Team (<dev@vgnc.com>)
+- 📧 **Contact**: HGNC Development Team (<hgnc@genenames.org>)

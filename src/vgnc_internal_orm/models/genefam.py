@@ -1,6 +1,6 @@
-"""Genefam model for the VGNC ORM system.
+"""Gene family model for the VGNC ORM system.
 
-This model represents the genefam table from the actual genefam_production database.
+This model represents the genefam table from VGNC-style databases.
 """
 
 from typing import TYPE_CHECKING, Any

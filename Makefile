@@ -1,4 +1,5 @@
-.PHONY: help install install-dev test test-unit test-integration test-performance test-load ci clean coverage quality build dev docs-html docs-live examples
+.PHONY: help install install-dev test test-unit test-integration test-performance test-load ci clean coverage quality build dev docs-html docs-live examples \
+	migrate-create migrate-test migrate-status migrate-validate migrate-test-rollback
 
 # Default target
 help:
@@ -30,6 +31,13 @@ help:
 	@echo "  docs-html    Build Sphinx HTML documentation (docs/_build/html)"
 	@echo "  docs-live    Auto-rebuild docs with sphinx-autobuild (if installed)"
 	@echo "  examples     Run all example scripts for smoke verification"
+	@echo ""
+	@echo "Migrations (via .github/scripts/migration_workflow.py):"
+	@echo "  migrate-create        Create a new revision (use MSG='message')"
+	@echo "  migrate-test          Test latest or REV='<rev_id>' on temp DB"
+	@echo "  migrate-validate      Validate a FILE='alembic/versions/xxx.py'"
+	@echo "  migrate-status        Show Alembic status"
+	@echo "  migrate-test-rollback Test rollback (use STEPS=1 and optional REV)"
 
 # Installation
 install:
@@ -201,3 +209,45 @@ benchmark-save:
 memory-leak-check:
 	uv run python -m pytest tests/unit/ --tb=short --cov=src/vgnc_internal_orm
 	# This would need additional memory profiling setup
+
+# ----------------------------------------------------------------------------
+# Migrations Runbook Targets
+# ----------------------------------------------------------------------------
+
+# Create a new migration revision
+# Usage: make migrate-create MSG="add species index"
+migrate-create:
+	@if [ -z "$(MSG)" ]; then \
+		echo "Usage: make migrate-create MSG=\"your message\""; exit 1; \
+	fi
+	uv run python .github/scripts/migration_workflow.py create --message "$(MSG)"
+
+# Test a migration on a temporary SQLite DB (optionally specify REV)
+# Usage: make migrate-test REV="<rev_id>"
+migrate-test:
+	@if [ -n "$(REV)" ]; then \
+		uv run python .github/scripts/migration_workflow.py test --revision $(REV); \
+	else \
+		uv run python .github/scripts/migration_workflow.py test; \
+	fi
+
+# Validate a specific migration file with the safety validator
+# Usage: make migrate-validate FILE="alembic/versions/001_initial.py"
+migrate-validate:
+	@if [ -z "$(FILE)" ]; then \
+		echo "Usage: make migrate-validate FILE=alembic/versions/xxx.py"; exit 1; \
+	fi
+	uv run python .github/scripts/migration_workflow.py validate --file "$(FILE)"
+
+# Show Alembic status
+migrate-status:
+	uv run python .github/scripts/migration_workflow.py status
+
+# Test rollback steps (default 1). Optionally target a specific revision.
+# Usage: make migrate-test-rollback STEPS=1 REV="<rev_id>"
+migrate-test-rollback:
+	@if [ -n "$(REV)" ]; then \
+		uv run python .github/scripts/migration_workflow.py test-rollback --steps "$(STEPS)" --revision "$(REV)"; \
+	else \
+		uv run python .github/scripts/migration_workflow.py test-rollback --steps "$(STEPS)"; \
+	fi

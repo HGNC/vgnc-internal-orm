@@ -1,4 +1,8 @@
-# Repository Planning Graph (RPG) Method - PRD Template
+# Product Requirements Document (PRD)
+
+> **Note**: This is a historical planning document used during initial project development. It describes the original vision and requirements that guided the implementation. For current usage and API documentation, see the other documentation files.
+
+## Repository Planning Graph (RPG) Method - PRD Template
 
 ## Overview
 

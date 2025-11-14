@@ -54,13 +54,7 @@ python .github/scripts/migration_workflow.py validate --file alembic/versions/00
 # Test migration (includes safety validation) (script)
 python .github/scripts/migration_workflow.py test --revision <rev_id>
 
-# Using CLI (alternative interface)
-vgnc-cli migration validate --file alembic/versions/001_initial.py
-vgnc-cli migration test --revision <rev_id>
-
-# Using Python module (alternative interface)
-python -m vgnc_internal_orm.cli migration validate --file alembic/versions/001_initial.py
-python -m vgnc_internal_orm.cli migration test --revision <rev_id>
+# (CLI migration subcommands are not provided; use the script above.)
 ```
 
 ### CI Integration

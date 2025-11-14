@@ -7,7 +7,21 @@
 Install into your project environment:
 
 ```bash
-pip install vgnc-internal-orm  # (or local editable install)
+# Install from PyPI (when available)
+pip install vgnc-internal-orm
+
+# Install from GitHub (latest development version)
+pip install git+https://github.com/HGNC/vgnc-internal-orm.git
+
+# Using uv (modern Python package manager)
+uv install vgnc-internal-orm
+uv install git+https://github.com/HGNC/vgnc-internal-orm.git
+
+# Install with optional dependencies
+pip install vgnc-internal-orm[mysql]      # MySQL support
+pip install vgnc-internal-orm[dev]       # Development tools
+uv install vgnc-internal-orm[mysql]
+uv install vgnc-internal-orm[dev]
 ```
 
 ## Minimum Configuration
@@ -52,7 +66,7 @@ items = Species.find(session, limit=10)  # helper wrapper
 vgnc-cli query-species --limit 10 --format table
 
 # Option 2: Using Python module invocation
-python -m vgnc_internal_orm.cli query-species --limit 10 --format table
+python -m vgnc_internal_orm.cli.main query-species --limit 10 --format table
 ```
 
 ## Next Steps

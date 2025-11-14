@@ -1,6 +1,6 @@
 """Assembly model for the VGNC ORM system.
 
-This model represents the assembly table from the actual genefam_production database.
+This model represents the assembly table from VGNC-style databases.
 """
 
 from typing import TYPE_CHECKING, Any
