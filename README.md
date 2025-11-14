@@ -1,6 +1,6 @@
 # VGNC Internal ORM
 
-![Coverage](coverage-badge.svg)
+![Coverage](coverage-badge.svg) [Test Summary](test-summary.md)
 
 Comprehensive SQLAlchemy 2.0 ORM toolkit for VGNC-style gene nomenclature data: typed models, robust configuration, optimized sessions, performance/index utilities, migration workflow & safety validation, and a flexible querying/export CLI.
 
@@ -11,24 +11,28 @@ Comprehensive SQLAlchemy 2.0 ORM toolkit for VGNC-style gene nomenclature data: 
 ## Features
 
 ### Core ORM Capabilities
+
 - **Typed declarative models** with rich CRUD helpers and async support
 - **Sync & async session support** with tuned engine creation and connection pooling
 - **Multi-database support**: MySQL (with UTF8MB4), PostgreSQL, SQLite
 - **Full-text search** and specialized charset handling for international data
 
 ### Performance & Utilities
+
 - **Index management**: Definition, mapping, schema analysis, and automated optimization
 - **Query optimization**: N+1 detection, batch execution, performance profiling
 - **MySQL-specific features**: Charset validation, connection pooling, query optimization
 - **Schema analysis tools**: Performance monitoring and index recommendations
 
 ### Migration & Safety
+
 - **Alembic integration** with comprehensive migration workflow
 - **Migration safety validation**: Pre-deployment risk assessment and rollback checks
 - **Incremental migrations**: Safe, validated database schema changes
 - **Baseline management**: Initial schema setup and version tracking
 
 ### Developer Tools
+
 - **CLI interface**: Query and export data in multiple formats (table/JSON/CSV/XML)
 - **Comprehensive testing**: Unit, integration, and performance test suites
 - **Code quality**: Black formatting, Ruff linting, MyPy type checking
@@ -101,23 +105,27 @@ VGNC_ENVIRONMENT=production vgnc-cli query-species --limit 10
 ### Core Documentation (in `docs/` directory)
 
 **Getting Started:**
+
 - **Architecture Overview**: `docs/architecture_overview.md` - High-level design and components
 - **Getting Started**: `docs/getting_started.md` - Step-by-step installation and basic usage
 - **Configuration**: `docs/configuration.md` - Environment variables and setup options
 
 **Core API Reference:**
+
 - **Models Reference**: `docs/models_reference.md` - Complete model documentation
 - **Sessions & Engines**: `docs/sessions.md` - Session management and database connections
 - **Utilities & Performance**: `docs/utilities.md` - Index management and optimization tools
 - **CLI Reference**: `docs/cli.md` - Command-line interface documentation
 
 **Migration & Database:**
+
 - **Migration Workflow**: `docs/migration_workflow.md` - Alembic integration and migration process
 - **Migration Safety**: `docs/migrations_safety.md` - Pre-deployment validation and safety checks
 - **Alembic Baseline**: `docs/alembic_baseline.md` - Initial schema setup details
 - **Incremental Migrations**: `docs/incremental_migrations.md` - Safe schema evolution
 
 **Advanced Topics:**
+
 - **Testing & Performance**: `docs/testing_and_performance.md` - Test strategies and performance optimization
 - **Query Performance**: `docs/query_performance_optimization.md` - Advanced query optimization
 - **API Reference**: `docs/api_reference.md` - Complete API catalog
@@ -129,11 +137,13 @@ VGNC_ENVIRONMENT=production vgnc-cli query-species --limit 10
 - **Run all examples**: `make examples`
 
 ### Development Documentation
+
 - **CI/CD Pipeline**: `docs/ci_cd_pipeline.md` - Continuous integration and deployment
 - **Code Coverage**: `docs/code_coverage.md` - Test coverage analysis
 - **Load Testing**: `docs/load_testing.md` - Performance testing methodology
 
 ### Research & Analysis
+
 - **Loading Strategy Analysis**: `docs/loading_strategy_analysis.md` - Data loading performance
 - **Navigation and Loading Tests**: `docs/navigation_and_loading_tests.md` - Relationship optimization
 - **Many-to-Many Relationships**: `docs/many_to_many_relationships_implementation.md` - Complex relationship patterns
@@ -143,6 +153,7 @@ VGNC_ENVIRONMENT=production vgnc-cli query-species --limit 10
 Database schema changes are managed with Alembic. The `alembic/` directory contains migration scripts and configuration.
 
 ### Migration Resources
+
 - **Quick Reference**: `alembic/README.md` for common commands and workflow
 - **Detailed Guide**: `docs/migration_workflow.md` for step-by-step process
 - **Safety Validation**: `docs/migrations_safety.md` for pre-deployment checks

@@ -447,12 +447,20 @@ jobs:
 
     - name: Move test summary to repo root
       run: |
-        # Replace test summary in repository root with new version
-        mv test-summary.md ./ 2>/dev/null || {
-          echo "Replacing existing test-summary.md in repository root"
-          mv test-summary.md ./test-summary.md.new
-          mv ./test-summary.md.new ./test-summary.md
-        }
+        SUMMARY=test-summary.md
+        if [ ! -f "$SUMMARY" ]; then
+          echo "No test summary found to commit"
+          exit 0
+        fi
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add "$SUMMARY"
+        if git diff --staged --quiet; then
+          echo "No test summary changes to commit"
+          exit 0
+        fi
+        git commit -m "Update test summary [skip ci]"
+        git push
 
     - name: Comment test summary on PR
       if: github.event_name == 'pull_request'
