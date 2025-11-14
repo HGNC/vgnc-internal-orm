@@ -1,6 +1,7 @@
 """Tests for incremental migration workflow and validation."""
 
 import os
+import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -11,7 +12,11 @@ from alembic.config import Config
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from scripts.migration_workflow import MigrationWorkflow
+# Add project root to Python path for script imports
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root / ".github" / "scripts"))
+
+from migration_workflow import MigrationWorkflow
 
 
 @pytest.fixture
