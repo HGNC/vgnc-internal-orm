@@ -163,7 +163,9 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["vgnc_internal_orm"]
+source = ["src"]
+parallel = true
+concurrency = ["thread"]
 omit = [
     "*/tests/*",
     "*/test_*",
