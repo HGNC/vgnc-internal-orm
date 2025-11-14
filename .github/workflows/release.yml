@@ -1,0 +1,399 @@
+name: Semantic Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      force_release:
+        description: 'Force a release (skip version check)'
+        required: false
+        default: false
+        type: boolean
+      release_type:
+        description: 'Release type (if forcing)'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # Analyze commits and determine version bump
+  version-analysis:
+    name: Analyze Changes & Determine Version
+    runs-on: ubuntu-latest
+    outputs:
+      version-bump: ${{ steps.bump.outputs.bump }}
+      new-version: ${{ steps.version.outputs.new-version }}
+      current-version: ${{ steps.version.outputs.current-version }}
+      should-release: ${{ steps.check.outputs.should-release }}
+      release-notes: ${{ steps.changelog.outputs.release-notes }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Get full history for commit analysis
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests packaging toml
+
+    - name: Get current version
+      id: version
+      run: |
+        # Get version from pyproject.toml
+        CURRENT_VERSION=$(python -c "
+        import tomllib
+        with open('pyproject.toml', 'rb') as f:
+            data = tomllib.load(f)
+            print(data['project']['version'])
+        ")
+        echo "current-version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        echo "Current version: $CURRENT_VERSION"
+
+    - name: Get latest tag
+      id: tag
+      run: |
+        # Get the most recent git tag
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        echo "latest-tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+        echo "Latest tag: $LATEST_TAG"
+
+    - name: Analyze commits since last release
+      id: analysis
+      run: |
+        # Get the commit range to analyze
+        if [[ -n "${{ steps.tag.outputs.latest-tag }}" ]]; then
+          COMMIT_RANGE="${{ steps.tag.outputs.latest-tag }}..HEAD"
+        else
+          COMMIT_RANGE="HEAD"
+        fi
+
+        echo "Analyzing commits in range: $COMMIT_RANGE"
+
+        # Extract conventional commit messages and analyze
+        python .github/scripts/analyze_commits.py \
+          --range "$COMMIT_RANGE" \
+          --output analysis.json
+
+        echo "analysis-complete=true" >> $GITHUB_OUTPUT
+
+    - name: Determine version bump type
+      id: bump
+      run: |
+        if [[ "${{ github.event.inputs.force_release }}" == "true" ]]; then
+          BUMP="${{ github.event.inputs.release_type }}"
+          echo "Forced release type: $BUMP"
+        else
+          # Determine bump based on commit analysis
+          BUMP=$(python .github/scripts/determine_version_bump.py analysis.json)
+          echo "Determined bump type: $BUMP"
+        fi
+
+        echo "bump=$BUMP" >> $GITHUB_OUTPUT
+
+    - name: Calculate new version
+      id: new-version
+      run: |
+        CURRENT="${{ steps.version.outputs.current-version }}"
+        BUMP="${{ steps.bump.outputs.bump }}"
+
+        # Parse semver and bump
+        NEW_VERSION=$(python .github/scripts/bump_version.py \
+          --current "$CURRENT" \
+          --bump "$BUMP")
+
+        echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "New version will be: $NEW_VERSION"
+
+    - name: Check if release is needed
+      id: check
+      run: |
+        # Check if we have meaningful changes that require a release
+        HAS_CHANGES=$(python -c "
+        import json
+        with open('analysis.json', 'r') as f:
+            data = json.load(f)
+
+        # Check if there are any conventional commits
+        has_conventional = any(data['conventional_commits'].values())
+        has_breaking = data['breaking_changes'] > 0
+        has_features = data['features'] > 0
+        has_fixes = data['fixes'] > 0
+
+        should_release = has_conventional and (has_breaking or has_features or has_fixes)
+        print(should_release)
+        ")
+
+        FORCE_RELEASE="${{ github.event.inputs.force_release }}"
+        SHOULD_RELEASE=false
+
+        if [[ "$FORCE_RELEASE" == "true" ]]; then
+          SHOULD_RELEASE=true
+          echo "Force release requested"
+        elif [[ "$HAS_CHANGES" == "True" ]]; then
+          SHOULD_RELEASE=true
+          echo "Changes detected that warrant a release"
+        else
+          echo "No release-worthy changes detected"
+        fi
+
+        echo "should-release=$SHOULD_RELEASE" >> $GITHUB_OUTPUT
+
+    - name: Generate release notes
+      id: changelog
+      if: steps.check.outputs.should-release == 'true'
+      run: |
+        # Generate detailed release notes
+        RELEASE_NOTES=$(python .github/scripts/generate_release_notes.py \
+          --analysis-file analysis.json \
+          --current-version "${{ steps.version.outputs.current-version }}" \
+          --new-version "${{ steps.new-version.outputs.new-version }}")
+
+        # Save to file and output
+        echo "$RELEASE_NOTES" > release-notes.md
+        echo "release-notes<<EOF" >> $GITHUB_OUTPUT
+        echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Upload analysis artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-analysis
+        path: |
+          analysis.json
+          release-notes.md
+        retention-days: 7
+
+  # Update version in pyproject.toml and create changelog
+  create-release:
+    name: Create Release & Update Files
+    runs-on: ubuntu-latest
+    needs: version-analysis
+    if: needs.version-analysis.outputs.should-release == 'true'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install packaging toml
+
+    - name: Download analysis artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: release-analysis
+
+    - name: Update version in pyproject.toml
+      run: |
+        NEW_VERSION="${{ needs.version-analysis.outputs.new-version }}"
+        python .github/scripts/update_version.py \
+          --version "$NEW_VERSION" \
+          --file pyproject.toml
+
+    - name: Update CHANGELOG.md
+      run: |
+        python .github/scripts/update_changelog.py \
+          --changelog-file CHANGELOG.md \
+          --release-notes-file release-notes.md \
+          --version "${{ needs.version-analysis.outputs.new-version }}"
+
+    - name: Validate updated files
+      run: |
+        # Verify version was updated correctly
+        UPDATED_VERSION=$(python -c "
+        import tomllib
+        with open('pyproject.toml', 'rb') as f:
+            data = tomllib.load(f)
+            print(data['project']['version'])
+        ")
+        EXPECTED_VERSION="${{ needs.version-analysis.outputs.new-version }}"
+
+        if [[ "$UPDATED_VERSION" != "$EXPECTED_VERSION" ]]; then
+          echo "❌ Version update failed: got $UPDATED_VERSION, expected $EXPECTED_VERSION"
+          exit 1
+        fi
+
+        echo "✅ Version updated successfully to $UPDATED_VERSION"
+
+        # Verify changelog was updated
+        if [[ ! -f "CHANGELOG.md" ]] || ! grep -q "$EXPECTED_VERSION" CHANGELOG.md; then
+          echo "❌ CHANGELOG.md was not updated correctly"
+          exit 1
+        fi
+
+        echo "✅ CHANGELOG.md updated successfully"
+
+    - name: Commit version and changelog changes
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+
+        git add pyproject.toml CHANGELOG.md
+
+        # Check if there are changes to commit
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "chore: bump version to ${{ needs.version-analysis.outputs.new-version }}
+
+        - Update version in pyproject.toml
+        - Add changelog entry for ${{ needs.version-analysis.outputs.new-version }}
+
+        🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+        Co-Authored-By: Claude <noreply@anthropic.com>"
+          git push
+        fi
+
+    - name: Create Git tag
+      run: |
+        VERSION="${{ needs.version-analysis.outputs.new-version }}"
+        git tag -a "v$VERSION" -m "Release v$VERSION"
+        git push origin "v$VERSION"
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ needs.version-analysis.outputs.new-version }}
+        name: Release v${{ needs.version-analysis.outputs.new-version }}
+        body_path: release-notes.md
+        draft: false
+        prerelease: false
+        generate_release_notes: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and upload package
+      run: |
+        python -m pip install --upgrade pip build twine
+        python -m build
+
+        # Check package
+        python -m twine check dist/*
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-package-${{ needs.version-analysis.outputs.new-version }}
+        path: dist/
+        retention-days: 30
+
+  # Notification job
+  notify-release:
+    name: Notify Release
+    runs-on: ubuntu-latest
+    needs: [version-analysis, create-release]
+    if: always() && needs.version-analysis.outputs.should-release == 'true'
+
+    steps:
+    - name: Success notification
+      if: needs.create-release.result == 'success'
+      run: |
+        echo "✅ Release v${{ needs.version-analysis.outputs.new-version }} created successfully!"
+        echo "📝 CHANGELOG.md updated"
+        echo "🏷️  Git tag v${{ needs.version-analysis.outputs.new-version }} created"
+        echo "📦 GitHub release published"
+
+    - name: Failure notification
+      if: needs.create-release.result == 'failure'
+      run: |
+        echo "❌ Release v${{ needs.version-analysis.outputs.new-version }} failed!"
+        echo "Please check the job logs for details"
+
+  # Dry run job for PRs and testing
+  dry-run:
+    name: Dry Run - Version Analysis Only
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.force_release != 'true'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests packaging toml
+
+    - name: Run version analysis
+      run: |
+        echo "🔍 Running dry-run version analysis..."
+
+        # Get current version
+        CURRENT_VERSION=$(python -c "
+        import tomllib
+        with open('pyproject.toml', 'rb') as f:
+            data = tomllib.load(f)
+            print(data['project']['version'])
+        ")
+
+        # Get latest tag
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+        # Analyze commits
+        if [[ -n "$LATEST_TAG" ]]; then
+          COMMIT_RANGE="$LATEST_TAG..HEAD"
+        else
+          COMMIT_RANGE="HEAD"
+        fi
+
+        echo "Current version: $CURRENT_VERSION"
+        echo "Latest tag: $LATEST_TAG"
+        echo "Analyzing commits: $COMMIT_RANGE"
+
+        # Run analysis
+        python .github/scripts/analyze_commits.py \
+          --range "$COMMIT_RANGE" \
+          --output analysis.json
+
+        # Determine version bump
+        BUMP=$(python .github/scripts/determine_version_bump.py analysis.json)
+
+        # Calculate new version
+        NEW_VERSION=$(python .github/scripts/bump_version.py \
+          --current "$CURRENT_VERSION" \
+          --bump "$BUMP")
+
+        echo ""
+        echo "📊 Analysis Results:"
+        echo "  Current version: $CURRENT_VERSION"
+        echo "  Version bump: $BUMP"
+        echo "  New version: $NEW_VERSION"
+        echo ""
+
+        # Generate preview of release notes
+        python .github/scripts/generate_release_notes.py \
+          --analysis-file analysis.json \
+          --current-version "$CURRENT_VERSION" \
+          --new-version "$NEW_VERSION"
