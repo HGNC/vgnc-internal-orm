@@ -150,6 +150,9 @@ jobs:
         if [[ "$FORCE_RELEASE" == "true" ]]; then
           SHOULD_RELEASE=true
           echo "Force release requested"
+        elif [[ "$FORCE_RELEASE" == "false" ]]; then
+          SHOULD_RELEASE=false
+          echo "Dry run mode - skipping release creation"
         elif [[ "$HAS_CHANGES" == "True" ]]; then
           SHOULD_RELEASE=true
           echo "Changes detected that warrant a release"
