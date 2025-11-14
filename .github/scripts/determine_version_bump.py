@@ -203,19 +203,25 @@ def main():
                 'has_conventional': any(analysis_data.get('stats', {}).get('conventional_commits', {}).values())
             }
         }
-        print(json.dumps(output, indent=2))
+        print(json.dumps(output, indent=2), file=sys.stderr)
     else:
-        print(f"Version bump: {bump_type.upper()}")
-        if reason:
-            print(f"Reason:\n{reason}")
+        # Always output just the bump type (for workflow integration)
+        print(bump_type)
 
         if args.verbose:
-            print(f"\n📊 Detailed Analysis:")
+            print(f"Version bump: {bump_type.upper()}", file=sys.stderr)
+            if reason:
+                # Print reason to stderr to avoid interfering with workflow output
+                for line in reason.split('\n'):
+                    if line.strip():
+                        print(f"Reason: {line}", file=sys.stderr)
+
+            print(f"\n📊 Detailed Analysis:", file=sys.stderr)
             summary = analysis_data.get('summary', {})
-            print(f"  Total commits: {summary.get('total', 0)}")
-            print(f"  Breaking changes: {summary.get('breaking', 0)}")
-            print(f"  Features: {summary.get('features', 0)}")
-            print(f"  Fixes: {summary.get('fixes', 0)}")
+            print(f"  Total commits: {summary.get('total', 0)}", file=sys.stderr)
+            print(f"  Breaking changes: {summary.get('breaking', 0)}", file=sys.stderr)
+            print(f"  Features: {summary.get('features', 0)}", file=sys.stderr)
+            print(f"  Fixes: {summary.get('fixes', 0)}", file=sys.stderr)
 
     return 0
 
