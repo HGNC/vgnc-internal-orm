@@ -445,6 +445,15 @@ jobs:
       run: |
         python .github/scripts/generate_test_summary.py > test-summary.md
 
+    - name: Move test summary to repo root
+      run: |
+        # Replace test summary in repository root with new version
+        mv test-summary.md ./ 2>/dev/null || {
+          echo "Replacing existing test-summary.md in repository root"
+          mv test-summary.md ./test-summary.md.new
+          mv ./test-summary.md.new ./test-summary.md
+        }
+
     - name: Comment test summary on PR
       if: github.event_name == 'pull_request'
       uses: actions/github-script@v7
