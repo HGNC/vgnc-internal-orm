@@ -319,7 +319,7 @@ jobs:
 
     - name: Run load test - ${{ matrix.test-scenario.name }}
       run: |
-        python simple_load_test.py \
+        python scripts/simple_load_test.py \
           --test lookup \
           --users ${{ matrix.test-scenario.users }} \
           --duration ${{ matrix.test-scenario.duration }} \
