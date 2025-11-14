@@ -209,7 +209,7 @@ jobs:
     name: Create Release & Update Files
     runs-on: ubuntu-latest
     needs: version-analysis
-    if: needs.version-analysis.outputs.should-release == 'true'
+    if: needs.version-analysis.outputs.should-release == 'true' && needs.version-analysis.outputs.new-version != ''
 
     steps:
     - name: Checkout code
@@ -231,6 +231,16 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: release-analysis
+
+    - name: Validate version before update
+      run: |
+        NEW_VERSION="${{ needs.version-analysis.outputs.new-version }}"
+        if [[ -z "$NEW_VERSION" ]]; then
+          echo "❌ ERROR: NEW_VERSION is empty - cannot proceed with release"
+          echo "This should not happen - please check the version-analysis job logs"
+          exit 1
+        fi
+        echo "✅ Valid NEW_VERSION detected: $NEW_VERSION"
 
     - name: Update version in pyproject.toml
       run: |

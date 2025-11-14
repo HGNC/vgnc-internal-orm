@@ -43,7 +43,7 @@ def update_pyproject_version(file_path: str, new_version: str) -> bool:
                 return False
 
         # Replace the version
-        updated_content = re.sub(version_pattern, f'\\1{new_version}\\2', content, count=1, flags=re.MULTILINE)
+        updated_content = re.sub(version_pattern, fr'\g<1>{new_version}\g<2>', content, count=1, flags=re.MULTILINE)
 
         # Verify the change was made
         if updated_content == content:
@@ -102,15 +102,24 @@ def main():
 
     args = parser.parse_args()
 
+    # Check if version is empty
+    if not args.version or args.version.strip() == "":
+        print(f"Error: Version is empty", file=sys.stderr)
+        print("A valid version must be provided", file=sys.stderr)
+        return 1
+
     # Validate version format (basic semver check)
     version_pattern = re.compile(r'^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)')
-    if not version_pattern.match(args.version):
+    if not version_pattern.match(args.version.strip()):
         print(f"Error: Invalid semantic version format: {args.version}", file=sys.stderr)
         print("Expected format: MAJOR.MINOR.PATCH (e.g., 1.2.3)", file=sys.stderr)
         return 1
 
+    # Use stripped version for safety
+    version = args.version.strip()
+
     # Update version
-    success = update_pyproject_version(args.file, args.version)
+    success = update_pyproject_version(args.file, version)
     if not success:
         return 1
 
