@@ -428,9 +428,25 @@ jobs:
         BUMP="${{ needs.version-analysis.outputs.version-bump }}"
         VERSION="${{ needs.version-analysis.outputs.new-version }}"
 
+        echo "🔍 Debug tag creation variables:"
+        echo "  CURRENT_VERSION: '$CURRENT_VERSION'"
+        echo "  BUMP: '$BUMP'"
+        echo "  VERSION (from output): '$VERSION'"
+
         if [[ -z "$VERSION" || "$VERSION" == "" ]]; then
-          echo "💡 Recalculating VERSION for git tag..."
-          VERSION=$(python .github/scripts/bump_version.py --current "$CURRENT_VERSION" --bump "$BUMP")
+          echo "💡 Recalculating VERSION for git tag due to empty output..."
+          if [[ -n "$CURRENT_VERSION" && -n "$BUMP" && "$BUMP" != "none" ]]; then
+            VERSION=$(python .github/scripts/bump_version.py --current "$CURRENT_VERSION" --bump "$BUMP")
+            echo "💡 Recalculated VERSION: '$VERSION'"
+          else
+            echo "❌ Cannot calculate VERSION - CURRENT_VERSION='$CURRENT_VERSION', BUMP='$BUMP'"
+            exit 1
+          fi
+        fi
+
+        if [[ -z "$VERSION" || "$VERSION" == "" ]]; then
+          echo "❌ ERROR: VERSION is still empty after recalculation"
+          exit 1
         fi
 
         echo "🏷️ Creating git tag for version: $VERSION"
@@ -438,10 +454,41 @@ jobs:
         git push origin "v$VERSION"
 
     - name: Create GitHub Release
+      run: |
+        # Calculate version for release (same logic as tag creation)
+        CURRENT_VERSION="${{ needs.version-analysis.outputs.current-version }}"
+        BUMP="${{ needs.version-analysis.outputs.version-bump }}"
+        VERSION="${{ needs.version-analysis.outputs.new-version }}"
+
+        echo "🔍 Debug release creation variables:"
+        echo "  CURRENT_VERSION: '$CURRENT_VERSION'"
+        echo "  BUMP: '$BUMP'"
+        echo "  VERSION (from output): '$VERSION'"
+
+        if [[ -z "$VERSION" || "$VERSION" == "" ]]; then
+          echo "💡 Recalculating VERSION for GitHub release..."
+          if [[ -n "$CURRENT_VERSION" && -n "$BUMP" && "$BUMP" != "none" ]]; then
+            VERSION=$(python .github/scripts/bump_version.py --current "$CURRENT_VERSION" --bump "$BUMP")
+            echo "💡 Recalculated VERSION for release: '$VERSION'"
+          else
+            echo "❌ Cannot calculate VERSION for release - CURRENT_VERSION='$CURRENT_VERSION', BUMP='$BUMP'"
+            exit 1
+          fi
+        fi
+
+        if [[ -z "$VERSION" || "$VERSION" == "" ]]; then
+          echo "❌ ERROR: VERSION is still empty for release creation"
+          exit 1
+        fi
+
+        echo "🚀 Creating GitHub release for version: $VERSION"
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+    - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: v${{ needs.version-analysis.outputs.new-version }}
-        name: Release v${{ needs.version-analysis.outputs.new-version }}
+        tag_name: v${{ env.VERSION }}
+        name: Release v${{ env.VERSION }}
         body_path: release-notes.md
         draft: false
         prerelease: false
