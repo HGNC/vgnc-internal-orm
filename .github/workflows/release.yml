@@ -421,20 +421,20 @@ jobs:
           git push
         fi
 
-    - name: Create Git tag
+    - name: Create Git tag and Release
       run: |
-        # Calculate version for tag
+        # Calculate version for tag and release
         CURRENT_VERSION="${{ needs.version-analysis.outputs.current-version }}"
         BUMP="${{ needs.version-analysis.outputs.version-bump }}"
         VERSION="${{ needs.version-analysis.outputs.new-version }}"
 
-        echo "🔍 Debug tag creation variables:"
+        echo "🔍 Debug release creation variables:"
         echo "  CURRENT_VERSION: '$CURRENT_VERSION'"
         echo "  BUMP: '$BUMP'"
         echo "  VERSION (from output): '$VERSION'"
 
         if [[ -z "$VERSION" || "$VERSION" == "" ]]; then
-          echo "💡 Recalculating VERSION for git tag due to empty output..."
+          echo "💡 Recalculating VERSION due to empty output..."
           if [[ -n "$CURRENT_VERSION" && -n "$BUMP" && "$BUMP" != "none" ]]; then
             VERSION=$(python .github/scripts/bump_version.py --current "$CURRENT_VERSION" --bump "$BUMP")
             echo "💡 Recalculated VERSION: '$VERSION'"
@@ -450,45 +450,40 @@ jobs:
         fi
 
         echo "🏷️ Creating git tag for version: $VERSION"
-        git tag -a "v$VERSION" -m "Release v$VERSION"
-        git push origin "v$VERSION"
 
-    - name: Create GitHub Release
-      run: |
-        # Calculate version for release (same logic as tag creation)
-        CURRENT_VERSION="${{ needs.version-analysis.outputs.current-version }}"
-        BUMP="${{ needs.version-analysis.outputs.version-bump }}"
-        VERSION="${{ needs.version-analysis.outputs.new-version }}"
-
-        echo "🔍 Debug release creation variables:"
-        echo "  CURRENT_VERSION: '$CURRENT_VERSION'"
-        echo "  BUMP: '$BUMP'"
-        echo "  VERSION (from output): '$VERSION'"
-
+        # Double-check VERSION is not empty before proceeding
         if [[ -z "$VERSION" || "$VERSION" == "" ]]; then
-          echo "💡 Recalculating VERSION for GitHub release..."
-          if [[ -n "$CURRENT_VERSION" && -n "$BUMP" && "$BUMP" != "none" ]]; then
-            VERSION=$(python .github/scripts/bump_version.py --current "$CURRENT_VERSION" --bump "$BUMP")
-            echo "💡 Recalculated VERSION for release: '$VERSION'"
-          else
-            echo "❌ Cannot calculate VERSION for release - CURRENT_VERSION='$CURRENT_VERSION', BUMP='$BUMP'"
-            exit 1
-          fi
-        fi
-
-        if [[ -z "$VERSION" || "$VERSION" == "" ]]; then
-          echo "❌ ERROR: VERSION is still empty for release creation"
+          echo "❌ CRITICAL ERROR: VERSION is still empty before git tag creation"
+          echo "🔍 Final variable check:"
+          echo "  CURRENT_VERSION: '$CURRENT_VERSION'"
+          echo "  BUMP: '$BUMP'"
+          echo "  ORIGINAL VERSION: '${{ needs.version-analysis.outputs.new-version }}'"
           exit 1
         fi
 
-        echo "🚀 Creating GitHub release for version: $VERSION"
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "✅ Proceeding with git tag creation for v$VERSION"
+        git tag -a "v$VERSION" -m "Release v$VERSION"
+        git push origin "v$VERSION"
+
+        # Write version to file for next step
+        echo "v$VERSION" > release-tag.txt
+        echo "Release v$VERSION" > release-name.txt
+        echo "📝 Written to files: tag='v$VERSION', name='Release v$VERSION'"
+
+    - name: Read version from file
+      id: read-version
+      run: |
+        TAG=$(cat release-tag.txt)
+        NAME=$(cat release-name.txt)
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        echo "name=$NAME" >> $GITHUB_OUTPUT
+        echo "📋 Read from files: tag='$TAG', name='$NAME'"
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: v${{ env.VERSION }}
-        name: Release v${{ env.VERSION }}
+        tag_name: ${{ steps.read-version.outputs.tag }}
+        name: ${{ steps.read-version.outputs.name }}
         body_path: release-notes.md
         draft: false
         prerelease: false
