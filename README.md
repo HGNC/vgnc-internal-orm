@@ -355,3 +355,4 @@ For questions and support:
 - 💬 **Discussions**: Use GitHub Discussions (when enabled)
 - 📧 **Contact**: HGNC Development Team (<hgnc@genenames.org>)
 # Test workflow debug
+# Test change for release
