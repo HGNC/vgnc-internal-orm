@@ -138,6 +138,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Conventional commits:** 0
 
 **Version bump:** v0.4.2 → v0.4.3
+
+# Release v0.4.4
+
+**Released:** 2025-11-17
+**From:** v0.4.3
+
+---
+
+---
+
+## 📊 Release Statistics
+
+- **Total commits:** 0
+- **Conventional commits:** 0
+
+**Version bump:** v0.4.3 → v0.4.4
 ## [0.2.0] - 2024-11-14
 
 ### 🚀 Initial Release Setup
