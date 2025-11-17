@@ -1,6 +1,6 @@
 # Testing & Performance
 
-**VGNC Internal ORM v0.4.2** - MIT License
+**VGNC Internal ORM v0.4.3** - MIT License
 
 ## Existing Test Suites
 
