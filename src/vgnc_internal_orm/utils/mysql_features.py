@@ -529,6 +529,7 @@ class FullTextSearch:
                 Returns:
                     List of MockColumn objects for each indexed column
                 """
+
                 # Return mock column objects with name attributes
                 class MockColumn:
                     """Mock column object for FullTextIndex.
