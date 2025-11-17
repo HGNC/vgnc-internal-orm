@@ -145,6 +145,11 @@ class Genefam(BaseCustomModel):
     )
 
     def __repr__(self) -> str:
+        """Return string representation of Genefam instance.
+
+        Returns:
+            str: Formatted string with genefam ID, assigned ID, and taxon ID.
+        """
         return f"<Genefam(genefam_id={self.genefam_id}, assigned_id='{self.assigned_id}', taxon_id={self.taxon_id})>"
 
     @property

@@ -39,7 +39,13 @@ class TimestampMixin:
         comment="Timestamp when record was last updated",
     )
 
-    def touch(self) -> None:  # Lightweight helper used by several domain models
+    def touch(self) -> None:
+        """Update the updated_at timestamp to current UTC time.
+
+        This is a lightweight helper method used by several domain models
+        to manually refresh the updated_at timestamp when changes are made
+        outside of the normal ORM update process.
+        """
         self.updated_at = datetime.now(UTC)
 
 

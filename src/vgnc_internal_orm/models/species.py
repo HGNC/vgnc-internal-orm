@@ -119,6 +119,11 @@ class Species(BaseCustomModel):
     )
 
     def __repr__(self) -> str:
+        """Return string representation of Species instance.
+
+        Returns:
+            str: Formatted string with taxon ID, genefam prefix, and display name.
+        """
         return f"<Species(taxon_id={self.taxon_id}, genefam_prefix='{self.genefam_prefix}', display_name='{self.display_name}')>"
 
     @property

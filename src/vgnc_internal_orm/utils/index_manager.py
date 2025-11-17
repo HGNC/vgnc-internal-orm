@@ -52,6 +52,11 @@ class IndexManager:
     """Manages indexes and constraints for VGNC ORM models."""
 
     def __init__(self) -> None:
+        """Initialize IndexManager with all available index definitions.
+
+        Loads standard indexes, constraints, association indexes, performance indexes,
+        and generates full-text search indexes from model definitions.
+        """
         self.index_definitions = get_all_indexes()
         self.constraint_definitions = get_all_constraints()
         self.association_indexes = get_association_indexes()

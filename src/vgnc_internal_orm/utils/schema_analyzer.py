@@ -93,12 +93,24 @@ class SchemaAnalyzer:
     """Analyzes database schema for indexes and constraints."""
 
     def __init__(self) -> None:
+        """Initialize SchemaAnalyzer with model references.
+
+        Uses lazy imports to avoid side effects during module import
+        (e.g., autodoc generation) and loads all available models
+        and association tables for schema analysis.
+        """
         # Lazy import to avoid side effects during module import (e.g., autodoc)
         self.models: list[Any] = []
         self.association_tables: list[Any] = []
         self._load_models()
 
     def _load_models(self) -> None:
+        """Load all models and association tables for schema analysis.
+
+        Dynamically imports models to avoid circular imports and side effects
+        during module initialization. Populates the models and association_tables
+        lists for later schema analysis operations.
+        """
         try:
             from vgnc_internal_orm.models.assembly import Assembly as _Assembly
 

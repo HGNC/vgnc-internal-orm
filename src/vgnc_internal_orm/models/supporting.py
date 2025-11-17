@@ -32,6 +32,11 @@ class GeneStatus(BaseModel):
     # genefams: Mapped[list["Genefam"]] = relationship("Genefam", back_populates="status")
 
     def __repr__(self) -> str:
+        """Return string representation of GeneStatus instance.
+
+        Returns:
+            str: Formatted string with gene status ID and status name.
+        """
         return f"<GeneStatus(id={self.id}, status='{self.status}')>"
 
 
@@ -77,6 +82,11 @@ class Editor(BaseModel):
     # genefams: Mapped[list["Genefam"]] = relationship("Genefam", back_populates="editor")
 
     def __repr__(self) -> str:
+        """Return string representation of Editor instance.
+
+        Returns:
+            str: Formatted string with editor ID and display name.
+        """
         return f"<Editor(id={self.id}, display_name='{self.display_name}')>"
 
 
@@ -114,6 +124,11 @@ class AltName(BaseModel):
     )
 
     def __repr__(self) -> str:
+        """Return string representation of AltName instance.
+
+        Returns:
+            str: Formatted string with alternative name ID and name.
+        """
         return f"<AltName(id={self.id}, name='{self.name}')>"
 
 
@@ -151,6 +166,11 @@ class AltSymbol(BaseModel):
     )
 
     def __repr__(self) -> str:
+        """Return string representation of AltSymbol instance.
+
+        Returns:
+            str: Formatted string with alternative symbol ID and symbol.
+        """
         return f"<AltSymbol(id={self.id}, symbol='{self.symbol}')>"
 
 
@@ -180,6 +200,11 @@ class NomenclatureType(BaseModel):
     )
 
     def __repr__(self) -> str:
+        """Return string representation of NomenclatureType instance.
+
+        Returns:
+            str: Formatted string with nomenclature type ID and type.
+        """
         return f"<NomenclatureType(id={self.id}, type='{self.type}')>"
 
 
@@ -238,6 +263,11 @@ class Comment(BaseModel):
     # )
 
     def __repr__(self) -> str:
+        """Return string representation of Comment instance.
+
+        Returns:
+            str: Formatted string with comment ID and status.
+        """
         return f"<Comment(id={self.id}, status='{self.status}')>"
 
 
@@ -268,6 +298,11 @@ class GeneFlag(BaseModel):
     # )
 
     def __repr__(self) -> str:
+        """Return string representation of GeneFlag instance.
+
+        Returns:
+            str: Formatted string with gene flag ID and type.
+        """
         return f"<GeneFlag(id={self.id}, type='{self.type}')>"
 
 
@@ -290,6 +325,11 @@ class FlagClass(BaseModel):
     )
 
     def __repr__(self) -> str:
+        """Return string representation of FlagClass instance.
+
+        Returns:
+            str: Formatted string with flag class ID and class name.
+        """
         return f"<FlagClass(id={self.id}, class_name='{self.class_name}')>"
 
 
@@ -360,6 +400,11 @@ class FamilyNew(BaseModel):
     # )
 
     def __repr__(self) -> str:
+        """Return string representation of FamilyNew instance.
+
+        Returns:
+            str: Formatted string with family ID and name.
+        """
         return f"<FamilyNew(id={self.id}, name='{self.name}')>"
 
 

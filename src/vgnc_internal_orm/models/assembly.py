@@ -87,6 +87,11 @@ class Assembly(BaseCustomModel):
     )
 
     def __repr__(self) -> str:
+        """Return string representation of Assembly instance.
+
+        Returns:
+            str: Formatted string with assembly ID, name, and taxon ID.
+        """
         return f"<Assembly(id={self.id}, name='{self.name}', taxon_id={self.taxon_id})>"
 
     @property

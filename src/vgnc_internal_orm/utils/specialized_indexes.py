@@ -352,6 +352,11 @@ class SpecializedIndexManager:
     """Manages creation and application of specialized indexes."""
 
     def __init__(self) -> None:
+        """Initialize SpecializedIndexManager with predefined indexes.
+
+        Sets up containers for different types of specialized indexes and
+        loads all predefined index configurations from VGNCIndexDefinitions.
+        """
         self.fulltext_indexes: dict[str, list[FullTextIndex]] = {}
         self.unique_indexes: dict[str, list[UniqueCompositeIndex]] = {}
         self.partial_indexes: dict[str, list[PartialIndex]] = {}

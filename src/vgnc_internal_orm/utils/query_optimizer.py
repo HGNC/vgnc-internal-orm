@@ -54,6 +54,11 @@ class QueryOptimizer:
     """Central class for optimizing queries and managing loading strategies."""
 
     def __init__(self, session: Session):
+        """Initialize QueryOptimizer with database session.
+
+        Args:
+            session: SQLAlchemy Session instance for query execution
+        """
         self.session = session
         self._loading_cache: dict[str, Load] = {}
 
@@ -190,6 +195,11 @@ class QueryProfiler:
     """Utility class for profiling and analyzing query performance."""
 
     def __init__(self, session: Session):
+        """Initialize QueryProfiler with database session.
+
+        Args:
+            session: SQLAlchemy Session instance for query execution
+        """
         self.session = session
         self.query_count = 0
         self.query_times: list[float] = []
@@ -226,6 +236,11 @@ class NPlusOneDetector:
     """Utility class for detecting potential N+1 query problems."""
 
     def __init__(self, session: Session):
+        """Initialize NPlusOneDetector with database session.
+
+        Args:
+            session: SQLAlchemy Session instance for query execution
+        """
         self.session = session
         self.suspicious_patterns: list[dict[str, Any]] = []
 
@@ -281,6 +296,11 @@ class OptimizedQueryBuilder:
     """Builder class for creating optimized queries."""
 
     def __init__(self, session: Session):
+        """Initialize OptimizedQueryBuilder with database session.
+
+        Args:
+            session: SQLAlchemy Session instance for query execution
+        """
         self.session = session
         self.optimizer = QueryOptimizer(session)
         self.profiler = QueryProfiler(session)

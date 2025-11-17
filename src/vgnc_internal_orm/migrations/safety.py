@@ -36,6 +36,11 @@ class MigrationSafetyValidator:
     """Validates migrations for safety issues and destructive operations."""
 
     def __init__(self) -> None:
+        """Initialize MigrationSafetyValidator with safety patterns.
+
+        Sets up dangerous operation patterns and risk assessment rules
+        for comprehensive migration safety validation.
+        """
         self.dangerous_patterns = self._initialize_dangerous_patterns()
         self.risk_assessments = self._initialize_risk_assessments()
 
@@ -439,6 +444,11 @@ class ProductionSafetyValidator:
     """Additional safety checks specifically for production environments."""
 
     def __init__(self) -> None:
+        """Initialize ProductionSafetyValidator with environment-specific rules.
+
+        Loads production safety requirements from environment variables including
+        approval requirements and backup policies.
+        """
         self.required_approvals = os.environ.get("MIGRATION_APPROVALS", "").split(",")
         self.backup_required = (
             os.environ.get("MIGRATION_BACKUP_REQUIRED", "true").lower() == "true"
