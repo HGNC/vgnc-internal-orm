@@ -80,6 +80,11 @@ class IndexMapper:
     """Maps indexes and constraints from model definitions."""
 
     def __init__(self) -> None:
+        """Initialize IndexMapper with model and association table references.
+
+        Uses deferred runtime imports to avoid side effects during autodoc
+        and to keep the module lightweight until index mapping is needed.
+        """
         # Deferred runtime imports to avoid side effects during autodoc
         self.models: list[Any] = []
         self.association_tables: list[Any] = []

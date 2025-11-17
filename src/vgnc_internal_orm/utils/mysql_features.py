@@ -490,6 +490,13 @@ class FullTextSearch:
         # for MySQL FULLTEXT indexes. This creates index metadata that
         # can be used with MySQL-specific DDL generation.
         class FullTextIndex(Index):
+            """Custom SQLAlchemy Index for MySQL FULLTEXT indexes.
+
+            Extends SQLAlchemy's Index class to support MySQL-specific
+            FULLTEXT index features using string column names instead of
+            Column objects.
+            """
+
             def __init__(
                 self,
                 name: str,
@@ -498,6 +505,15 @@ class FullTextSearch:
                 mysql_with_parser: str | None = None,
                 **kwargs: object,
             ) -> None:
+                """Initialize FullTextIndex with MySQL-specific options.
+
+                Args:
+                    name: Index name
+                    *columns: Column names to index
+                    mysql_prefix: MySQL-specific prefix (e.g., 'FULLTEXT')
+                    mysql_with_parser: MySQL parser to use (e.g., 'ngram')
+                    **kwargs: Additional SQLAlchemy Index arguments
+                """
                 super().__init__(name, **kwargs)  # type: ignore[arg-type]
                 self.column_names = columns
                 self.mysql_prefix = mysql_prefix
@@ -505,9 +521,28 @@ class FullTextSearch:
 
             @property
             def columns(self) -> list[object]:  # type: ignore[override]
+                """Return mock column objects with name attributes.
+
+                Creates MockColumn instances for each column name to satisfy
+                SQLAlchemy's Index interface while working with string names.
+
+                Returns:
+                    List of MockColumn objects for each indexed column
+                """
                 # Return mock column objects with name attributes
                 class MockColumn:
+                    """Mock column object for FullTextIndex.
+
+                    Provides a minimal column-like interface with just the
+                    name attribute needed for SQLAlchemy Index operations.
+                    """
+
                     def __init__(self, name: str) -> None:
+                        """Initialize MockColumn with column name.
+
+                        Args:
+                            name: Column name this mock represents
+                        """
                         self.name = name
 
                 return [MockColumn(col) for col in self.column_names]

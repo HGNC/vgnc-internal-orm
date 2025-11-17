@@ -163,6 +163,11 @@ class Chromosomes(BaseCustomModel):
             )
 
     def __repr__(self) -> str:
+        """Return string representation of Chromosomes instance.
+
+        Returns:
+            str: Formatted string with chromosome ID, display name, and taxon ID.
+        """
         return f"<Chromosomes(chr_id={self.chr_id}, display_name='{self.display_name}', taxon_id={self.taxon_id})>"
 
     @property
