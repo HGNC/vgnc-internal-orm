@@ -4,7 +4,7 @@ A comprehensive ORM library for VGNC database operations with SQLAlchemy
 and Pydantic integration.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.4.4"
 __author__ = "HGNC Development Team"
 __email__ = "hgnc@genenames.org"
 
