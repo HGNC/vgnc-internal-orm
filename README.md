@@ -358,3 +358,4 @@ For questions and support:
 # Test change for release
 # Another test change
 # Final test change
+# Test file-based approach
