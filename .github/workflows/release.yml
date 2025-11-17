@@ -406,16 +406,18 @@ jobs:
           VERSION_FOR_COMMIT=$(python .github/scripts/bump_version.py --current "$CURRENT_VERSION" --bump "$BUMP")
         fi
 
-        git commit -m "chore: bump version to $VERSION_FOR_COMMIT
+        git commit -F- <<EOF
+        chore: bump version to $VERSION_FOR_COMMIT
 
         - Update version in pyproject.toml
         - Add changelog entry for $VERSION_FOR_COMMIT
         - Update version references in documentation files
-        - Add release-notes.md for $VERSION_FOR_COMMIT"
+        - Add release-notes.md for $VERSION_FOR_COMMIT
 
         🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-        Co-Authored-By: Claude <noreply@anthropic.com>"
+        Co-Authored-By: Claude <noreply@anthropic.com>
+        EOF
           git push
         fi
 
