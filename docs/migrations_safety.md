@@ -1,6 +1,6 @@
 # Migration Safety
 
-**VGNC Internal ORM v0.4.1** - MIT License
+**VGNC Internal ORM v0.4.2** - MIT License
 
 `vgnc_internal_orm.migrations.safety` provides comprehensive validators to detect high-risk operations (dropping columns, destructive data changes, missing transaction wrappers) before deployment.
 
