@@ -11,7 +11,7 @@ All configuration can be set via environment variables using the `VGNC_` prefix 
 | Variable | Default | Description | Example |
 |----------|---------|-------------|---------|
 | `VGNC_APP_NAME` | `VGNC ORM` | Application name for logging and identification | `My VGNC App` |
-| `VGNC_VERSION` | `0.4.4` | Application version | `0.4.4` |
+| `VGNC_VERSION` | `0.4.5` | Application version | `0.4.5` |
 | `VGNC_DEBUG` | `false` | Enable debug mode (affects logging, error details) | `true` |
 | `VGNC_ENVIRONMENT` | `development` | Environment: `development`, `testing`, `staging`, `production` | `production` |
 | `VGNC_LOG_LEVEL` | `INFO` | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` | `DEBUG` |
@@ -62,7 +62,7 @@ All configuration can be set via environment variables using the `VGNC_` prefix 
 
 | Variable | Default | Description | Example |
 |----------|---------|-------------|---------|
-| `VGNC_API_HOST` | `0.0.4.4` | API server host | `127.0.4.4` |
+| `VGNC_API_HOST` | `0.0.4.5` | API server host | `127.0.4.5` |
 | `VGNC_API_PORT` | `8000` | API server port | `8080` |
 | `VGNC_REDIS_URL` | unset | Redis connection URL for caching | `redis://localhost:6379/0` |
 | `VGNC_CACHE_TTL` | `3600` | Cache time-to-live in seconds | `7200` |

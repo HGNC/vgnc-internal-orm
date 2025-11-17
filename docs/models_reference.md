@@ -1,6 +1,6 @@
 # Models Reference
 
-**VGNC Internal ORM v0.4.4** - MIT License
+**VGNC Internal ORM v0.4.5** - MIT License
 
 ## BaseModel
 
