@@ -16,9 +16,9 @@ import json
 from datetime import UTC, datetime
 from typing import Any, Optional
 
+import db_common
 from sqlalchemy import DateTime, Integer, String, Text
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column
 from sqlalchemy.sql import func
 
 
@@ -49,7 +49,7 @@ class TimestampMixin:
         self.updated_at = datetime.now(UTC)
 
 
-class UnifiedBase(DeclarativeBase):
+class UnifiedBase(db_common.DeclarativeBase):
     """Shared declarative base for all models.
 
     This unified base class is used by all models in the system, ensuring
@@ -275,33 +275,16 @@ class BaseModel(TimestampMixin, UnifiedBase):
         # Refresh specifically the timestamp fields
         session.refresh(self, ["created_at", "updated_at"])
 
-    async def arefresh_timestamps(self, session: AsyncSession) -> None:
-        """Force refresh of timestamp fields from database asynchronously."""
-        await session.refresh(self)
-        # Refresh specifically the timestamp fields
-        await session.refresh(self, ["created_at", "updated_at"])
-
     def save(self, session: Session) -> None:
         """Save the model instance to the database."""
         session.add(self)
         session.commit()
         session.refresh(self)
 
-    async def asave(self, session: AsyncSession) -> None:
-        """Save the model instance to the database asynchronously."""
-        session.add(self)
-        await session.commit()
-        await session.refresh(self)
-
     def delete(self, session: Session) -> None:
         """Delete the model instance from the database."""
         session.delete(self)
         session.commit()
-
-    async def adelete(self, session: AsyncSession) -> None:
-        """Delete the model instance from the database asynchronously."""
-        await session.delete(self)
-        await session.commit()
 
     def refresh(
         self, session: Session, attribute_names: list[str] | None = None
@@ -309,23 +292,11 @@ class BaseModel(TimestampMixin, UnifiedBase):
         """Refresh the model instance from the database."""
         session.refresh(self, attribute_names)
 
-    async def arefresh(
-        self, session: AsyncSession, attribute_names: list[str] | None = None
-    ) -> None:
-        """Refresh the model instance from the database asynchronously."""
-        await session.refresh(self, attribute_names)
-
     def expire(
         self, session: Session, attribute_names: list[str] | None = None
     ) -> None:
         """Expire the model instance attributes."""
         session.expire(self, attribute_names)
-
-    async def aexpire(
-        self, session: AsyncSession, attribute_names: list[str] | None = None
-    ) -> None:
-        """Expire the model instance attributes asynchronously."""
-        session.expire(self, attribute_names)  # expire returns None
 
     def get_dirty_fields(self, session: Session) -> set[str]:
         """Get set of dirty field names."""
@@ -347,16 +318,6 @@ class BaseModel(TimestampMixin, UnifiedBase):
         return session.query(cls).filter(cls.id == record_id).first()
 
     @classmethod
-    async def afind_by_id(
-        cls, session: AsyncSession, record_id: Any
-    ) -> Optional["BaseModel"]:
-        """Find a record by its primary key ID asynchronously."""
-        from sqlalchemy import select
-
-        result = await session.execute(select(cls).filter(cls.id == record_id))
-        return result.scalar_one_or_none()
-
-    @classmethod
     def find_all(cls, session: Session, **filters: Any) -> list["BaseModel"]:
         """Find all records matching the given filters."""
         query = session.query(cls)
@@ -364,20 +325,6 @@ class BaseModel(TimestampMixin, UnifiedBase):
             if hasattr(cls, key):
                 query = query.filter(getattr(cls, key) == value)
         return query.all()
-
-    @classmethod
-    async def afind_all(
-        cls, session: AsyncSession, **filters: Any
-    ) -> list["BaseModel"]:
-        """Find all records matching the given filters asynchronously."""
-        from sqlalchemy import select
-
-        stmt = select(cls)
-        for key, value in filters.items():
-            if hasattr(cls, key):
-                stmt = stmt.filter(getattr(cls, key) == value)
-        result = await session.execute(stmt)
-        return list(result.scalars().all())
 
     @classmethod
     def find_one(cls, session: Session, **filters: Any) -> Optional["BaseModel"]:
@@ -389,35 +336,12 @@ class BaseModel(TimestampMixin, UnifiedBase):
         return query.first()
 
     @classmethod
-    async def afind_one(
-        cls, session: AsyncSession, **filters: Any
-    ) -> Optional["BaseModel"]:
-        """Find one record matching the given filters asynchronously."""
-        from sqlalchemy import select
-
-        stmt = select(cls)
-        for key, value in filters.items():
-            if hasattr(cls, key):
-                stmt = stmt.filter(getattr(cls, key) == value)
-        result = await session.execute(stmt)
-        return result.scalar_one_or_none()
-
-    @classmethod
     def create(cls, session: Session, **kwargs: Any) -> "BaseModel":
         """Create a new record with the given attributes."""
         instance = cls(**kwargs)
         session.add(instance)
         session.commit()
         session.refresh(instance)
-        return instance
-
-    @classmethod
-    async def acreate(cls, session: AsyncSession, **kwargs: Any) -> "BaseModel":
-        """Create a new record with the given attributes asynchronously."""
-        instance = cls(**kwargs)
-        session.add(instance)
-        await session.commit()
-        await session.refresh(instance)
         return instance
 
     @classmethod
@@ -437,25 +361,6 @@ class BaseModel(TimestampMixin, UnifiedBase):
         return instance, True
 
     @classmethod
-    async def aget_or_create(
-        cls,
-        session: AsyncSession,
-        defaults: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> tuple["BaseModel", bool]:
-        """Get a record or create it if it doesn't exist asynchronously."""
-        instance = await cls.afind_one(session, **kwargs)
-        if instance:
-            return instance, False
-
-        merge_data = {**kwargs}
-        if defaults:
-            merge_data.update(defaults)
-
-        instance = await cls.acreate(session, **merge_data)
-        return instance, True
-
-    @classmethod
     def update_by_id(
         cls, session: Session, record_id: Any, **kwargs: Any
     ) -> Optional["BaseModel"]:
@@ -469,35 +374,12 @@ class BaseModel(TimestampMixin, UnifiedBase):
         return instance
 
     @classmethod
-    async def aupdate_by_id(
-        cls, session: AsyncSession, record_id: Any, **kwargs: Any
-    ) -> Optional["BaseModel"]:
-        """Update a record by ID with the given attributes asynchronously."""
-        instance = await cls.afind_by_id(session, record_id)
-        if instance:
-            updated_fields = instance.update_from_dict(kwargs)
-            if updated_fields:
-                await session.commit()
-                await session.refresh(instance)
-        return instance
-
-    @classmethod
     def delete_by_id(cls, session: Session, record_id: Any) -> bool:
         """Delete a record by ID. Returns True if deleted, False if not found."""
         instance = cls.find_by_id(session, record_id)
         if instance:
             session.delete(instance)
             session.commit()
-            return True
-        return False
-
-    @classmethod
-    async def adelete_by_id(cls, session: AsyncSession, record_id: Any) -> bool:
-        """Delete a record by ID asynchronously. Returns True if deleted, False if not found."""
-        instance = await cls.afind_by_id(session, record_id)
-        if instance:
-            await session.delete(instance)
-            await session.commit()
             return True
         return False
 
@@ -511,27 +393,9 @@ class BaseModel(TimestampMixin, UnifiedBase):
         return query.count()
 
     @classmethod
-    async def acount(cls, session: AsyncSession, **filters: Any) -> int:
-        """Count records matching the given filters asynchronously."""
-        from sqlalchemy import func, select
-
-        stmt = select(func.count(cls.id))
-        for key, value in filters.items():
-            if hasattr(cls, key):
-                stmt = stmt.filter(getattr(cls, key) == value)
-        result = await session.execute(stmt)
-        count = result.scalar()
-        return count or 0  # Ensure int return type
-
-    @classmethod
     def exists(cls, session: Session, **filters: Any) -> bool:
         """Check if any record exists matching the given filters."""
         return cls.count(session, **filters) > 0
-
-    @classmethod
-    async def aexists(cls, session: AsyncSession, **filters: Any) -> bool:
-        """Check if any record exists matching the given filters asynchronously."""
-        return await cls.acount(session, **filters) > 0
 
     def get_field_value(self, field_name: str, default: Any = None) -> Any:
         """Get field value with optional default."""
@@ -797,91 +661,6 @@ class BaseModel(TimestampMixin, UnifiedBase):
 
         return query.all()  # type: ignore[return-value]
 
-    @classmethod
-    async def asearch_with_charset_support(
-        cls,
-        session: "AsyncSession",
-        search_term: str,
-        *field_names: str,
-        case_sensitive: bool = False,
-        exact_match: bool = False,
-    ) -> list["BaseCustomModel"]:
-        """Async version of search_with_charset_support.
-
-        This method provides charset-aware searching for UTF8MB4 fields,
-        ensuring proper handling of international characters and emoji.
-        It automatically applies the appropriate MySQL COLLATE clauses
-        for optimal search results with UTF8MB4 encoded data.
-
-        Args:
-            session: SQLAlchemy async session object
-            search_term: Search term to look for
-            *field_names: Field names to search in
-            case_sensitive: Whether to perform case-sensitive search
-            exact_match: Whether to require exact match (vs contains)
-
-        Returns:
-            List of matching records
-
-        Raises:
-            ValueError: If no field names provided
-            ImportError: If SQLAlchemy is not available
-        """
-        # Lazy imports to avoid circular dependencies
-        try:
-            from sqlalchemy import or_, text
-        except ImportError as e:
-            raise ImportError("SQLAlchemy is required for charset-aware search") from e
-
-        if not field_names:
-            raise ValueError("At least one field name must be provided")
-
-        if not hasattr(cls, "__tablename__"):
-            raise ValueError("Model must have a __tablename__ attribute")
-
-        table_name = cls.__tablename__
-        conditions = []
-
-        for field_name in field_names:
-            if not hasattr(cls, field_name):
-                continue
-
-            if exact_match:
-                if case_sensitive:
-                    # Use COLLATE utf8mb4_bin for case-sensitive exact match
-                    condition = text(
-                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_bin = :search_term"
-                    )
-                else:
-                    # Use COLLATE utf8mb4_general_ci for case-insensitive exact match
-                    condition = text(
-                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_general_ci = :search_term"
-                    )
-            else:
-                if case_sensitive:
-                    # Use COLLATE utf8mb4_bin for case-sensitive contains search
-                    condition = text(
-                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_bin LIKE CONCAT('%', :search_term, '%')"
-                    )
-                else:
-                    # Use COLLATE utf8mb4_general_ci for case-insensitive contains search
-                    condition = text(
-                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_general_ci LIKE CONCAT('%', :search_term, '%')"
-                    )
-
-            conditions.append(condition)
-
-        if not conditions:
-            return []
-
-        # Combine conditions with OR and execute
-        from sqlalchemy import select
-
-        stmt = select(cls).where(or_(*conditions)).params(search_term=search_term)
-        result = await session.execute(stmt)
-
-        return result.scalars().all()  # type: ignore[return-value]
-
 
 class BaseCustomModel(TimestampMixin, UnifiedBase):
     """Base class for tables with composite/natural primary keys.
@@ -1084,88 +863,3 @@ class BaseCustomModel(TimestampMixin, UnifiedBase):
         )
 
         return query.all()
-
-    @classmethod
-    async def asearch_with_charset_support(
-        cls,
-        session: "AsyncSession",
-        search_term: str,
-        *field_names: str,
-        case_sensitive: bool = False,
-        exact_match: bool = False,
-    ) -> list["BaseCustomModel"]:
-        """Async version of search_with_charset_support.
-
-        This method provides charset-aware searching for UTF8MB4 fields,
-        ensuring proper handling of international characters and emoji.
-        It automatically applies the appropriate MySQL COLLATE clauses
-        for optimal search results with UTF8MB4 encoded data.
-
-        Args:
-            session: SQLAlchemy async session object
-            search_term: Search term to look for
-            *field_names: Field names to search in
-            case_sensitive: Whether to perform case-sensitive search
-            exact_match: Whether to require exact match (vs contains)
-
-        Returns:
-            List of matching records
-
-        Raises:
-            ValueError: If no field names provided
-            ImportError: If SQLAlchemy is not available
-        """
-        # Lazy imports to avoid circular dependencies
-        try:
-            from sqlalchemy import or_, text
-        except ImportError as e:
-            raise ImportError("SQLAlchemy is required for charset-aware search") from e
-
-        if not field_names:
-            raise ValueError("At least one field name must be provided")
-
-        if not hasattr(cls, "__tablename__"):
-            raise ValueError("Model must have a __tablename__ attribute")
-
-        table_name = cls.__tablename__
-        conditions = []
-
-        for field_name in field_names:
-            if not hasattr(cls, field_name):
-                continue
-
-            if exact_match:
-                if case_sensitive:
-                    # Use COLLATE utf8mb4_bin for case-sensitive exact match
-                    condition = text(
-                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_bin = :search_term"
-                    )
-                else:
-                    # Use COLLATE utf8mb4_general_ci for case-insensitive exact match
-                    condition = text(
-                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_general_ci = :search_term"
-                    )
-            else:
-                if case_sensitive:
-                    # Use COLLATE utf8mb4_bin for case-sensitive contains search
-                    condition = text(
-                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_bin LIKE CONCAT('%', :search_term, '%')"
-                    )
-                else:
-                    # Use COLLATE utf8mb4_general_ci for case-insensitive contains search
-                    condition = text(
-                        f"CAST({table_name}.{field_name} AS CHAR) COLLATE utf8mb4_general_ci LIKE CONCAT('%', :search_term, '%')"
-                    )
-
-            conditions.append(condition)
-
-        if not conditions:
-            return []
-
-        # Combine conditions with OR and execute
-        from sqlalchemy import select
-
-        stmt = select(cls).where(or_(*conditions)).params(search_term=search_term)
-        result = await session.execute(stmt)
-
-        return result.scalars().all()  # type: ignore[return-value]

@@ -2,6 +2,8 @@
 
 from datetime import UTC, datetime
 
+import db_common
+
 from vgnc_internal_orm.models.genefam import Genefam
 from vgnc_internal_orm.models.species import Species
 
@@ -316,3 +318,11 @@ class TestModelRelationships:
 
         assert human_count == 2
         assert mouse_count == 2
+
+
+class TestDbCommonBaseReparenting:
+    """Pin that mapped models inherit from db_common.DeclarativeBase (Task T2)."""
+
+    def test_mapped_models_subclass_db_common_declarative_base(self):
+        for model in (Genefam, Species):
+            assert issubclass(model, db_common.DeclarativeBase), model
