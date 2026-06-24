@@ -13,7 +13,7 @@ import pytest
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
-from src.vgnc_internal_orm.models.base import BaseCustomModel, BaseModel
+from vgnc_internal_orm.models.base import BaseCustomModel, BaseModel
 
 T = TypeVar("T", bound=BaseModel | BaseCustomModel)
 

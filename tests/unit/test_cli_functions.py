@@ -2,7 +2,7 @@
 
 from unittest.mock import Mock
 
-from src.vgnc_internal_orm.cli.main import (
+from vgnc_internal_orm.cli.main import (
     display_species_csv,
     display_species_json,
     display_species_table,
@@ -211,7 +211,7 @@ class TestGetSessionFunction:
 
     def test_get_session_with_url(self):
         """Test get_session with database URL."""
-        from src.vgnc_internal_orm.config.settings import DatabaseConfig, DatabaseDriver
+        from vgnc_internal_orm.config.settings import DatabaseConfig, DatabaseDriver
 
         db_config = DatabaseConfig(
             username="test",
@@ -227,7 +227,7 @@ class TestGetSessionFunction:
 
     def test_get_session_with_config(self):
         """Test get_session with database config."""
-        from src.vgnc_internal_orm.config.settings import DatabaseConfig, DatabaseDriver
+        from vgnc_internal_orm.config.settings import DatabaseConfig, DatabaseDriver
 
         db_config = DatabaseConfig(
             username="test",
