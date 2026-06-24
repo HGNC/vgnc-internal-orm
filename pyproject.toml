@@ -3,7 +3,7 @@ name = "vgnc-internal-orm"
 version = "0.4.5"
 description = "Internal ORM library for VGNC database operations with SQLAlchemy and Pydantic integration"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 license = {text = "MIT"}
 authors = [
     {name = "HGNC Development Team", email = "hgnc@genenames.org"}
@@ -15,14 +15,13 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: Database",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
+    "db-common>=0.1.0",
     "sqlalchemy>=2.0.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
@@ -196,3 +195,6 @@ dev = [
     "sphinx-autobuild>=2025.8.25",
     "testcontainers>=4.13.2",
 ]
+
+[tool.uv.sources]
+db-common = { git = "https://github.com/HGNC/db-common.git", tag = "v0.1.0" }
