@@ -592,3 +592,29 @@ class TestRelationshipSerialization:
         result = model._serialize_relationship("plain_value", "iso")
 
         assert result == "plain_value"
+
+
+class TestDbCommonBaseReparenting:
+    """Pin that the ORM declarative base is reparented to db_common (Task T2)."""
+
+    def test_base_model_subclasses_db_common_declarative_base(self):
+        """UnifiedBase / BaseModel / BaseCustomModel must subclass db_common base."""
+        import db_common
+
+        from vgnc_internal_orm.models.base import (
+            BaseCustomModel,
+            BaseModel,
+            UnifiedBase,
+        )
+
+        assert issubclass(UnifiedBase, db_common.DeclarativeBase)
+        assert issubclass(BaseModel, db_common.DeclarativeBase)
+        assert issubclass(BaseCustomModel, db_common.DeclarativeBase)
+
+    def test_models_share_db_common_metadata(self):
+        """Mapped models register into the db_common metadata registry."""
+        import db_common
+
+        from vgnc_internal_orm.models.species import Species
+
+        assert Species.metadata is db_common.DeclarativeBase.metadata
