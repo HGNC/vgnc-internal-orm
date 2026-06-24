@@ -10,10 +10,10 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from src.vgnc_internal_orm.models.assembly import Assembly
-from src.vgnc_internal_orm.models.chromosomes import Chromosomes
-from src.vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 from tests.unit.base_test import BaseUnitTest, DatabaseTestMixin, ModelTestMixin
+from vgnc_internal_orm.models.assembly import Assembly
+from vgnc_internal_orm.models.chromosomes import Chromosomes
+from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 
 
 class TestSpecies(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):

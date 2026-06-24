@@ -7,7 +7,7 @@ tests/unit/test_timestamp_mixin_consolidated.py
 from datetime import UTC, datetime
 from unittest.mock import Mock
 
-from src.vgnc_internal_orm.models.base import BaseCustomModel, BaseModel
+from vgnc_internal_orm.models.base import BaseCustomModel, BaseModel
 
 
 class TestBaseModelUtilityIntegration:

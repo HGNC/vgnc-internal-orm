@@ -4,7 +4,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from src.vgnc_internal_orm.migrations.safety import (
+from vgnc_internal_orm.migrations.safety import (
     MigrationSafetyValidator,
     ProductionSafetyValidator,
     RiskLevel,

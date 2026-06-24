@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from sqlalchemy import Column, DateTime, Integer, String, Text, create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.vgnc_internal_orm.models.base import BaseModel
+from vgnc_internal_orm.models.base import BaseModel
 
 
 class TestRealBaseModelInstance:

@@ -6,7 +6,7 @@ tests/unit/test_timestamp_mixin_consolidated.py
 
 from unittest.mock import Mock
 
-from src.vgnc_internal_orm.models.base import BaseModel
+from vgnc_internal_orm.models.base import BaseModel
 
 
 class TestBaseModelClassMethods:

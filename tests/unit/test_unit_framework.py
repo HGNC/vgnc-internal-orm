@@ -11,9 +11,9 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from src.vgnc_internal_orm.models.assembly import Assembly
-from src.vgnc_internal_orm.models.chromosomes import Chromosomes
-from src.vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
+from vgnc_internal_orm.models.assembly import Assembly
+from vgnc_internal_orm.models.chromosomes import Chromosomes
+from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 
 
 class TestSpeciesBasic:

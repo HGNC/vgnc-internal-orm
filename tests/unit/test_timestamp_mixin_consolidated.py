@@ -10,7 +10,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.vgnc_internal_orm.models.base import BaseCustomModel, BaseModel, TimestampMixin
+from vgnc_internal_orm.models.base import BaseCustomModel, BaseModel, TimestampMixin
 
 
 class TestTimestampMixinUnit:

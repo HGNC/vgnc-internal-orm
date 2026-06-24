@@ -2,8 +2,8 @@
 
 from datetime import UTC, datetime
 
-from src.vgnc_internal_orm.models.genefam import Genefam
-from src.vgnc_internal_orm.models.species import Species
+from vgnc_internal_orm.models.genefam import Genefam
+from vgnc_internal_orm.models.species import Species
 
 
 class TestGenefamModel:

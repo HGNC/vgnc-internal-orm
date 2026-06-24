@@ -194,7 +194,7 @@ class TestMigrationIntegration:
         # Test models work with migrated database
         from datetime import datetime
 
-        from src.vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
+        from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 
         SessionLocal = sessionmaker(bind=engine)
         session = SessionLocal()

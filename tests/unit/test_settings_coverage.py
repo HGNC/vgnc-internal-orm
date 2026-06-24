@@ -4,7 +4,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from src.vgnc_internal_orm.config.settings import (
+from vgnc_internal_orm.config.settings import (
     DatabaseConfig,
     DatabaseDriver,
     Environment,

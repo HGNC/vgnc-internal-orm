@@ -1,7 +1,7 @@
 """Unit tests for Chromosomes and Assembly models."""
 
-from src.vgnc_internal_orm.models.assembly import Assembly
-from src.vgnc_internal_orm.models.chromosomes import Chromosomes
+from vgnc_internal_orm.models.assembly import Assembly
+from vgnc_internal_orm.models.chromosomes import Chromosomes
 
 
 class TestChromosomesModel:
