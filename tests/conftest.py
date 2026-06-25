@@ -299,20 +299,3 @@ def benchmark_min_rounds():
 def benchmark_max_time():
     """Configure maximum time for benchmark tests (in seconds)."""
     return 1.0
-
-
-# Async fixtures for async testing
-@pytest.fixture(scope="session")
-async def async_test_engine():
-    """Create async SQLAlchemy engine for testing."""
-    # Note: This would require aiosqlite dependency
-    # For now, return None - can be implemented when async testing is needed
-    return None
-
-
-@pytest.fixture
-async def async_test_session(async_test_engine):
-    """Create async database session for testing."""
-    # Note: This would require aiosqlite dependency
-    # For now, return None - can be implemented when async testing is needed
-    return None

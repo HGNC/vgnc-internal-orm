@@ -10,7 +10,6 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from vgnc_internal_orm.config.settings import (
     DatabaseConfig,
     DatabaseDriver,
-    Environment,
 )
 from vgnc_internal_orm.models.base import BaseModel
 from vgnc_internal_orm.sessions.factory import (
@@ -109,34 +108,26 @@ class TestSQLiteIntegration:
             if os.path.exists(db_path):
                 os.unlink(db_path)
 
-    def test_sqlite_environment_specific_config(self):
-        """Test environment-specific configuration with SQLite."""
+    def test_sqlite_engine_independent_of_environment(self):
+        """db-common owns pooling now, so the session layer no longer consults
+        the (soon-to-be-removed) ``environment`` field; an engine builds and a
+        health check passes regardless of the value."""
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
             db_path = tmp_file.name
 
         try:
-            # Test development environment
-            dev_config = DatabaseConfig(
-                driver=DatabaseDriver.SQLITE,
-                database=db_path,
-                environment=Environment.DEVELOPMENT,
+            config = DatabaseConfig(
+                driver=DatabaseDriver.SQLITE, database=db_path, _env_file=None
             )
-            dev_factory = SessionFactory(dev_config)
+            factory = SessionFactory(config)
 
-            pool_config = dev_factory._get_pool_config()
-            assert pool_config["pool_recycle"] == 3600  # 1 hour for development
+            # Engine builds via db_common.EngineFactory and is usable.
+            engine = factory.engine
+            assert engine is not None
+            assert engine.url.drivername == "sqlite"
 
-            # Test production environment
-            prod_config = DatabaseConfig(
-                driver=DatabaseDriver.SQLITE,
-                database=db_path,
-                environment=Environment.PRODUCTION,
-            )
-            prod_factory = SessionFactory(prod_config)
-
-            prod_pool_config = prod_factory._get_pool_config()
-            # SQLite uses StaticPool, but environment settings should still be applied
-            assert prod_pool_config["pool_pre_ping"] is True
+            # Health check delegated to db_common.health_check.
+            assert factory.health_check() is True
 
         finally:
             if os.path.exists(db_path):
