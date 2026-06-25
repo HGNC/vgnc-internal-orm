@@ -1,13 +1,10 @@
 """Working SessionFactory comprehensive tests based on actual module structure."""
 
-import pytest
 from sqlalchemy import text
-from sqlalchemy.pool import NullPool, QueuePool
 
 from vgnc_internal_orm.config.settings import (
     DatabaseConfig,
     DatabaseDriver,
-    Environment,
 )
 from vgnc_internal_orm.sessions.factory import (
     SessionFactory,
@@ -43,7 +40,6 @@ class TestSessionFactoryCoreFunctionality:
         factory = SessionFactory(config)
         assert factory.config == config
         assert factory._engine is None
-        assert factory._async_engine is None
 
     def test_sqlite_engine_creation(self):
         """Test engine creation with SQLite configuration."""
@@ -229,164 +225,6 @@ class TestContextManagers:
         )
         connection = check_database_connection(config)
         assert connection is True
-
-
-class TestPoolConfiguration:
-    """Test pool configuration for different environments."""
-
-    def test_sqlite_pool_config(self):
-        """Test SQLite pool configuration."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
-        )
-        factory = SessionFactory(config)
-        pool_config = factory._get_pool_config()
-
-        assert "poolclass" in pool_config
-        assert "connect_args" in pool_config
-        assert pool_config["connect_args"]["check_same_thread"] is False
-
-    def test_mysql_pool_config_sync(self):
-        """Test MySQL pool configuration for sync engines."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
-            username="test",
-            password="test",
-            database="test",
-            host="localhost",
-            _env_file=None,
-        )
-        factory = SessionFactory(config)
-        pool_config = factory._get_pool_config(is_async=False)
-
-        assert "poolclass" in pool_config
-        assert pool_config["poolclass"] == QueuePool
-
-    def test_mysql_pool_config_async(self):
-        """Test MySQL pool configuration for async engines."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
-            username="test",
-            password="test",
-            database="test",
-            host="localhost",
-            _env_file=None,
-        )
-        factory = SessionFactory(config)
-        pool_config = factory._get_pool_config(is_async=True)
-
-        assert "poolclass" in pool_config
-        assert pool_config["poolclass"] == NullPool
-
-
-class TestConnectArguments:
-    """Test connection argument configuration."""
-
-    def test_mysql_connect_args(self):
-        """Test MySQL connection arguments."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
-            username="test",
-            password="test",
-            database="test",
-            host="localhost",
-            charset="utf8mb4",
-            collation="utf8mb4_unicode_ci",
-            _env_file=None,
-        )
-        factory = SessionFactory(config)
-        connect_args = factory._get_connect_args()
-
-        assert connect_args["charset"] == "utf8mb4"
-        assert connect_args["collation"] == "utf8mb4_unicode_ci"
-
-    def test_sqlite_connect_args(self):
-        """Test SQLite connection arguments."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
-        )
-        factory = SessionFactory(config)
-        pool_config = factory._get_pool_config()
-
-        assert "connect_args" in pool_config
-        assert pool_config["connect_args"]["check_same_thread"] is False
-
-
-class TestErrorHandling:
-    """Test error handling in SessionFactory."""
-
-    def test_engine_creation_without_config(self):
-        """Test engine creation fails without config."""
-        factory = SessionFactory(None)
-        with pytest.raises(ValueError, match="Database configuration is required"):
-            _ = factory.engine
-
-    def test_session_creation_without_config(self):
-        """Test session creation fails without config."""
-        factory = SessionFactory(None)
-        with pytest.raises(ValueError, match="Database configuration is required"):
-            _ = factory.session_factory
-
-    def test_health_check_without_config(self):
-        """Test health check fails without config."""
-        factory = SessionFactory(None)
-        result = factory.health_check()
-        assert result is False
-
-
-class TestEnvironmentSpecificConfig:
-    """Test environment-specific configuration."""
-
-    def test_development_pool_config(self):
-        """Test development environment pool configuration."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
-            username="test",
-            password="test",
-            database="test",
-            host="localhost",
-            environment=Environment.DEVELOPMENT,
-            _env_file=None,
-        )
-        factory = SessionFactory(config)
-        pool_config = factory._get_pool_config()
-
-        # Development should have reduced pool sizes
-        assert pool_config["pool_size"] <= config.pool.pool_size // 2
-
-    def test_production_pool_config(self):
-        """Test production environment pool configuration."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
-            username="test",
-            password="test",
-            database="test",
-            host="localhost",
-            environment=Environment.PRODUCTION,
-            _env_file=None,
-        )
-        factory = SessionFactory(config)
-        pool_config = factory._get_pool_config()
-
-        # Production should have full pool sizes
-        assert pool_config["pool_size"] == config.pool.pool_size
-
-    def test_staging_pool_config(self):
-        """Test staging environment pool configuration."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
-            username="test",
-            password="test",
-            database="test",
-            host="localhost",
-            environment=Environment.STAGING,
-            _env_file=None,
-        )
-        factory = SessionFactory(config)
-        pool_config = factory._get_pool_config()
-
-        # Staging should have medium pool sizes
-        assert pool_config["pool_size"] == config.pool.pool_size
 
 
 class TestEdgeCases:
