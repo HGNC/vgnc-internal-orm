@@ -1,8 +1,10 @@
 """Configuration management module for VGNC ORM."""
 
-from .settings import DatabaseConfig, Settings
+from db_common import DatabaseDriver
+
+from .settings import DatabaseConfig
 
 __all__ = [
     "DatabaseConfig",
-    "Settings",
+    "DatabaseDriver",
 ]

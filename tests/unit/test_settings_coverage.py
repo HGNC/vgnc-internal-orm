@@ -1,15 +1,8 @@
 """Simple tests to improve config/settings.py coverage."""
 
-import os
-import tempfile
-from pathlib import Path
+from pydantic import SecretStr
 
-from vgnc_internal_orm.config.settings import (
-    DatabaseConfig,
-    DatabaseDriver,
-    Environment,
-    Settings,
-)
+from vgnc_internal_orm.config.settings import DatabaseConfig, DatabaseDriver
 
 
 class TestSettingsCoverage:
@@ -17,24 +10,17 @@ class TestSettingsCoverage:
 
     def test_database_driver_values(self):
         """Test DatabaseDriver enum values."""
-        assert DatabaseDriver.MYSQL.value == "mysql+pymysql"
-        assert DatabaseDriver.MYSQL_ASYNC.value == "mysql+aiomysql"
+        assert DatabaseDriver.MYSQL_PYMYSQL.value == "mysql+pymysql"
         assert DatabaseDriver.SQLITE.value == "sqlite"
-        assert DatabaseDriver.SQLITE_ASYNC.value == "sqlite+aiosqlite"
-
-    def test_environment_values(self):
-        """Test Environment enum values."""
-        assert Environment.DEVELOPMENT.value == "development"
-        assert Environment.PRODUCTION.value == "production"
-        assert Environment.TESTING.value == "testing"
 
     def test_database_config_validation_methods(self):
         """Test DatabaseConfig validation methods."""
         config = DatabaseConfig(
+            host="localhost",
             username="test_user",
             password="test_password",
             database="test_db",
-            driver=DatabaseDriver.MYSQL,
+            driver=DatabaseDriver.MYSQL_PYMYSQL,
             _env_file=None,
         )
 
@@ -42,58 +28,59 @@ class TestSettingsCoverage:
         assert hasattr(config, "model_validate")
 
     def test_settings_model_validation(self):
-        """Test Settings model validation."""
-        settings = Settings(
-            database={
-                "username": "test_user",
-                "password": "test_password",
-                "database": "test_db",
-                "driver": DatabaseDriver.MYSQL,
-                "_env_file": None,
-            }
+        """Test DatabaseConfig model validation."""
+        config = DatabaseConfig(
+            host="localhost",
+            username="test_user",
+            password="test_password",
+            database="test_db",
+            driver=DatabaseDriver.MYSQL_PYMYSQL,
+            _env_file=None,
         )
 
-        # Test that settings were created
-        assert settings.database.username == "test_user"
-        assert settings.database.password.get_secret_value() == "test_password"
-        assert settings.database.database == "test_db"
+        # Test that config was created
+        assert config.username == "test_user"
+        assert config.password == "test_password"
+        assert config.database == "test_db"
 
-    def test_settings_comprehensive(self):
-        """Test comprehensive Settings configuration."""
-        settings = Settings(
-            app_name="Test App",
-            version="1.0.0",
-            debug=True,
-            environment=Environment.PRODUCTION,
-            log_level="DEBUG",
-            database={
-                "username": "test_user",
-                "password": "test_password",
-                "database": "test_db",
-                "host": "localhost",
-                "port": 3306,
-                "driver": DatabaseDriver.MYSQL,
-                "_env_file": None,
-            },
+    def test_database_config_comprehensive(self):
+        """Test comprehensive DatabaseConfig configuration."""
+        config = DatabaseConfig(
+            host="localhost",
+            port=3306,
+            username="test_user",
+            password="test_password",
+            database="test_db",
+            driver=DatabaseDriver.MYSQL_PYMYSQL,
+            pool_size=10,
+            max_overflow=20,
+            pool_recycle=1800,
+            pool_pre_ping=True,
+            _env_file=None,
         )
 
-        assert settings.app_name == "Test App"
-        assert settings.version == "1.0.0"
-        assert settings.debug is True
-        assert settings.environment == Environment.PRODUCTION
-        assert settings.log_level == "DEBUG"
+        assert config.host == "localhost"
+        assert config.port == 3306
+        assert config.username == "test_user"
+        assert config.password == "test_password"
+        assert config.database == "test_db"
+        assert config.pool_size == 10
+        assert config.max_overflow == 20
+        assert config.pool_recycle == 1800
+        assert config.pool_pre_ping is True
 
     def test_database_config_drivers_basic(self):
         """Test DatabaseConfig with basic driver configurations."""
         # Test MySQL driver
         mysql_config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
+            driver=DatabaseDriver.MYSQL_PYMYSQL,
+            host="localhost",
             username="user",
             password="pass",
             database="test_db",
             _env_file=None,
         )
-        assert mysql_config.driver == DatabaseDriver.MYSQL
+        assert mysql_config.driver == DatabaseDriver.MYSQL_PYMYSQL
 
         # Test SQLite driver
         sqlite_config = DatabaseConfig(
@@ -103,61 +90,33 @@ class TestSettingsCoverage:
 
     def test_database_config_all_fields(self):
         """Test DatabaseConfig with all possible fields."""
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            temp_path = temp_file.name
+        config = DatabaseConfig(
+            driver=DatabaseDriver.MYSQL_PYMYSQL,
+            host="custom-host",
+            port=3307,
+            username="custom_user",
+            password="custom_password",
+            database="custom_db",
+            pool_size=15,
+            max_overflow=25,
+            pool_recycle=7200,
+            pool_pre_ping=False,
+            _env_file=None,
+        )
 
-        try:
-            config = DatabaseConfig(
-                driver=DatabaseDriver.MYSQL,
-                host="custom-host",
-                port=3307,
-                username="custom_user",
-                password="custom_password",
-                database="custom_db",
-                ssl_mode="REQUIRED",
-                ssl_cert=Path(temp_path),
-                ssl_key=Path(temp_path),
-                ssl_ca=Path(temp_path),
-                connect_timeout=30,
-                echo=True,
-                _env_file=None,
-            )
-
-            assert config.host == "custom-host"
-            assert config.port == 3307
-            assert config.ssl_mode == "REQUIRED"
-            assert config.connect_timeout == 30
-            assert config.echo is True
-        finally:
-            os.unlink(temp_path)
-
-    def test_settings_helper_methods(self):
-        """Test Settings environment helper methods."""
-        # Test each environment
-        for env in [
-            Environment.DEVELOPMENT,
-            Environment.PRODUCTION,
-            Environment.TESTING,
-        ]:
-            settings = Settings(
-                environment=env,
-                database={
-                    "username": "test_user",
-                    "password": "test_password",
-                    "database": "test_db",
-                    "_env_file": None,
-                },
-            )
-
-            # Test that helper methods exist
-            assert hasattr(settings, "is_development")
-            assert hasattr(settings, "is_production")
-            assert hasattr(settings, "is_testing")
+        assert config.host == "custom-host"
+        assert config.port == 3307
+        assert config.pool_size == 15
+        assert config.max_overflow == 25
+        assert config.pool_recycle == 7200
+        assert config.pool_pre_ping is False
 
     def test_database_config_edge_cases(self):
         """Test DatabaseConfig edge cases."""
         # Test with different port values
         config = DatabaseConfig(
+            driver=DatabaseDriver.MYSQL_PYMYSQL,
+            host="localhost",
             username="user",
             password="pass",
             database="test_db",
@@ -166,57 +125,82 @@ class TestSettingsCoverage:
         )
         assert config.port == 5432
 
-        # Test with boolean values
+    def test_database_config_model_methods(self):
+        """Test DatabaseConfig model methods."""
         config = DatabaseConfig(
-            username="user",
-            password="pass",
-            database="test.db",
-            driver=DatabaseDriver.SQLITE,
-            echo=False,
-            _env_file=None,
-        )
-        assert config.echo is False
-
-    def test_settings_model_methods(self):
-        """Test Settings model methods."""
-        settings = Settings(
-            app_name="Test App",
-            database={
-                "username": "test_user",
-                "password": "test_password",
-                "database": "test_db",
-                "_env_file": None,
-            },
-        )
-
-        # Test that standard Pydantic methods work
-        assert hasattr(settings, "model_dump")
-        assert hasattr(settings, "model_dump_json")
-        assert hasattr(settings, "model_validate")
-
-        # Test model_dump
-        data = settings.model_dump()
-        assert "app_name" in data
-        assert "database" in data
-
-        # Test model_dump_json
-        json_str = settings.model_dump_json()
-        assert isinstance(json_str, str)
-
-    def test_database_config_secret_fields(self):
-        """Test DatabaseConfig secret field handling."""
-        config = DatabaseConfig(
+            host="localhost",
             username="test_user",
             password="test_password",
             database="test_db",
+            driver=DatabaseDriver.MYSQL_PYMYSQL,
             _env_file=None,
         )
 
-        # Test secret field methods
-        assert hasattr(config.password, "get_secret_value")
-        assert hasattr(config.database_url, "get_secret_value")
-        assert hasattr(config.async_database_url, "get_secret_value")
+        # Test that standard Pydantic methods work
+        assert hasattr(config, "model_dump")
+        assert hasattr(config, "model_dump_json")
+        assert hasattr(config, "model_validate")
 
-        # Test that secret values are not exposed in string representation
-        password_str = str(config.password)
-        assert "test_password" not in password_str or "********" in password_str
+        # Test model_dump
+        data = config.model_dump()
+        assert "username" in data
+        assert "database" in data
+
+        # Test model_dump_json
+        json_str = config.model_dump_json()
+        assert isinstance(json_str, str)
+
+    def test_database_config_secret_fields(self):
+        config = DatabaseConfig(
+            driver=DatabaseDriver.MYSQL_PYMYSQL,
+            host="localhost",
+            username="test_user",
+            password="test_password",
+            database="test_db",
+        )
+
+        # Test that password is plain string (db_common uses str | None)
+        assert isinstance(config.password, str)
+        assert config.password == "test_password"
+
+        # Test that database_url returns SecretStr
+        assert hasattr(config, "database_url")
+        assert isinstance(config.database_url, SecretStr)
+
+        # Test get_url() returns sqlalchemy.URL
+        from sqlalchemy import URL
+
+        url = config.get_url()
+        assert isinstance(url, URL)
+
+    def test_sqlite_with_custom_database(self):
+        """Test SQLite with custom database name."""
+        config = DatabaseConfig(
+            driver=DatabaseDriver.SQLITE,
+            database="custom.db",
+            _env_file=None,
+        )
+
+        url = config.get_url()
+        assert url.drivername == "sqlite"
+        assert url.database == "custom.db"
+
+    def test_mysql_url_construction(self):
+        """Test MySQL URL construction."""
+        config = DatabaseConfig(
+            driver=DatabaseDriver.MYSQL_PYMYSQL,
+            username="testuser",
+            password="testpass",
+            host="localhost",
+            port=3306,
+            database="testdb",
+            _env_file=None,
+        )
+
+        url = config.get_url()
+        assert url.drivername == "mysql+pymysql"
+        assert url.username == "testuser"
+        assert url.password == "testpass"
+        assert url.host == "localhost"
+        assert url.port == 3306
+        assert url.database == "testdb"
