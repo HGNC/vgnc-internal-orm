@@ -1,6 +1,6 @@
 """Configuration management settings for VGNC ORM."""
 
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, SecretStr, ValidationInfo, field_validato
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class DatabaseDriver(str, Enum):
+class DatabaseDriver(StrEnum):
     """Enumeration for supported database drivers and connection types.
 
     This enum specifies the database drivers that the ORM can connect to.
@@ -38,7 +38,7 @@ class DatabaseDriver(str, Enum):
     SQLITE_ASYNC = "sqlite+aiosqlite"
 
 
-class Environment(str, Enum):
+class Environment(StrEnum):
     """Enumeration for different runtime environments.
 
     This enum defines the various runtime environments where the application
