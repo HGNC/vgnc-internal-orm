@@ -155,7 +155,6 @@ minversion = "7.0"
 addopts = "-ra -q --strict-markers --strict-config -W ignore::DeprecationWarning -W ignore::sqlalchemy.exc.SAWarning -W ignore::UserWarning"
 testpaths = ["tests"]
 pythonpath = ["src"]
-asyncio_mode = "auto"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
