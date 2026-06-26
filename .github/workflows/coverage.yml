@@ -28,17 +28,17 @@ jobs:
         enable-cache: true
 
     - name: Install dependencies
-      run: |
-        uv sync --extra test --extra performance
-        uv pip install -e . coverage[toml]
+      run: uv sync --extra test --extra performance
 
     - name: Run all tests with coverage
+      env:
+        UV_EXTRAS: --extra test --extra performance
       run: |
         # Initialize coverage data
-        uv run python -m coverage erase
+        uv run $UV_EXTRAS python -m coverage erase
 
         # Run all test types with coverage
-        uv run python -m pytest tests/ \
+        uv run $UV_EXTRAS python -m pytest tests/ \
           --cov=src/vgnc_internal_orm \
           --cov-report=xml:coverage.xml \
           --cov-report=html:htmlcov \
@@ -48,11 +48,11 @@ jobs:
 
     - name: Generate coverage summary
       run: |
-        uv run python .github/scripts/generate_coverage_summary.py > $GITHUB_STEP_SUMMARY
+        uv run --extra test python .github/scripts/generate_coverage_summary.py > $GITHUB_STEP_SUMMARY
 
     - name: Check coverage thresholds
       run: |
-        uv run python .github/scripts/check_coverage_threshold.py
+        uv run --extra test python .github/scripts/check_coverage_threshold.py
 
     - name: Upload coverage reports
       uses: actions/upload-artifact@v4

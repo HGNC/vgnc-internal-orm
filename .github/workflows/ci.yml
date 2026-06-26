@@ -42,27 +42,29 @@ jobs:
         version: "latest"
         enable-cache: true
 
-    - name: Install dependencies
+    - name: Resolve extras for matrix
+      id: extras
       run: |
-        # Base dependencies including test extra
-        uv sync --extra test
-
-        # Install performance deps only for performance tests
+        # Every job needs the `test` extra (pytest, pytest-cov); add the
+        # type-specific extra on top. Keep them in a single set so one
+        # `uv sync` resolves everything together.
+        EXTRAS="--extra test"
         if [ "${{ matrix.test-type }}" = "performance" ]; then
-          uv sync --extra performance
+          EXTRAS="--extra test --extra performance"
+        elif [ "${{ matrix.test-type }}" = "integration" ]; then
+          EXTRAS="--extra test --extra mysql"
         fi
+        echo "extras=$EXTRAS" >> "$GITHUB_OUTPUT"
+        # Carry into the environment so `uv run` re-applies the same set
+        # during its implicit sync (otherwise the extra packages get dropped).
+        echo "UV_EXTRAS=$EXTRAS" >> "$GITHUB_ENV"
 
-        # Install MySQL deps for integration tests
-        if [ "${{ matrix.test-type }}" = "integration" ]; then
-          uv sync --extra mysql
-        fi
-
-        # Install the package in editable mode
-        uv pip install -e .
+    - name: Install dependencies
+      run: uv sync ${{ steps.extras.outputs.extras }}
 
     - name: Run ${{ matrix.test-type }} tests
       run: |
-        uv run python -m pytest tests/${{ matrix.test-type }}/ \
+        uv run $UV_EXTRAS python -m pytest tests/${{ matrix.test-type }}/ \
           --junit-xml=test-results/${{ matrix.test-type }}.xml \
           --cov=src/vgnc_internal_orm \
           --cov-report=xml:test-results/coverage-${{ matrix.test-type }}.xml \
@@ -94,13 +96,11 @@ jobs:
         enable-cache: true
 
     - name: Install dependencies
-      run: |
-        uv sync --extra test
-        uv pip install -e .
+      run: uv sync --extra test
 
     - name: Run smoke tests
       run: |
-        uv run python -m pytest tests/unit/test_unit_framework.py tests/unit/test_config.py \
+        uv run --extra test python -m pytest tests/unit/test_unit_framework.py tests/unit/test_config.py \
           tests/integration/test_db_common_smoke.py \
           -v --tb=short --maxfail=5
 
@@ -119,23 +119,21 @@ jobs:
         enable-cache: true
 
     - name: Install dependencies
-      run: |
-        uv sync --extra dev
-        uv pip install -e .
+      run: uv sync --extra dev
 
     - name: Run code quality checks
       run: |
         # Format check
-        uv run black --check --diff src/ tests/
+        uv run --extra dev black --check --diff src/ tests/
 
         # Import sorting and linting
-        uv run ruff check src/ tests/
+        uv run --extra dev ruff check src/ tests/
 
         # Type checking
-        uv run mypy src/ --ignore-missing-imports || true
+        uv run --extra dev mypy src/ --ignore-missing-imports || true
 
         # Security check
-        uv run bandit -r src/ -f json -o test-results/security-report.json || true
+        uv run --extra dev bandit -r src/ -f json -o test-results/security-report.json || true
 
     - name: Upload quality check results
       uses: actions/upload-artifact@v4

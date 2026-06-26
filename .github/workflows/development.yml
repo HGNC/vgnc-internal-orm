@@ -42,13 +42,11 @@ jobs:
         enable-cache: true
 
     - name: Install dependencies
-      run: |
-        uv sync --extra test
-        uv pip install -e .
+      run: uv sync --extra test
 
     - name: Run unit tests (fast feedback)
       run: |
-        uv run python -m pytest tests/unit/ \
+        uv run --extra test python -m pytest tests/unit/ \
           --tb=short \
           --maxfail=10 \
           --durations=5 \
@@ -56,7 +54,7 @@ jobs:
 
     - name: Run a few integration tests (medium)
       run: |
-        uv run python -m pytest tests/integration/test_config_loading.py \
+        uv run --extra test python -m pytest tests/integration/test_config_loading.py \
           tests/integration/test_db_common_smoke.py \
           --tb=short \
           -x
@@ -87,29 +85,28 @@ jobs:
         enable-cache: true
 
     - name: Install dependencies
-      run: |
-        uv sync --extra dev
-        uv pip install -e . black isort flake8 mypy bandit
+      run: uv sync --extra dev
 
     - name: Check code formatting
       run: |
         echo "Checking code formatting..."
-        uv run black --check --diff src/ tests/ || echo "Formatting issues found"
+        uv run --extra dev black --check --diff src/ tests/ || echo "Formatting issues found"
 
     - name: Check import sorting
       run: |
         echo "Checking import sorting..."
-        uv run isort --check-only --diff src/ tests/ || echo "Import sorting issues found"
+        # isort/flake8 aren't in the dev extra; run them ephemerally via uvx
+        uvx isort --check-only --diff src/ tests/ || echo "Import sorting issues found"
 
     - name: Run linting
       run: |
         echo "Running linting..."
-        uv run ruff check src/ tests/ || echo "Linting issues found"
+        uv run --extra dev ruff check src/ tests/ || echo "Linting issues found"
 
     - name: Run security check
       run: |
         echo "Running security check..."
-        uv run bandit -r src/ -f json -o security-report.json || echo "Security issues found"
+        uv run --extra dev bandit -r src/ -f json -o security-report.json || echo "Security issues found"
 
     - name: Upload quality reports
       uses: actions/upload-artifact@v4

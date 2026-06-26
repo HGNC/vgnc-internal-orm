@@ -29,9 +29,9 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: |
-          uv sync --extra dev
-          uv pip install -e . sphinx myst-parser
+        # sphinx/myst-parser live in the default `dev` dependency-group,
+        # which `uv sync` includes automatically.
+        run: uv sync
 
       - name: Build docs (warnings as errors)
         working-directory: docs
