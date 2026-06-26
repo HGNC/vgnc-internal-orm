@@ -80,7 +80,11 @@ def ensure_config_loaded(ctx: click.Context) -> None:
             # Override the database_url property by storing it separately
             ctx.obj["database_url"] = ctx.obj["database_url"]
         else:
-            db_config = DatabaseConfig(database="cli_database", driver="sqlite")
+            # No URL provided: load from env/config file. If nothing usable
+            # is configured, DatabaseConfig() raises ValidationError (host is
+            # required for non-sqlite drivers), which is caught below and
+            # reported as "Please provide --database-url" with exit code 1.
+            db_config = DatabaseConfig()
             ctx.obj["database_url"] = None
 
         ctx.obj["db_config"] = db_config

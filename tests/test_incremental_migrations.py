@@ -278,7 +278,12 @@ class TestMigrationCommands:
         import sys
         from io import StringIO
 
-        from scripts.migration_workflow import main
+        # `migration_workflow` is already importable as a top-level module
+        # (.github/scripts is on sys.path from the module-level setup above).
+        # Use an explicit import (not the bare name) because this test module
+        # also defines a *fixture* named `migration_workflow` that shadows the
+        # module-level import within method scope.
+        from migration_workflow import main
 
         # Capture help output
         old_stdout = sys.stdout

@@ -15,7 +15,11 @@ from datetime import datetime
 from pathlib import Path
 
 # Add project root to Python path
-project_root = Path(__file__).parent.parent
+# NB: this file lives at <repo>/.github/scripts/migration_workflow.py, so the
+# repo root is three parents up. Two parents resolve to <repo>/.github (which
+# has no alembic.ini), which made every Config() load silently fail with
+# "No 'script_location' key found in configuration".
+project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from alembic import command
