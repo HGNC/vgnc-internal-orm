@@ -108,27 +108,20 @@ name = "Async SQLite CLI App"
         ctx_env = Context(cli)
         ctx_env.obj = {"config_loaded": False}
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".env", delete=False
-        ) as env_file:
-            env_file.write(
-                """
-DATABASE__DRIVER=sqlite
-DATABASE__DATABASE=env_test.db
-APP_NAME=Environment Test App
-"""
-            )
-            env_file_path = env_file.name
+        # DatabaseConfig reads env vars with the `DB_` prefix (pydantic-settings),
+        # not from a VGNC_CONFIG_FILE and not under a `DATABASE__` prefix. Provide
+        # real env vars so the no-URL branch of ensure_config_loaded can build a
+        # valid config from the environment.
+        env_vars = {
+            "DB_DRIVER": "sqlite",
+            "DB_DATABASE": "env_test.db",
+        }
 
-        try:
-            with patch.dict(os.environ, {"VGNC_CONFIG_FILE": env_file_path}):
-                ensure_config_loaded(ctx_env)
+        with patch.dict(os.environ, env_vars):
+            ensure_config_loaded(ctx_env)
 
-                assert ctx_env.obj["config_loaded"] is True
-                assert "db_config" in ctx_env.obj
-
-        finally:
-            os.unlink(env_file_path)
+            assert ctx_env.obj["config_loaded"] is True
+            assert "db_config" in ctx_env.obj
 
     def test_cli_environment_variable_integration(self):
         """Test CLI integration with environment variables."""
