@@ -6,7 +6,11 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+env:
+  PYTHONPATH: src
+
 jobs:
+  # Run all tests with coverage in a single job
   coverage:
     runs-on: ubuntu-latest
     strategy:
@@ -18,7 +22,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -26,9 +30,9 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
         restore-keys: |
-          ${{ runner.os }}-pip-
+          ${{ runner.os }}-pip-${{ matrix.python-version }}-
 
     - name: Install dependencies
       run: |
@@ -36,59 +40,19 @@ jobs:
         pip install --no-cache-dir -e ".[test,performance]"
         pip install coverage[toml]
 
-    - name: Run unit tests with coverage
+    - name: Run all tests with coverage
       run: |
         # Initialize coverage data
         python -m coverage erase
 
-        PYTHONPATH=src python -m pytest tests/unit/ \
-          --cov=src \
-          --cov-report=xml:coverage-unit.xml \
-          --cov-report=html:htmlcov-unit \
+        # Run all test types with coverage
+        python -m pytest tests/ \
+          --cov=src/vgnc_internal_orm \
+          --cov-report=xml:coverage.xml \
+          --cov-report=html:htmlcov \
           --cov-report=term-missing \
-          --cov-context=test
-
-        # Save unit test coverage data
-        cp .coverage .coverage.unit
-
-    - name: Run integration tests with coverage
-      run: |
-        # Restore unit test coverage and start with append mode
-        cp .coverage.unit .coverage
-
-        PYTHONPATH=src python -m pytest tests/integration/ \
-          --cov=src \
-          --cov-append \
-          --cov-report=xml:coverage-integration.xml \
-          --cov-report=html:htmlcov-integration \
-          --cov-report=term-missing \
-          --cov-context=test
-
-        # Save combined coverage data
-        cp .coverage .coverage.combined
-
-    - name: Run performance tests with coverage
-      run: |
-        # Restore combined coverage and continue with append mode
-        cp .coverage.combined .coverage
-
-        PYTHONPATH=src python -m pytest tests/performance/ \
-          --cov=src \
-          --cov-append \
-          --cov-report=xml:coverage-performance.xml \
-          --cov-report=term-missing \
-          --cov-context=test
-
-    - name: Combine coverage reports
-      run: |
-        # List coverage files to see what we have
-        ls -la .coverage*
-
-        # The .coverage file should already contain all test coverage data
-        # Generate combined reports from the accumulated coverage data
-        python -m coverage xml -o coverage-combined.xml
-        python -m coverage html -d htmlcov-combined
-        python -m coverage json -o coverage-combined.json
+          --cov-context=test \
+          --cov-fail-under=70
 
     - name: Generate coverage summary
       run: |
@@ -98,20 +62,20 @@ jobs:
       run: |
         python .github/scripts/check_coverage_threshold.py
 
-    - name: Upload coverage reports to artifacts
+    - name: Upload coverage reports
       uses: actions/upload-artifact@v4
       with:
         name: coverage-reports-python${{ matrix.python-version }}
         path: |
-          coverage-combined.xml
-          htmlcov-combined/
-          coverage-combined.json
+          coverage.xml
+          htmlcov/
+          coverage.json
         retention-days: 30
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
-        files: ./coverage-combined.xml
+        files: ./coverage.xml
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
@@ -125,7 +89,7 @@ jobs:
           const fs = require('fs');
 
           // Read coverage data
-          const coverageData = JSON.parse(fs.readFileSync('coverage-combined.json', 'utf8'));
+          const coverageData = JSON.parse(fs.readFileSync('coverage.json', 'utf8'));
           const totals = coverageData.totals;
 
           const coverage = totals.percent_covered;
@@ -135,28 +99,28 @@ jobs:
           const branchesTotal = totals.num_branches || 0;
 
           // Generate coverage comment
-          const comment = `## 📊 Code Coverage Report
+          const comment = \`## 📊 Code Coverage Report
 
-          **Overall Coverage:** ${coverage.toFixed(1)}%
+          **Overall Coverage:** \${coverage.toFixed(1)}%
 
           ### 📈 Coverage Details
-          - **Lines:** ${linesCovered}/${linesTotal} (${coverage.toFixed(1)}%)
-          - **Branches:** ${branchesCovered}/${branchesTotal} (${((branchesCovered/branchesTotal)*100).toFixed(1)}%)
+          - **Lines:** \${linesCovered}/${linesTotal} (\${coverage.toFixed(1)}%)
+          - **Branches:** \${branchesCovered}/${branchesTotal} (\${((branchesCovered/branchesTotal)*100).toFixed(1)}%)
 
           ### 📁 Module Coverage
-          ${Object.entries(coverageData.files)
-            .filter(([filename]) => filename.includes('src/vgnc_internal_orm'))
+          \${Object.entries(coverageData.files)
+            .filter(([filename]) => filename.includes('vgnc_internal_orm'))
             .map(([filename, data]) => {
-              const moduleName = filename.replace('src/vgnc_internal_orm/', '');
+              const moduleName = filename.replace('vgnc_internal_orm/', '');
               const coverage = data.summary.percent_covered;
               const covered = data.summary.covered_lines;
               const total = data.summary.num_statements;
-              return `- **${moduleName}**: ${coverage.toFixed(1)}% (${covered}/${total})`;
+              return \`- **\${moduleName}**: \${coverage.toFixed(1)}% (\${covered}/${total})\`;
             })
-            .join('\n')}
+            .join('\\n')}
 
           ### 📋 Coverage Quality
-          ${coverage >= 90 ? '🎉 Excellent coverage!' :
+          \${coverage >= 90 ? '🎉 Excellent coverage!' :
             coverage >= 80 ? '✅ Good coverage!' :
             coverage >= 70 ? '⚠️ Acceptable coverage' :
             '❌ Coverage needs improvement'}
@@ -171,7 +135,7 @@ jobs:
             body: comment
           });
 
-  # Coverage comparison job
+  # Coverage comparison job for PRs
   coverage-comparison:
     runs-on: ubuntu-latest
     needs: coverage
@@ -191,56 +155,3 @@ jobs:
     - name: Compare coverage with main branch
       run: |
         python .github/scripts/compare_coverage.py
-
-  # Coverage badge generation
-  coverage-badge:
-    runs-on: ubuntu-latest
-    needs: coverage
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Download coverage artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: coverage-reports-python3.13
-        path: ./coverage-artifacts
-
-    - name: Generate coverage badge
-      run: |
-        pip install anybadge
-        python .github/scripts/generate_coverage_badge.py
-
-    - name: Upload coverage badge
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-badge
-        path: coverage-badge.svg
-
-    - name: Checkout for badge commit
-      uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Download coverage badge artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: coverage-badge
-        path: ./
-
-    - name: Commit coverage badge
-      run: |
-        BADGE=coverage-badge.svg
-        if [ ! -f "$BADGE" ]; then
-          echo "No coverage badge found to commit"
-          exit 0
-        fi
-        git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        git add "$BADGE"
-        if git diff --staged --quiet; then
-          echo "No coverage badge changes to commit"
-          exit 0
-        fi
-        git commit -m "Update coverage badge [skip ci]"
-        git push
