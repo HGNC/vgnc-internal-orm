@@ -336,8 +336,8 @@ wheels = [
 
 [[package]]
 name = "db-common"
-version = "0.1.0"
-source = { git = "https://github.com/HGNC/db-common.git?tag=v0.1.0#67b6caef9e035f0ddcb29ab9ac6af0c1a0764a42" }
+version = "0.2.0"
+source = { git = "https://github.com/HGNC/db-common.git#aca91bb45ced691457e34e28473e14ffb07bb689" }
 dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -1397,7 +1397,7 @@ requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
     { name = "click", specifier = ">=8.3.0" },
     { name = "cryptography", marker = "extra == 'mysql'", specifier = ">=41.0.0" },
-    { name = "db-common", git = "https://github.com/HGNC/db-common.git?tag=v0.1.0" },
+    { name = "db-common", git = "https://github.com/HGNC/db-common.git" },
     { name = "defusedxml", specifier = ">=0.7.0" },
     { name = "factory-boy", marker = "extra == 'test'", specifier = ">=3.3.0" },
     { name = "faker", marker = "extra == 'test'", specifier = ">=19.0.0" },
