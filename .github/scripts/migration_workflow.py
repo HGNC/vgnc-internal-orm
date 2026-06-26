@@ -9,35 +9,35 @@ in the VGNC ORM project, including creation, testing, and deployment processes.
 import argparse
 import os
 import sys
-import subprocess
 import tempfile
-from datetime import datetime
 from pathlib import Path
-
-# Add project root to Python path
-# NB: this file lives at <repo>/.github/scripts/migration_workflow.py, so the
-# repo root is three parents up. Two parents resolve to <repo>/.github (which
-# has no alembic.ini), which made every Config() load silently fail with
-# "No 'script_location' key found in configuration".
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
 
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
+# Add project root to Python path so the first-party safety module below
+# resolves. NB: this file lives at <repo>/.github/scripts/migration_workflow.py,
+# so the repo root is three parents up. Two parents resolve to <repo>/.github
+# (which has no alembic.ini), which made every Config() load silently fail with
+# "No 'script_location' key found in configuration".
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
 try:
-    from vgnc_internal_orm.migrations.safety import (
-        validate_migration_safety,
+    from vgnc_internal_orm.migrations.safety import (  # noqa: E402
+        RiskLevel,
         print_safety_report,
-        MigrationSafetyValidator,
-        RiskLevel
+        validate_migration_safety,
     )
+
     SAFETY_MODULE_AVAILABLE = True
 except ImportError:
     SAFETY_MODULE_AVAILABLE = False
-    print("⚠️  Warning: Safety module not available. Install package for full safety validation.")
+    print(
+        "⚠️  Warning: Safety module not available. Install package for full safety validation."
+    )
 
 
 class MigrationWorkflow:
@@ -50,10 +50,10 @@ class MigrationWorkflow:
 
     def create_test_database(self):
         """Create a temporary test database for migration testing."""
-        temp_db = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+        temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         temp_db.close()
         self.temp_databases.append(temp_db.name)
-        return f'sqlite:///{temp_db.name}'
+        return f"sqlite:///{temp_db.name}"
 
     def cleanup_test_databases(self):
         """Clean up temporary test databases."""
@@ -121,11 +121,13 @@ class MigrationWorkflow:
 
         try:
             # Test that we can query basic tables
-            result = session.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
+            result = session.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table'")
+            )
             tables = [row[0] for row in result.fetchall()]
 
             # Check for expected tables
-            expected_tables = {'species', 'genefam', 'assembly', 'chromosomes'}
+            expected_tables = {"species", "genefam", "assembly", "chromosomes"}
             missing_tables = expected_tables - set(tables)
 
             if missing_tables:
@@ -189,33 +191,39 @@ class MigrationWorkflow:
                 try:
                     issues = validate_migration_safety(str(migration_path))
                     print_safety_report(issues)
-                    
+
                     # Check for critical/high risk issues
-                    has_critical = any(issue.risk_level == RiskLevel.CRITICAL for issue in issues)
-                    has_high = any(issue.risk_level == RiskLevel.HIGH for issue in issues)
-                    
+                    has_critical = any(
+                        issue.risk_level == RiskLevel.CRITICAL for issue in issues
+                    )
+                    has_high = any(
+                        issue.risk_level == RiskLevel.HIGH for issue in issues
+                    )
+
                     if has_critical:
                         print("\n❌ CRITICAL issues found - manual review required")
                         return False
                     elif has_high:
-                        print("\n⚠️  HIGH risk issues found - careful review recommended")
+                        print(
+                            "\n⚠️  HIGH risk issues found - careful review recommended"
+                        )
                     else:
                         print("\n✅ No critical safety issues detected")
-                    
+
                 except Exception as e:
                     print(f"   ⚠️  Safety validation error: {e}")
                     # Fall through to basic validation
-            
+
             # Fallback to basic validation if safety module unavailable or errored
             if not SAFETY_MODULE_AVAILABLE:
                 content = migration_path.read_text()
 
                 # Check for dangerous operations (basic version)
                 dangerous_patterns = [
-                    ('DROP TABLE', 'Dropping tables'),
-                    ('DROP COLUMN', 'Dropping columns'),
-                    ('DELETE FROM', 'Direct deletion'),
-                    ('TRUNCATE', 'Truncating tables')
+                    ("DROP TABLE", "Dropping tables"),
+                    ("DROP COLUMN", "Dropping columns"),
+                    ("DELETE FROM", "Direct deletion"),
+                    ("TRUNCATE", "Truncating tables"),
                 ]
 
                 warnings = []
@@ -244,7 +252,9 @@ class MigrationWorkflow:
             # Check for unapplied migrations
             heads = command.heads(self.alembic_cfg)
             if heads and current != heads[0]:
-                print(f"⚠️  Unapplied migrations detected. Current: {current}, Head: {heads[0]}")
+                print(
+                    f"⚠️  Unapplied migrations detected. Current: {current}, Head: {heads[0]}"
+                )
             else:
                 print("✅ All migrations applied")
 
@@ -278,8 +288,10 @@ class MigrationWorkflow:
                 # Show recent migrations
                 if history:
                     print("\n   Recent migrations:")
-                    for i, revision in enumerate(history[-5:], 1):
-                        print(f"      {revision.doc or 'No description'} ({revision.revision})")
+                    for revision in history[-5:]:
+                        print(
+                            f"      {revision.doc or 'No description'} ({revision.revision})"
+                        )
                 else:
                     print("\n   No migrations found")
 
@@ -298,7 +310,7 @@ class MigrationWorkflow:
             "✅ Ensure sufficient maintenance window",
             "✅ Have rollback plan ready",
             "✅ Monitor performance after deployment",
-            "✅ Verify application functionality"
+            "✅ Verify application functionality",
         ]
 
         for item in checklist:
@@ -308,30 +320,40 @@ class MigrationWorkflow:
 def main():
     """Main entry point for the migration workflow."""
     parser = argparse.ArgumentParser(description="VGNC ORM Migration Workflow")
-    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Create command
-    create_parser = subparsers.add_parser('create', help='Create new migration')
-    create_parser.add_argument('message', help='Migration description')
-    create_parser.add_argument('--dry-run', action='store_true', help='Show what would be done without executing')
+    create_parser = subparsers.add_parser("create", help="Create new migration")
+    create_parser.add_argument("message", help="Migration description")
+    create_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be done without executing",
+    )
 
     # Test command
-    test_parser = subparsers.add_parser('test', help='Test migration(s)')
-    test_parser.add_argument('--revision', help='Test specific revision (test all if not specified)')
+    test_parser = subparsers.add_parser("test", help="Test migration(s)")
+    test_parser.add_argument(
+        "--revision", help="Test specific revision (test all if not specified)"
+    )
 
     # Rollback test command
-    rollback_parser = subparsers.add_parser('test-rollback', help='Test rollback functionality')
-    rollback_parser.add_argument('--steps', type=int, default=1, help='Number of steps to rollback and re-apply')
+    rollback_parser = subparsers.add_parser(
+        "test-rollback", help="Test rollback functionality"
+    )
+    rollback_parser.add_argument(
+        "--steps", type=int, default=1, help="Number of steps to rollback and re-apply"
+    )
 
     # Validate command
-    validate_parser = subparsers.add_parser('validate', help='Validate migration(s)')
-    validate_parser.add_argument('--file', help='Validate specific migration file')
+    validate_parser = subparsers.add_parser("validate", help="Validate migration(s)")
+    validate_parser.add_argument("--file", help="Validate specific migration file")
 
     # Status command
-    subparsers.add_parser('status', help='Show migration status')
+    subparsers.add_parser("status", help="Show migration status")
 
     # Checklist command
-    subparsers.add_parser('checklist', help='Show deployment checklist')
+    subparsers.add_parser("checklist", help="Show deployment checklist")
 
     args = parser.parse_args()
 
@@ -342,23 +364,23 @@ def main():
     workflow = MigrationWorkflow()
 
     try:
-        if args.command == 'create':
+        if args.command == "create":
             success = workflow.create_migration(args.message, args.dry_run)
 
-        elif args.command == 'test':
+        elif args.command == "test":
             success = workflow.test_migration(args.revision)
 
-        elif args.command == 'test-rollback':
+        elif args.command == "test-rollback":
             success = workflow.rollback_test(args.steps)
 
-        elif args.command == 'validate':
+        elif args.command == "validate":
             success = workflow.validate_migration(args.file)
 
-        elif args.command == 'status':
+        elif args.command == "status":
             workflow.show_status()
             success = True
 
-        elif args.command == 'checklist':
+        elif args.command == "checklist":
             workflow.deploy_checklist()
             success = True
 
@@ -368,5 +390,5 @@ def main():
     return 0 if success else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
