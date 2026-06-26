@@ -484,7 +484,8 @@ def get_session(db_config: DatabaseConfig, database_url: str | None = None) -> S
     # Use provided database URL or fall back to config
     url = database_url if database_url else db_config.database_url.get_secret_value()
 
-    engine = create_engine(url, echo=db_config.echo, pool_pre_ping=True)
+    # Hardcode echo=False (echo field removed in db-common migration)
+    engine = create_engine(url, echo=False, pool_pre_ping=True)
 
     SessionLocal = sessionmaker(bind=engine)
     return SessionLocal()

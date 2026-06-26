@@ -6,14 +6,16 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
+from db_common import DeclarativeBase
 
 # Add the project root to sys.path to ensure imports work
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-# Import our models and their metadata - import ALL models to ensure they are registered
-from src.vgnc_internal_orm.models.base import BaseModel, BaseCustomModel
-from src.vgnc_internal_orm.models import (
-    species, genefam, assembly, chromosomes, associations, supporting
+# Import ALL models to ensure they are registered into db_common.DeclarativeBase.metadata
+# Since we've migrated to db_common, all models inherit from db_common.DeclarativeBase
+# and are automatically registered in the shared metadata registry
+from vgnc_internal_orm.models import (
+    associations, assembly, chromosomes, genefam, species, supporting
 )
 # Note: orthology module excluded temporarily due to foreign key reference issues
 # It uses fictional schema that doesn't match the real database
@@ -27,22 +29,10 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# We need to create a unified metadata that includes both BaseModel and BaseCustomModel
-from sqlalchemy.schema import MetaData
-
-# Create unified metadata for migration generation
-unified_metadata = MetaData()
-
-# Add all tables from both metadata registries
-for table in BaseModel.metadata.tables.values():
-    table.to_metadata(unified_metadata)
-
-for table in BaseCustomModel.metadata.tables.values():
-    table.to_metadata(unified_metadata)
-
-target_metadata = unified_metadata
+# Use db_common.DeclarativeBase.metadata directly
+# After T2 migration, all models inherit from db_common.DeclarativeBase,
+# so the shared metadata registry contains all vgnc tables
+target_metadata = DeclarativeBase.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -60,6 +50,7 @@ def get_database_url():
 
     # Fall back to config file
     return config.get_main_option("sqlalchemy.url")
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.

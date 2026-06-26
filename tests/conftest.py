@@ -17,10 +17,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from src.vgnc_internal_orm.models.assembly import Assembly
-from src.vgnc_internal_orm.models.chromosomes import Chromosomes
-from src.vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
-from src.vgnc_internal_orm.models.supporting import Editor, GeneStatus
+from vgnc_internal_orm.models.assembly import Assembly
+from vgnc_internal_orm.models.chromosomes import Chromosomes
+from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
+from vgnc_internal_orm.models.supporting import Editor, GeneStatus
 
 
 @pytest.fixture(scope="session")
@@ -57,10 +57,10 @@ def test_db_session(test_engine: sa.Engine) -> Generator[Session, None, None]:
     """Create a fresh database session for each test function."""
     # Create only core tables needed for testing
     # This avoids foreign key dependency issues
-    from src.vgnc_internal_orm.models.assembly import Assembly
-    from src.vgnc_internal_orm.models.chromosomes import Chromosomes
-    from src.vgnc_internal_orm.models.species import Species
-    from src.vgnc_internal_orm.models.supporting import Editor, GeneStatus
+    from vgnc_internal_orm.models.assembly import Assembly
+    from vgnc_internal_orm.models.chromosomes import Chromosomes
+    from vgnc_internal_orm.models.species import Species
+    from vgnc_internal_orm.models.supporting import Editor, GeneStatus
 
     # Create tables manually to avoid dependency issues
     # Create supporting tables first due to foreign key dependencies
@@ -108,9 +108,9 @@ def sample_editor(test_db_session: Session) -> Editor:
 def test_transaction_session(test_engine: sa.Engine) -> Generator[Session, None, None]:
     """Create a session within a transaction that's rolled back after each test."""
     # Create only core tables needed for testing
-    from src.vgnc_internal_orm.models.assembly import Assembly
-    from src.vgnc_internal_orm.models.chromosomes import Chromosomes
-    from src.vgnc_internal_orm.models.species import Species
+    from vgnc_internal_orm.models.assembly import Assembly
+    from vgnc_internal_orm.models.chromosomes import Chromosomes
+    from vgnc_internal_orm.models.species import Species
 
     # Create tables manually to avoid dependency issues
     Species.__table__.create(test_engine, checkfirst=True)
@@ -299,20 +299,3 @@ def benchmark_min_rounds():
 def benchmark_max_time():
     """Configure maximum time for benchmark tests (in seconds)."""
     return 1.0
-
-
-# Async fixtures for async testing
-@pytest.fixture(scope="session")
-async def async_test_engine():
-    """Create async SQLAlchemy engine for testing."""
-    # Note: This would require aiosqlite dependency
-    # For now, return None - can be implemented when async testing is needed
-    return None
-
-
-@pytest.fixture
-async def async_test_session(async_test_engine):
-    """Create async database session for testing."""
-    # Note: This would require aiosqlite dependency
-    # For now, return None - can be implemented when async testing is needed
-    return None

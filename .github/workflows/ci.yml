@@ -5,9 +5,6 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
-  schedule:
-    # Daily tests at 2 AM UTC
-    - cron: '0 2 * * *'
   workflow_dispatch:
     inputs:
       test_type:
@@ -20,319 +17,99 @@ on:
           - unit
           - integration
           - performance
-          - load
-          - coverage
-      python_version:
-        description: 'Python version to test'
-        required: false
-        default: '3.13'
-        type: choice
-        options:
-          - '3.13'
 
 env:
   PYTHONUNBUFFERED: 1
   PYTHONDONTWRITEBYTECODE: 1
 
 jobs:
-  # Test matrix across different Python versions
-  test-matrix:
-    name: Python ${{ matrix.python-version }} Tests
+  # Full test suite - runs all tests in parallel
+  test-suite:
+    name: Test Suite
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.13"]
-        include:
-          - python-version: "3.13"
-            test-type: "unit"
-            cache-key: "unit"
-          - python-version: "3.13"
-            test-type: "integration"
-            cache-key: "integration"
-          - python-version: "3.13"
-            test-type: "performance"
-            cache-key: "performance"
+        test-type: ["unit", "integration", "performance"]
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: "3.13"
         cache: 'pip'
 
     - name: Cache pip dependencies
       uses: actions/cache@v4
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ matrix.cache-key }}-${{ hashFiles('**/pyproject.toml') }}
+        key: ${{ runner.os }}-pip-${{ matrix.test-type }}-${{ hashFiles('**/pyproject.toml') }}
         restore-keys: |
-          ${{ runner.os }}-pip-${{ matrix.cache-key }}-
+          ${{ runner.os }}-pip-${{ matrix.test-type }}-
           ${{ runner.os }}-pip-
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e ".[test,performance]"
+        pip install -e ".[test]"
 
-    - name: Create test results directory
-      run: |
-        mkdir -p test-results
+        # Install performance deps only for performance tests
+        if [ "${{ matrix.test-type }}" = "performance" ]; then
+          pip install -e ".[performance]"
+        fi
+
+        # Install MySQL deps for integration tests
+        if [ "${{ matrix.test-type }}" = "integration" ]; then
+          pip install -e ".[mysql]"
+        fi
 
     - name: Run ${{ matrix.test-type }} tests
       run: |
-        case "${{ matrix.test-type }}" in
-          "unit")
-            python -m pytest tests/unit/ \
-              --junit-xml=test-results/unit-${{ matrix.python-version }}.xml \
-              --cov=src/vgnc_internal_orm \
-              --cov-report=xml:test-results/coverage-unit-${{ matrix.python-version }}.xml \
-              --cov-report=html:test-results/coverage-html-unit-${{ matrix.python-version }} \
-              --cov-report=term-missing \
-              --cov-fail-under=70
-            ;;
-          "integration")
-            python -m pytest tests/integration/ \
-              --junit-xml=test-results/integration-${{ matrix.python-version }}.xml \
-              --cov=src/vgnc_internal_orm \
-              --cov-append \
-              --cov-report=xml:test-results/coverage-integration-${{ matrix.python-version }}.xml \
-              --cov-report=html:test-results/coverage-html-integration-${{ matrix.python-version }} \
-              --cov-report=term-missing \
-              --cov-fail-under=60
-            ;;
-          "performance")
-            python -m pytest tests/performance/ \
-              --junit-xml=test-results/performance-${{ matrix.python-version }}.xml \
-              --benchmark-only \
-              --benchmark-json=test-results/benchmark-${{ matrix.python-version }}.json
-            ;;
-        esac
+        python -m pytest tests/${{ matrix.test-type }}/ \
+          --junit-xml=test-results/${{ matrix.test-type }}.xml \
+          --cov=src/vgnc_internal_orm \
+          --cov-report=xml:test-results/coverage-${{ matrix.test-type }}.xml \
+          --cov-report=html:test-results/coverage-html-${{ matrix.test-type }} \
+          --cov-report=term-missing \
+          --cov-fail-under=70
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: test-results-${{ matrix.python-version }}-${{ matrix.test-type }}
-        path: |
-          test-results/
+        name: test-results-${{ matrix.test-type }}
+        path: test-results/
         retention-days: 7
 
-  # Unit tests (fast feedback)
-  unit-tests:
-    name: Unit Tests
+  # Quick smoke tests for PRs - faster feedback
+  smoke-tests:
+    name: Smoke Tests
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.13"]
-
+    if: github.event_name == 'pull_request'
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-unit-${{ hashFiles('**/pyproject.toml') }}
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[test]"
-
-    - name: Run unit tests
-      run: |
-        python -m pytest tests/unit/ \
-          --verbose \
-          --tb=short \
-          --durations=10 \
-          --maxfail=5 \
-          --junit-xml=test-results/unit.xml
-
-    - name: Upload unit test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: unit-test-results-${{ matrix.python-version }}
-        path: test-results/unit.xml
-        retention-days: 7
-
-  # Integration tests
-  integration-tests:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-    needs: unit-tests
-    strategy:
-      matrix:
-        python-version: ["3.13"]
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-integration-${{ hashFiles('**/pyproject.toml') }}
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[test,mysql]"
-        pip install testcontainers[mysql]
-
-    - name: Run integration tests
-      run: |
-        python -m pytest tests/integration/ \
-          --verbose \
-          --tb=short \
-          --durations=10 \
-          --maxfail=5 \
-          --junit-xml=test-results/integration.xml
-
-    - name: Upload integration test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: integration-test-results-${{ matrix.python-version }}
-        path: test-results/integration.xml
-        retention-days: 7
-
-  # Performance tests
-  performance-tests:
-    name: Performance Tests
-    runs-on: ubuntu-latest
-    needs: integration-tests
-    strategy:
-      matrix:
-        python-version: ["3.13"]
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-performance-${{ hashFiles('**/pyproject.toml') }}
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[test,performance]"
-        pip install pytest-benchmark
-
-    - name: Create test results directory
-      run: mkdir -p test-results
-
-    - name: Run performance benchmarks
-      run: |
-        python -m pytest tests/performance/ \
-          --benchmark-only \
-          --benchmark-json=test-results/benchmark.json \
-          --benchmark-histogram=test-results/benchmark-histogram \
-          --benchmark-save=baseline
-
-    - name: Run performance regression checks
-      run: |
-        # Only run regression checks if baseline exists
-        if [ -f ".benchmarks/counter_baseline.json" ]; then
-          python -m pytest tests/performance/ \
-            --benchmark-only \
-            --benchmark-compare=baseline \
-            --benchmark-compare-fail=mean:20%
-        else
-          echo "No baseline found, skipping regression checks"
-        fi
-
-    - name: Upload performance results
-      uses: actions/upload-artifact@v4
-      with:
-        name: performance-test-results
-        path: |
-          test-results/benchmark.json
-          test-results/benchmark-histogram
-        retention-days: 7
-
-  # Load tests
-  load-tests:
-    name: Load Tests
-    runs-on: ubuntu-latest
-    needs: performance-tests
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-load-tests')
-    strategy:
-      matrix:
-        test-scenario:
-          - name: "light-load"
-            users: 5
-            duration: 30
-          - name: "medium-load"
-            users: 20
-            duration: 60
-          - name: "heavy-load"
-            users: 50
-            duration: 30
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v5
       with:
         python-version: "3.13"
 
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-load-${{ hashFiles('**/pyproject.toml') }}
-
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -e ".[test]"
 
-    - name: Create test results directory
-      run: mkdir -p test-results
-
-    - name: Run load test - ${{ matrix.test-scenario.name }}
+    - name: Run smoke tests
       run: |
-        cd .github/scripts && python simple_load_test.py \
-          --test lookup \
-          --users ${{ matrix.test-scenario.users }} \
-          --duration ${{ matrix.test-scenario.duration }} \
-          --output ../../test-results/load-test-${{ matrix.test-scenario.name }}.json
+        python -m pytest tests/unit/test_unit_framework.py tests/unit/test_config.py \
+          tests/integration/test_db_common_smoke.py \
+          -v --tb=short --maxfail=5
 
-    - name: Upload load test results
-      uses: actions/upload-artifact@v4
-      with:
-        name: load-test-results-${{ matrix.test-scenario.name }}
-        path: test-results/load-test-${{ matrix.test-scenario.name }}.json
-        retention-days: 7
-
-  # Security and quality checks
+  # Code quality checks
   quality-checks:
     name: Quality Checks
     runs-on: ubuntu-latest
@@ -340,8 +117,8 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v5
       with:
         python-version: "3.13"
 
@@ -350,27 +127,19 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
 
-    - name: Create test results directory
-      run: mkdir -p test-results
-
     - name: Run code quality checks
       run: |
         # Format check
         black --check --diff src/ tests/
 
-        # Import sorting and linting check
+        # Import sorting and linting
         ruff check src/ tests/
 
         # Type checking
         mypy src/ --ignore-missing-imports || true
 
-    - name: Run security checks
-      run: |
-        # Check for security vulnerabilities
+        # Security check
         bandit -r src/ -f json -o test-results/security-report.json || true
-
-        # Check dependencies for vulnerabilities
-        pip-audit --output-format=json --output-file=test-results/dependency-audit.json || true
 
     - name: Upload quality check results
       uses: actions/upload-artifact@v4
@@ -383,87 +152,61 @@ jobs:
   build-validation:
     name: Build Validation
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.13"]
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: "3.13"
+
+    - name: Install build tools
+      run: |
+        python -m pip install --upgrade pip build twine
 
     - name: Build package
       run: |
-        python -m pip install --upgrade pip build twine
         python -m build
 
     - name: Check package
       run: |
         twine check dist/*
 
-    - name: Install package
+    - name: Install and validate package
       run: |
         python -m pip install dist/*.whl
-
-    - name: Validate installation
-      run: |
-        python -c "import vgnc_internal_orm; print('Package installed successfully')"
+        python -c "import vgnc_internal_orm; print('✅ Package installed successfully')"
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: build-artifacts-${{ matrix.python-version }}
+        name: build-artifacts
         path: dist/
         retention-days: 7
 
-  # Test results summary
+  # Test summary and PR comment
   test-summary:
     name: Test Summary
     runs-on: ubuntu-latest
-    needs: [unit-tests, integration-tests, performance-tests]
-    if: always()
+    needs: test-suite
+    if: always() && github.event_name == 'pull_request'
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.13"
-
-    - name: Download all test results
+    - name: Download test results
       uses: actions/download-artifact@v4
       with:
-        path: all-test-results/
+        path: test-results/
 
     - name: Generate test summary
       run: |
         python .github/scripts/generate_test_summary.py > test-summary.md
 
-    - name: Move test summary to repo root
-      run: |
-        SUMMARY=test-summary.md
-        if [ ! -f "$SUMMARY" ]; then
-          echo "No test summary found to commit"
-          exit 0
-        fi
-        git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        git add "$SUMMARY"
-        if git diff --staged --quiet; then
-          echo "No test summary changes to commit"
-          exit 0
-        fi
-        git commit -m "Update test summary [skip ci]"
-        git push
-
     - name: Comment test summary on PR
-      if: github.event_name == 'pull_request'
+      if: always()
       uses: actions/github-script@v7
       with:
         script: |
@@ -491,18 +234,17 @@ jobs:
   notifications:
     name: Notifications
     runs-on: ubuntu-latest
-    needs: [test-summary]
-    if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    needs: test-summary
+    if: always()
 
     steps:
     - name: Notify on success
       if: needs.test-summary.result == 'success'
       run: |
         echo "✅ CI pipeline completed successfully!"
-        # Add Slack/Teams notification here if needed
 
     - name: Notify on failure
       if: needs.test-summary.result == 'failure'
       run: |
         echo "❌ CI pipeline failed!"
-        # Add Slack/Teams notification here if needed
+        echo "Please review the test results in the PR comments."

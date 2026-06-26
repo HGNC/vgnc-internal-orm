@@ -3,7 +3,7 @@
 This model represents the species table from VGNC-style databases.
 """
 
-from enum import Enum as PyEnum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, Enum, Integer, String
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from .genefam import Genefam
 
 
-class SpeciesLiveStatus(str, PyEnum):
+class SpeciesLiveStatus(StrEnum):
     """Enum for species live status values."""
 
     YES = "Y"

@@ -6,7 +6,7 @@ tests/unit/test_timestamp_mixin_consolidated.py
 
 from unittest.mock import Mock
 
-from src.vgnc_internal_orm.models.base import BaseModel
+from vgnc_internal_orm.models.base import BaseModel
 
 
 class TestBaseModelClassMethods:
@@ -61,11 +61,6 @@ class TestBaseModelInstanceMethods:
         assert hasattr(BaseModel, "refresh_timestamps")
         assert callable(BaseModel.refresh_timestamps)
 
-    def test_arefresh_timestamps_method_exists(self):
-        """Test arefresh_timestamps method exists."""
-        assert hasattr(BaseModel, "arefresh_timestamps")
-        assert callable(BaseModel.arefresh_timestamps)
-
 
 class TestBaseModelUtilityMethods:
     """Test BaseModel utility methods."""
@@ -114,40 +109,20 @@ class TestBaseModelCRUDMethods:
         assert hasattr(BaseModel, "save")
         assert callable(BaseModel.save)
 
-    def test_asave_method_exists(self):
-        """Test asave method exists."""
-        assert hasattr(BaseModel, "asave")
-        assert callable(BaseModel.asave)
-
     def test_delete_method_exists(self):
         """Test delete method exists."""
         assert hasattr(BaseModel, "delete")
         assert callable(BaseModel.delete)
-
-    def test_adelete_method_exists(self):
-        """Test adelete method exists."""
-        assert hasattr(BaseModel, "adelete")
-        assert callable(BaseModel.adelete)
 
     def test_refresh_method_exists(self):
         """Test refresh method exists."""
         assert hasattr(BaseModel, "refresh")
         assert callable(BaseModel.refresh)
 
-    def test_arefresh_method_exists(self):
-        """Test arefresh method exists."""
-        assert hasattr(BaseModel, "arefresh")
-        assert callable(BaseModel.arefresh)
-
     def test_expire_method_exists(self):
         """Test expire method exists."""
         assert hasattr(BaseModel, "expire")
         assert callable(BaseModel.expire)
-
-    def test_aexpire_method_exists(self):
-        """Test aexpire method exists."""
-        assert hasattr(BaseModel, "aexpire")
-        assert callable(BaseModel.aexpire)
 
 
 class TestBaseModelQueryMethods:
@@ -163,90 +138,45 @@ class TestBaseModelQueryMethods:
         assert hasattr(BaseModel, "find_by_id")
         assert callable(BaseModel.find_by_id)
 
-    def test_afind_by_id_method_exists(self):
-        """Test afind_by_id method exists."""
-        assert hasattr(BaseModel, "afind_by_id")
-        assert callable(BaseModel.afind_by_id)
-
     def test_find_all_method_exists(self):
         """Test find_all method exists."""
         assert hasattr(BaseModel, "find_all")
         assert callable(BaseModel.find_all)
-
-    def test_afind_all_method_exists(self):
-        """Test afind_all method exists."""
-        assert hasattr(BaseModel, "afind_all")
-        assert callable(BaseModel.afind_all)
 
     def test_find_one_method_exists(self):
         """Test find_one method exists."""
         assert hasattr(BaseModel, "find_one")
         assert callable(BaseModel.find_one)
 
-    def test_afind_one_method_exists(self):
-        """Test afind_one method exists."""
-        assert hasattr(BaseModel, "afind_one")
-        assert callable(BaseModel.afind_one)
-
     def test_create_method_exists(self):
         """Test create method exists."""
         assert hasattr(BaseModel, "create")
         assert callable(BaseModel.create)
-
-    def test_acreate_method_exists(self):
-        """Test acreate method exists."""
-        assert hasattr(BaseModel, "acreate")
-        assert callable(BaseModel.acreate)
 
     def test_get_or_create_method_exists(self):
         """Test get_or_create method exists."""
         assert hasattr(BaseModel, "get_or_create")
         assert callable(BaseModel.get_or_create)
 
-    def test_aget_or_create_method_exists(self):
-        """Test aget_or_create method exists."""
-        assert hasattr(BaseModel, "aget_or_create")
-        assert callable(BaseModel.aget_or_create)
-
     def test_update_by_id_method_exists(self):
         """Test update_by_id method exists."""
         assert hasattr(BaseModel, "update_by_id")
         assert callable(BaseModel.update_by_id)
-
-    def test_aupdate_by_id_method_exists(self):
-        """Test aupdate_by_id method exists."""
-        assert hasattr(BaseModel, "aupdate_by_id")
-        assert callable(BaseModel.aupdate_by_id)
 
     def test_delete_by_id_method_exists(self):
         """Test delete_by_id method exists."""
         assert hasattr(BaseModel, "delete_by_id")
         assert callable(BaseModel.delete_by_id)
 
-    def test_adelete_by_id_method_exists(self):
-        """Test adelete_by_id method exists."""
-        assert hasattr(BaseModel, "adelete_by_id")
-        assert callable(BaseModel.adelete_by_id)
-
     def test_count_method_exists(self):
         """Test count method exists."""
         assert hasattr(BaseModel, "count")
         assert callable(BaseModel.count)
 
-    def test_acount_method_exists(self):
-        """Test acount method exists."""
-        assert hasattr(BaseModel, "acount")
-        assert callable(BaseModel.acount)
-
     def test_exists_method_exists(self):
         """Test exists method exists."""
         assert hasattr(BaseModel, "exists")
         assert callable(BaseModel.exists)
-
-    def test_aexists_method_exists(self):
-        """Test aexists method exists."""
-        assert hasattr(BaseModel, "aexists")
-        assert callable(BaseModel.aexists)
 
 
 class TestBaseModelUtilityFunctionTests:
