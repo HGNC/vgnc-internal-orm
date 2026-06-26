@@ -8,15 +8,13 @@ This test verifies end-to-end that the migration to db-common is complete:
 - Alembic's target_metadata is db_common.DeclarativeBase.metadata
 """
 
-import tempfile
+from datetime import datetime
 from pathlib import Path
 
 import pytest
+from db_common import DeclarativeBase
 from sqlalchemy import select, text
 
-from datetime import datetime
-
-from db_common import DeclarativeBase, DatabaseDriver
 from vgnc_internal_orm.config.settings import DatabaseConfig
 from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 from vgnc_internal_orm.sessions.factory import (
@@ -33,6 +31,7 @@ class TestDbCommonSmoke:
         assert issubclass(DatabaseConfig, DatabaseConfig.__bases__[0])
         # Import db_common.DatabaseSettings to check inheritance
         from db_common import DatabaseSettings
+
         assert issubclass(DatabaseConfig, DatabaseSettings)
 
     def test_database_config_driver_enum(self):
@@ -42,6 +41,7 @@ class TestDbCommonSmoke:
         # Note: db_common.DatabaseDriver is an enum, but when set via string
         # it gets validated and converted
         from db_common import DatabaseDriver as DbCommonDriver
+
         assert config.driver == DbCommonDriver.SQLITE
 
     def test_database_url_compat_shim(self):
@@ -59,7 +59,7 @@ class TestDbCommonSmoke:
 
         assert engine is not None
         # Verify it's a real SQLAlchemy engine
-        assert hasattr(engine, 'connect')
+        assert hasattr(engine, "connect")
 
         # Verify it can execute a simple query
         with engine.connect() as conn:
@@ -105,9 +105,11 @@ class TestDbCommonSmoke:
 
             # Verify tables were created by checking sqlite_master
             with engine.connect() as conn:
-                result = conn.execute(text(
-                    "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-                ))
+                result = conn.execute(
+                    text(
+                        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+                    )
+                )
                 tables = [row[0] for row in result.fetchall()]
 
                 # Verify key tables exist
@@ -124,6 +126,7 @@ class TestDbCommonSmoke:
 
         # Create a session factory to get the engine that will be used
         from vgnc_internal_orm.sessions.factory import SessionFactory
+
         factory = SessionFactory(config)
         engine = factory.engine
 
@@ -174,8 +177,6 @@ class TestDbCommonSmoke:
         BaseModel.metadata and BaseCustomModel.metadata.
         """
         # Read the alembic/env.py file and check it references db_common
-        import sys
-        from pathlib import Path
 
         alembic_env_path = Path(__file__).parent.parent.parent / "alembic" / "env.py"
         assert alembic_env_path.exists(), "alembic/env.py should exist"
@@ -183,13 +184,16 @@ class TestDbCommonSmoke:
         content = alembic_env_path.read_text()
 
         # Verify it imports DeclarativeBase from db_common
-        assert "from db_common import DeclarativeBase" in content, \
-            "alembic/env.py should import DeclarativeBase from db_common"
+        assert (
+            "from db_common import DeclarativeBase" in content
+        ), "alembic/env.py should import DeclarativeBase from db_common"
 
         # Verify it uses DeclarativeBase.metadata as target_metadata
-        assert "target_metadata = DeclarativeBase.metadata" in content, \
-            "alembic/env.py should use DeclarativeBase.metadata as target_metadata"
+        assert (
+            "target_metadata = DeclarativeBase.metadata" in content
+        ), "alembic/env.py should use DeclarativeBase.metadata as target_metadata"
 
         # Verify it does NOT manually merge metadata
-        assert "unified_metadata" not in content, \
-            "alembic/env.py should not manually merge metadata (redundant after db-common migration)"
+        assert (
+            "unified_metadata" not in content
+        ), "alembic/env.py should not manually merge metadata (redundant after db-common migration)"

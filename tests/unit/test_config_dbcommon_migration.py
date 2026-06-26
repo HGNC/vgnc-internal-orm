@@ -14,13 +14,10 @@ RED phase: Tests FAIL before the migration because:
 GREEN phase: Tests PASS after the migration is complete.
 """
 
-import pytest
+# Import what we expect to exist AFTER migration
+from db_common import DatabaseSettings as DbCommonDatabaseSettings
 from pydantic import SecretStr
 from sqlalchemy import URL
-
-# Import what we expect to exist AFTER migration
-from db_common import DatabaseDriver as DbCommonDatabaseDriver
-from db_common import DatabaseSettings as DbCommonDatabaseSettings
 
 from vgnc_internal_orm.config.settings import (
     DatabaseConfig,
@@ -33,9 +30,9 @@ class TestDatabaseConfigDbCommonMigration:
 
     def test_database_config_is_subclass_of_db_common(self):
         """Verify DatabaseConfig subclasses db_common.DatabaseSettings."""
-        assert issubclass(DatabaseConfig, DbCommonDatabaseSettings), (
-            "DatabaseConfig should be a subclass of db_common.DatabaseSettings"
-        )
+        assert issubclass(
+            DatabaseConfig, DbCommonDatabaseSettings
+        ), "DatabaseConfig should be a subclass of db_common.DatabaseSettings"
 
     def test_database_driver_uses_db_common_enum(self):
         """Verify DatabaseDriver re-exports db_common.DatabaseDriver."""
@@ -78,9 +75,9 @@ class TestDatabaseConfigDbCommonMigration:
             _env_file=None,
         )
 
-        assert not hasattr(config, "async_database_url"), (
-            "async_database_url property should be removed"
-        )
+        assert not hasattr(
+            config, "async_database_url"
+        ), "async_database_url property should be removed"
 
     def test_get_url_returns_sqlalchemy_url(self):
         """Verify get_url() returns a sqlalchemy.URL object."""
@@ -91,7 +88,9 @@ class TestDatabaseConfigDbCommonMigration:
         )
 
         url = config.get_url()
-        assert isinstance(url, URL), f"get_url() should return sqlalchemy.URL, got {type(url)}"
+        assert isinstance(
+            url, URL
+        ), f"get_url() should return sqlalchemy.URL, got {type(url)}"
 
     def test_database_url_compat_shim_works(self):
         """Verify database_url property returns SecretStr compat shim."""
@@ -102,9 +101,9 @@ class TestDatabaseConfigDbCommonMigration:
         )
 
         url = config.database_url
-        assert isinstance(url, SecretStr), (
-            "database_url should return SecretStr for compatibility"
-        )
+        assert isinstance(
+            url, SecretStr
+        ), "database_url should return SecretStr for compatibility"
 
         # Should be gettable as a string
         url_str = url.get_secret_value()
@@ -116,9 +115,9 @@ class TestDatabaseConfigDbCommonMigration:
         from vgnc_internal_orm.config import settings
 
         # Environment should not be imported from settings
-        assert not hasattr(settings, "Environment"), (
-            "Environment enum should be removed"
-        )
+        assert not hasattr(
+            settings, "Environment"
+        ), "Environment enum should be removed"
 
     def test_settings_class_removed(self):
         """Verify Settings class is removed."""
@@ -156,10 +155,19 @@ class TestDatabaseConfigDbCommonMigration:
             # Some fields like charset might be in db_common but not on the subclass
             # The key is they should not be on our DatabaseConfig
             # For now, just verify we don't have these specific vgnc-added fields
-            if field in ["ssl_mode", "ssl_cert", "ssl_key", "ssl_ca", "query_timeout", "use_unicode", "autocommit", "db_schema"]:
-                assert not hasattr(config, field), (
-                    f"Field '{field}' should be removed from DatabaseConfig"
-                )
+            if field in [
+                "ssl_mode",
+                "ssl_cert",
+                "ssl_key",
+                "ssl_ca",
+                "query_timeout",
+                "use_unicode",
+                "autocommit",
+                "db_schema",
+            ]:
+                assert not hasattr(
+                    config, field
+                ), f"Field '{field}' should be removed from DatabaseConfig"
 
     def test_mysql_url_construction(self):
         """Verify MySQL URL construction with db_common structure."""

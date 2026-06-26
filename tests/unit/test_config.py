@@ -1,8 +1,6 @@
 """Unit tests for configuration management."""
 
 import pytest
-
-from db_common import DatabaseDriver as DbCommonDatabaseDriver
 from pydantic import SecretStr, ValidationError
 
 from vgnc_internal_orm.config.settings import DatabaseConfig, DatabaseDriver

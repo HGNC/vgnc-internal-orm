@@ -64,13 +64,17 @@ jobs:
 
     - name: Run ${{ matrix.test-type }} tests
       run: |
+        # Coverage is REPORTED per matrix leg for visibility, but NOT gated
+        # here: each leg only runs one test type, so gating total-project
+        # coverage on a single leg is structurally unsatisfiable (e.g. unit
+        # tests can never cover the DB/CLI/integration paths). The real,
+        # combined 70% gate lives in .github/workflows/coverage.yml.
         uv run $UV_EXTRAS python -m pytest tests/${{ matrix.test-type }}/ \
           --junit-xml=test-results/${{ matrix.test-type }}.xml \
           --cov=src/vgnc_internal_orm \
           --cov-report=xml:test-results/coverage-${{ matrix.test-type }}.xml \
           --cov-report=html:test-results/coverage-html-${{ matrix.test-type }} \
-          --cov-report=term-missing \
-          --cov-fail-under=70
+          --cov-report=term-missing
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
