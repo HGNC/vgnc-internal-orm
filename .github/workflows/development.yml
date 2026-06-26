@@ -48,7 +48,7 @@ jobs:
 
     - name: Run unit tests (fast feedback)
       run: |
-        python -m pytest tests/unit/ \
+        uv run python -m pytest tests/unit/ \
           --tb=short \
           --maxfail=10 \
           --durations=5 \
@@ -56,7 +56,7 @@ jobs:
 
     - name: Run a few integration tests (medium)
       run: |
-        python -m pytest tests/integration/test_config_loading.py \
+        uv run python -m pytest tests/integration/test_config_loading.py \
           tests/integration/test_db_common_smoke.py \
           --tb=short \
           -x
@@ -94,22 +94,22 @@ jobs:
     - name: Check code formatting
       run: |
         echo "Checking code formatting..."
-        black --check --diff src/ tests/ || echo "Formatting issues found"
+        uv run black --check --diff src/ tests/ || echo "Formatting issues found"
 
     - name: Check import sorting
       run: |
         echo "Checking import sorting..."
-        isort --check-only --diff src/ tests/ || echo "Import sorting issues found"
+        uv run isort --check-only --diff src/ tests/ || echo "Import sorting issues found"
 
     - name: Run linting
       run: |
         echo "Running linting..."
-        ruff check src/ tests/ || echo "Linting issues found"
+        uv run ruff check src/ tests/ || echo "Linting issues found"
 
     - name: Run security check
       run: |
         echo "Running security check..."
-        bandit -r src/ -f json -o security-report.json || echo "Security issues found"
+        uv run bandit -r src/ -f json -o security-report.json || echo "Security issues found"
 
     - name: Upload quality reports
       uses: actions/upload-artifact@v4
@@ -128,25 +128,23 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v4
       with:
-        python-version: "3.13"
+        version: "latest"
+        enable-cache: true
 
     - name: Build package
       run: |
-        python -m pip install --upgrade pip build
-        python -m build
+        uv build
 
     - name: Validate package
       run: |
-        python -m pip install twine
-        twine check dist/*
+        uvx twine check dist/*
 
     - name: Test installation
       run: |
-        python -m pip install dist/*.whl
-        python -c "import vgnc_internal_orm; print('✅ Package installs successfully')"
+        uv run python -c "import vgnc_internal_orm; print('✅ Package installs successfully')"
 
   # Branch protection reminder
   branch-protection:
