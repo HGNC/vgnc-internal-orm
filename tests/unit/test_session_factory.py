@@ -1,709 +1,258 @@
-"""Unit tests for session factory and database connection management."""
+"""Unit tests for the db-common-delegating session factory.
 
-from unittest.mock import AsyncMock, Mock, patch
+T3 rewrote the session layer to delegate engine/session creation to
+``db_common.EngineFactory`` / ``db_common.SessionFactory`` and removed all
+async code and the bespoke MySQL/env pool plumbing. These tests pin that
+delegation behaviour against a real in-memory SQLite engine (no mocks).
+"""
 
+import inspect
+
+import db_common
 import pytest
-from sqlalchemy import Engine
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from vgnc_internal_orm.config.settings import (
-    DatabaseConfig,
-    DatabaseDriver,
-    Environment,
-)
+import vgnc_internal_orm.sessions.factory as factory_module
+from vgnc_internal_orm.config.settings import DatabaseConfig, DatabaseDriver
 from vgnc_internal_orm.sessions.factory import (
     SessionFactory,
-    async_engine_from_config,
-    check_async_database_connection,
     check_database_connection,
+    create_session_factory_with_config,
     engine_from_config,
-    get_async_session_context,
-    get_engine_info_from_config,
     get_session,
     get_session_context,
     get_session_factory,
     health_check_from_config,
+    reset_global_session_factory,
 )
+from vgnc_internal_orm.sessions.manager import SessionManager
 
 
-class TestSessionFactory:
-    """Test cases for SessionFactory class."""
+def _sqlite_config() -> DatabaseConfig:
+    """A minimal, env-file-free in-memory SQLite DatabaseConfig."""
+    return DatabaseConfig(
+        driver=DatabaseDriver.SQLITE, database=":memory:", _env_file=None
+    )
 
-    def test_initialization_with_config(self):
-        """Test SessionFactory initialization with configuration."""
-        config = DatabaseConfig(
-            username="test_user", password="test_password", database="test_db"
-        )
-        factory = SessionFactory(config)
-        assert factory.config == config
-        assert factory._engine is None
-        assert factory._async_engine is None
-        assert factory._session_factory is None
-        assert factory._async_session_factory is None
 
-    def test_initialization_without_config(self):
-        """Test SessionFactory initialization without configuration."""
-        factory = SessionFactory()
-        assert factory.config is None
+def _dead_sqlite_config() -> DatabaseConfig:
+    """A SQLite config whose path cannot be created, so connections fail."""
+    return DatabaseConfig(
+        driver=DatabaseDriver.SQLITE,
+        database="/this/path/does/not/exist/test.db",
+        _env_file=None,
+    )
 
-    @patch("vgnc_internal_orm.sessions.factory.create_engine")
-    def test_engine_property_creates_engine(self, mock_create_engine):
-        """Test that engine property creates SQLAlchemy engine."""
-        mock_engine = Mock(spec=Engine)
-        mock_engine.pool = Mock()  # Add pool attribute for event registration
-        mock_create_engine.return_value = mock_engine
 
-        config = DatabaseConfig(
-            username="test_user", password="test_password", database="test_db"
-        )
-        factory = SessionFactory(config)
+# Symbols that must NOT exist on the module once async is removed.
+ASYNC_SYMBOLS = [
+    "create_async_engine",
+    "AsyncEngine",
+    "AsyncSession",
+    "async_sessionmaker",
+    "async_engine",
+    "create_async_session",
+    "async_session_factory",
+    "async_health_check",
+    "async_engine_from_config",
+    "get_async_session",
+    "get_async_session_context",
+    "async_health_check_from_config",
+    "check_async_database_connection",
+    "_create_async_engine",
+    "_async_engine",
+    "_async_session_factory",
+]
 
+
+class TestAsyncRemoved:
+    """Gate (e): no async surface remains in the session module."""
+
+    def test_no_async_symbols_on_module(self):
+        present = [name for name in ASYNC_SYMBOLS if hasattr(factory_module, name)]
+        assert present == [], f"async symbols still present on module: {present}"
+
+    def test_no_async_imports_in_module_source(self):
+        source = inspect.getsource(factory_module)
+        forbidden = ("create_async_engine", "AsyncSession", "async_sessionmaker")
+        found = [token for token in forbidden if token in source]
+        assert found == [], f"async tokens still in module source: {found}"
+
+    def test_no_async_def_in_module_source(self):
+        source = inspect.getsource(factory_module)
+        assert "async def" not in source
+
+
+class TestDbCommonDelegation:
+    """Engine/session creation delegates to db-common singletons."""
+
+    def test_factory_uses_db_common_engine_factory(self):
+        factory = SessionFactory(_sqlite_config())
+        # touching .engine builds the db_common.EngineFactory
+        _ = factory.engine
+        assert isinstance(factory._engine_factory, db_common.EngineFactory)
+
+    def test_get_readonly_session_rejects_commit(self):
+        """db_common.SessionFactory.get_readonly_session is exposed and rejects writes."""
+        factory = SessionFactory(_sqlite_config())
+
+        with pytest.raises(db_common.ReadOnlySessionError):
+            with factory.get_readonly_session() as session:
+                session.commit()
+
+    def test_session_exceptions_reexported_from_sessions_package(self):
+        from vgnc_internal_orm import sessions
+
+        assert sessions.ReadOnlySessionError is db_common.ReadOnlySessionError
+        assert sessions.SessionError is db_common.SessionError
+
+
+class TestSqliteBehaviour:
+    """Verify (a)-(b),(d): real SQLite engine + session round-trips."""
+
+    def test_engine_from_config_is_usable(self):
+        engine = engine_from_config(_sqlite_config())
+        assert isinstance(engine, Engine)
+        assert engine.url.drivername == "sqlite"
+
+    def test_factory_engine_is_usable_sqlite(self):
+        factory = SessionFactory(_sqlite_config())
         engine = factory.engine
-        assert engine == mock_engine
-        mock_create_engine.assert_called_once()
-        assert factory._engine == mock_engine
+        assert engine is not None
+        # db_common.EngineFactory uses StaticPool for SQLite
+        assert isinstance(engine.pool, StaticPool)
 
-    def test_engine_property_raises_without_config(self):
-        """Test that engine property raises ValueError without config."""
-        factory = SessionFactory()
-        with pytest.raises(ValueError, match="Database configuration is required"):
-            _ = factory.engine
+    def test_get_session_context_roundtrips_select_one(self):
+        with get_session_context(_sqlite_config()) as session:
+            result = session.execute(text("SELECT 1")).fetchone()
+            assert result[0] == 1
 
-    @patch("vgnc_internal_orm.sessions.factory.create_async_engine")
-    def test_async_engine_property_creates_engine(self, mock_create_async_engine):
-        """Test that async_engine property creates async SQLAlchemy engine."""
-        mock_async_engine = Mock(spec=AsyncEngine)
-        mock_async_engine.pool = Mock()  # Add pool attribute for event registration
-        mock_create_async_engine.return_value = mock_async_engine
+    def test_get_session_context_rolls_back_on_exception(self):
+        config = _sqlite_config()
 
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL_ASYNC,
-            username="test_user",
-            password="test_password",
-            database="test_db",
-        )
-        factory = SessionFactory(config)
+        with pytest.raises(ValueError, match="boom"):
+            with get_session_context(config) as session:
+                session.execute(text("SELECT 1"))
+                raise ValueError("boom")
 
-        async_engine = factory.async_engine
-        assert async_engine == mock_async_engine
-        mock_create_async_engine.assert_called_once()
-        assert factory._async_engine == mock_async_engine
+        # Still usable afterwards
+        with get_session_context(config) as session:
+            assert session.execute(text("SELECT 1")).fetchone()[0] == 1
 
-    def test_async_engine_property_raises_without_config(self):
-        """Test that async_engine property raises ValueError without config."""
-        factory = SessionFactory()
-        with pytest.raises(ValueError, match="Database configuration is required"):
-            _ = factory.async_engine
+    def test_session_manager_commits_on_clean_exit(self):
+        manager = SessionManager(SessionFactory(_sqlite_config()))
 
-    def test_get_pool_config_development(self):
-        """Test pool configuration for development environment."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
-            username="test_user",
-            password="test_password",
-            database="test_db",
-            environment=Environment.DEVELOPMENT,
-            _env_file=None,  # Disable environment file loading for tests
-        )
-        factory = SessionFactory(config)
+        with manager.get_session() as session:
+            session.execute(text("SELECT 1"))
 
-        pool_config = factory._get_pool_config()
+    def test_session_manager_rolls_back_on_error(self):
+        manager = SessionManager(SessionFactory(_sqlite_config()))
 
-        assert pool_config["pool_pre_ping"] is True
-        assert "pool_size" in pool_config
-        assert "pool_timeout" in pool_config
-        assert (
-            pool_config["pool_timeout"] <= 10
-        )  # Development should have shorter timeout
-        assert pool_config["pool_recycle"] == 3600  # 1 hour for development
+        with pytest.raises(RuntimeError):
+            with manager.get_session():
+                raise RuntimeError("fail")
 
-    def test_get_pool_config_production(self):
-        """Test pool configuration for production environment."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
-            username="test_user",
-            password="test_password",
-            database="test_db",
-            environment=Environment.PRODUCTION,
-            _env_file=None,  # Disable environment file loading for tests
-        )
-        factory = SessionFactory(config)
 
-        pool_config = factory._get_pool_config()
+class TestHealthCheck:
+    """Verify (c): health_check_from_config True on live, False on dead."""
 
-        assert pool_config["pool_pre_ping"] is True
-        assert "pool_size" in pool_config
-        assert "pool_timeout" in pool_config
-        assert pool_config["pool_recycle"] == 14400  # 4 hours for production
+    def test_health_check_true_on_live_sqlite(self):
+        assert health_check_from_config(_sqlite_config()) is True
 
-    def test_get_pool_config_sqlite(self):
-        """Test pool configuration for SQLite."""
-        config = DatabaseConfig(driver=DatabaseDriver.SQLITE, database="test.db")
-        factory = SessionFactory(config)
+    def test_health_check_false_on_dead_engine(self):
+        # A SQLite path that cannot be created -> connect fails -> False.
+        assert health_check_from_config(_dead_sqlite_config()) is False
 
-        pool_config = factory._get_pool_config()
+    def test_factory_health_check_delegates_to_db_common(self):
+        factory = SessionFactory(_sqlite_config())
+        # engine is live
+        assert factory.health_check() is True
 
-        assert pool_config["poolclass"] == StaticPool
-        assert "connect_args" in pool_config
-        assert pool_config["connect_args"]["check_same_thread"] is False
-        assert pool_config["connect_args"]["uri"] is True
 
-    def test_get_connect_args_mysql(self):
-        """Test connection arguments for MySQL."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
-            username="test_user",
-            password="test_password",
-            database="test_db",
-            isolation_level="READ_COMMITTED",
-        )
-        factory = SessionFactory(config)
+class TestPublicHelpers:
+    """The preserved thin-delegating public functions keep working."""
 
-        connect_args = factory._get_connect_args()
+    def test_get_session_with_config(self):
+        session = get_session(_sqlite_config())
+        assert isinstance(session, Session)
+        session.close()
 
-        assert connect_args["charset"] == "utf8mb4"
-        assert connect_args["collation"] == "utf8mb4_unicode_ci"
-        assert connect_args["autocommit"] is False
-        assert connect_args["isolation_level"] == "READ_COMMITTED"
+    def test_create_session_factory_with_config(self):
+        factory = create_session_factory_with_config(_sqlite_config())
+        assert isinstance(factory, SessionFactory)
+        assert factory.config is not None
 
-    def test_create_session(self):
-        """Test session creation."""
-        config = DatabaseConfig(
-            username="test_user", password="test_password", database="test_db"
-        )
-        factory = SessionFactory(config)
+    def test_check_database_connection_true(self):
+        assert check_database_connection(_sqlite_config()) is True
 
-        with patch(
-            "vgnc_internal_orm.sessions.factory.sessionmaker"
-        ) as mock_sessionmaker:
-            mock_session = Mock(spec=Session)
-            mock_session_factory = Mock()
-            mock_sessionmaker.return_value = mock_session_factory
-            mock_session_factory.return_value = mock_session
+    def test_check_database_connection_false_on_dead(self):
+        assert check_database_connection(_dead_sqlite_config()) is False
 
-            session = factory.create_session()
-            assert session == mock_session
-            mock_sessionmaker.assert_called_once()
-            mock_session_factory.assert_called_once()
+    def test_global_session_factory_singleton_and_reset(self):
+        reset_global_session_factory()
+        first = get_session_factory()
+        second = get_session_factory()
+        assert first is second
+        assert isinstance(first, SessionFactory)
+        reset_global_session_factory()
 
-    def test_create_async_session(self):
-        """Test async session creation."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL_ASYNC,
-            username="test_user",
-            password="test_password",
-            database="test_db",
-        )
-        factory = SessionFactory(config)
+    def test_get_session_without_config_raises_when_global_unset(self):
+        reset_global_session_factory()
+        # global factory has no config -> engine creation is impossible
+        with pytest.raises(ValueError):
+            get_session()
+        reset_global_session_factory()
 
-        with patch(
-            "vgnc_internal_orm.sessions.factory.async_sessionmaker"
-        ) as mock_async_sessionmaker:
-            mock_async_session = Mock(spec=AsyncSession)
-            mock_async_session_factory = Mock()
-            mock_async_sessionmaker.return_value = mock_async_session_factory
-            mock_async_session_factory.return_value = mock_async_session
 
-            async_session = factory.create_async_session()
-            assert async_session == mock_async_session
-            mock_async_sessionmaker.assert_called_once()
-            mock_async_session_factory.assert_called_once()
+class TestEngineLifecycle:
+    def test_engine_cached(self):
+        factory = SessionFactory(_sqlite_config())
+        assert factory.engine is factory.engine
 
-    @patch("vgnc_internal_orm.sessions.factory.text")
-    def test_health_check_success(self, mock_text):
-        """Test successful health check."""
-        mock_text.return_value = Mock()
-        config = DatabaseConfig(
-            username="test_user", password="test_password", database="test_db"
-        )
-        factory = SessionFactory(config)
+    def test_dispose_engine_clears_cache(self):
+        factory = SessionFactory(_sqlite_config())
+        _ = factory.engine
+        factory.dispose_engine()
+        assert factory._engine is None
 
-        with patch.object(factory, "create_session") as mock_create_session:
-            mock_session = Mock()
-            mock_create_session.return_value.__enter__.return_value = mock_session
-
-            result = factory.health_check()
-            assert result is True
-            mock_session.execute.assert_called_once()
-
-    def test_health_check_failure(self):
-        """Test health check failure."""
-        config = DatabaseConfig(
-            username="test_user", password="test_password", database="test_db"
-        )
-        factory = SessionFactory(config)
-
-        with patch.object(factory, "create_session") as mock_create_session:
-            mock_create_session.side_effect = Exception("Connection failed")
-
-            result = factory.health_check()
-            assert result is False
-
-    @pytest.mark.asyncio
-    async def test_async_health_check_success(self):
-        """Test successful async health check."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL_ASYNC,
-            username="test_user",
-            password="test_password",
-            database="test_db",
-        )
-        factory = SessionFactory(config)
-
-        with patch.object(factory, "create_async_session") as mock_create_session:
-            mock_session = AsyncMock()
-            mock_create_session.return_value.__aenter__.return_value = mock_session
-
-            result = await factory.async_health_check()
-            assert result is True
-            mock_session.execute.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_async_health_check_failure(self):
-        """Test async health check failure."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL_ASYNC,
-            username="test_user",
-            password="test_password",
-            database="test_db",
-        )
-        factory = SessionFactory(config)
-
-        with patch.object(factory, "create_async_session") as mock_create_session:
-            mock_create_session.side_effect = Exception("Connection failed")
-
-            result = await factory.async_health_check()
-            assert result is False
-
-    def test_get_engine_info(self):
-        """Test engine information retrieval."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
-            username="test_user",
-            password="test_password",
-            database="test_db",
-            echo=True,
-            _env_file=None,  # Disable environment file loading for tests
-        )
-        factory = SessionFactory(config)
-
+    def test_engine_info_reports_driver(self):
+        factory = SessionFactory(_sqlite_config())
         info = factory.get_engine_info()
+        assert info["driver"] == "sqlite"
 
-        assert "driver" in info
-        assert "database_url" in info
-        assert "environment" in info
-        assert "echo" in info
-        assert "pool_config" in info
-        assert "connect_args" in info
-        assert info["echo"] is True
-        assert info["driver"] == "mysql+pymysql"
+    def test_pool_status_reports_staticpool(self):
+        factory = SessionFactory(_sqlite_config())
+        _ = factory.engine
+        status = factory.get_pool_status()
+        assert "StaticPool" in status["status"]
 
-    def test_get_pool_status_not_initialized(self):
-        """Test pool status when engine not initialized."""
-        config = DatabaseConfig(
-            username="test_user", password="test_password", database="test_db"
-        )
-        factory = SessionFactory(config)
-
+    def test_pool_status_not_initialized(self):
+        factory = SessionFactory(_sqlite_config())
         status = factory.get_pool_status()
         assert status["status"] == "Not initialized"
 
-    def test_close_all_sessions(self):
-        """Test closing all sessions."""
-        with patch(
-            "vgnc_internal_orm.sessions.factory.sessionmaker"
-        ) as mock_sessionmaker:
-            mock_session_factory = Mock()
-            mock_sessionmaker.return_value = mock_session_factory
 
-            config = DatabaseConfig(
-                username="test_user", password="test_password", database="test_db"
-            )
-            factory = SessionFactory(config)
+class TestNoConfigErrorHandling:
+    """A ``SessionFactory(None)`` fails fast with a clear error, never silently.
 
-            # Create session factory to initialize it
-            _ = factory.session_factory
+    Restores coverage that was lost when the old ``TestErrorHandling`` was
+    removed alongside the removed-behavior classes in the integration suite.
+    """
 
-            factory.close_all_sessions()
-            mock_session_factory.close_all.assert_called_once()
-
-    def test_dispose_engine(self):
-        """Test engine disposal."""
-        with patch(
-            "vgnc_internal_orm.sessions.factory.create_engine"
-        ) as mock_create_engine:
-            mock_engine = Mock()
-            mock_engine.pool = Mock()
-            mock_create_engine.return_value = mock_engine
-
-            config = DatabaseConfig(
-                username="test_user", password="test_password", database="test_db"
-            )
-            factory = SessionFactory(config)
-
-            # Create engine to initialize it
+    def test_engine_without_config_raises(self):
+        factory = SessionFactory(None)
+        with pytest.raises(ValueError, match="Database configuration is required"):
             _ = factory.engine
 
-            factory.dispose_engine()
-            mock_engine.dispose.assert_called_once()
-            assert factory._engine is None
-
-
-class TestHelperFunctions:
-    """Test cases for helper functions."""
-
-    def test_get_session_factory_lazy_initialization(self):
-        """Test global session factory lazy initialization."""
-        # Reset global state
-        import vgnc_internal_orm.sessions.factory as factory_module
-
-        factory_module.session_factory = None
-
-        factory1 = get_session_factory()
-        factory2 = get_session_factory()
-
-        assert factory1 is factory2
-        assert isinstance(factory1, SessionFactory)
-
-    @patch("vgnc_internal_orm.sessions.factory.SessionFactory")
-    def test_engine_from_config(self, mock_session_factory):
-        """Test creating engine from config."""
-        mock_factory = Mock()
-        mock_engine = Mock(spec=Engine)
-        mock_factory.engine = mock_engine
-        mock_session_factory.return_value = mock_factory
-
-        config = DatabaseConfig(
-            username="test_user", password="test_password", database="test_db"
-        )
-
-        engine = engine_from_config(config)
-        assert engine == mock_engine
-        mock_session_factory.assert_called_once_with(config)
-
-    @patch("vgnc_internal_orm.sessions.factory.SessionFactory")
-    def test_async_engine_from_config(self, mock_session_factory):
-        """Test creating async engine from config."""
-        mock_factory = Mock()
-        mock_async_engine = Mock(spec=AsyncEngine)
-        mock_factory.async_engine = mock_async_engine
-        mock_session_factory.return_value = mock_factory
-
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL_ASYNC,
-            username="test_user",
-            password="test_password",
-            database="test_db",
-        )
-
-        async_engine = async_engine_from_config(config)
-        assert async_engine == mock_async_engine
-        mock_session_factory.assert_called_once_with(config)
-
-    @patch("vgnc_internal_orm.sessions.factory.get_session_factory")
-    def test_get_session_without_config(self, mock_get_session_factory):
-        """Test getting session without config (uses global factory)."""
-        mock_factory = Mock()
-        mock_session = Mock(spec=Session)
-        mock_factory.create_session.return_value = mock_session
-        mock_get_session_factory.return_value = mock_factory
-
-        session = get_session()
-        assert session == mock_session
-        mock_get_session_factory.assert_called_once()
-
-    @patch("vgnc_internal_orm.sessions.factory.SessionFactory")
-    def test_get_session_with_config(self, mock_session_factory):
-        """Test getting session with config."""
-        mock_factory = Mock()
-        mock_session = Mock(spec=Session)
-        mock_factory.create_session.return_value = mock_session
-        mock_session_factory.return_value = mock_factory
-
-        config = DatabaseConfig(
-            username="test_user", password="test_password", database="test_db"
-        )
-
-        session = get_session(config)
-        assert session == mock_session
-        mock_session_factory.assert_called_once_with(config)
-
-    @patch("vgnc_internal_orm.sessions.factory.SessionFactory")
-    def test_health_check_from_config(self, mock_session_factory):
-        """Test health check from config."""
-        mock_factory = Mock()
-        mock_factory.health_check.return_value = True
-        mock_session_factory.return_value = mock_factory
-
-        config = DatabaseConfig(
-            username="test_user", password="test_password", database="test_db"
-        )
-
-        result = health_check_from_config(config)
-        assert result is True
-        mock_factory.health_check.assert_called_once()
-
-    @patch("vgnc_internal_orm.sessions.factory.SessionFactory")
-    def test_get_engine_info_from_config(self, mock_session_factory):
-        """Test getting engine info from config."""
-        mock_factory = Mock()
-        mock_factory.get_engine_info.return_value = {"driver": "mysql"}
-        mock_session_factory.return_value = mock_factory
-
-        config = DatabaseConfig(
-            username="test_user", password="test_password", database="test_db"
-        )
-
-        info = get_engine_info_from_config(config)
-        assert info == {"driver": "mysql"}
-        mock_factory.get_engine_info.assert_called_once()
-
-
-class TestContextManagers:
-    """Test cases for context managers."""
-
-    @patch("vgnc_internal_orm.sessions.factory.get_session_factory")
-    def test_get_session_context_success(self, mock_get_session_factory):
-        """Test session context manager on success."""
-        mock_factory = Mock()
-        mock_session = Mock(spec=Session)
-        mock_factory.create_session.return_value = mock_session
-        mock_get_session_factory.return_value = mock_factory
-
-        with get_session_context() as session:
-            assert session == mock_session
-
-        mock_session.commit.assert_called_once()
-        mock_session.close.assert_called_once()
-
-    @patch("vgnc_internal_orm.sessions.factory.get_session_factory")
-    def test_get_session_context_with_exception(self, mock_get_session_factory):
-        """Test session context manager with exception."""
-        mock_factory = Mock()
-        mock_session = Mock(spec=Session)
-        mock_factory.create_session.return_value = mock_session
-        mock_get_session_factory.return_value = mock_factory
-
-        with pytest.raises(ValueError):
-            with get_session_context():
-                raise ValueError("Test error")
-
-        mock_session.rollback.assert_called_once()
-        mock_session.close.assert_called_once()
-
-    @patch("vgnc_internal_orm.sessions.factory.get_session_factory")
-    def test_get_session_context_with_config(self, mock_get_session_factory):
-        """Test session context manager with config."""
-        config = DatabaseConfig(
-            username="test_user", password="test_password", database="test_db"
-        )
-
-        with patch(
-            "vgnc_internal_orm.sessions.factory.SessionFactory"
-        ) as mock_session_factory:
-            mock_factory = Mock()
-            mock_session = Mock(spec=Session)
-            mock_factory.create_session.return_value = mock_session
-            mock_session_factory.return_value = mock_factory
-
-            with get_session_context(config) as session:
-                assert session == mock_session
-
-            mock_session_factory.assert_called_once_with(config)
-
-    @pytest.mark.asyncio
-    @patch("vgnc_internal_orm.sessions.factory.get_session_factory")
-    async def test_get_async_session_context_success(self, mock_get_session_factory):
-        """Test async session context manager on success."""
-        mock_factory = Mock()
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_factory.create_async_session.return_value = mock_session
-        mock_get_session_factory.return_value = mock_factory
-
-        async with get_async_session_context() as session:
-            assert session == mock_session
-
-        mock_session.commit.assert_called_once()
-        mock_session.close.assert_called_once()
-
-    @pytest.mark.asyncio
-    @patch("vgnc_internal_orm.sessions.factory.get_session_factory")
-    async def test_get_async_session_context_with_exception(
-        self, mock_get_session_factory
-    ):
-        """Test async session context manager with exception."""
-        mock_factory = Mock()
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_factory.create_async_session.return_value = mock_session
-        mock_get_session_factory.return_value = mock_factory
-
-        with pytest.raises(ValueError):
-            async with get_async_session_context():
-                raise ValueError("Test error")
-
-        mock_session.rollback.assert_called_once()
-        mock_session.close.assert_called_once()
-
-
-class TestConnectionTesting:
-    """Test cases for connection testing utilities."""
-
-    @patch("vgnc_internal_orm.sessions.factory.get_session_context")
-    def test_database_connection_success(self, mock_get_session_context):
-        """Test successful connection test."""
-        mock_session = Mock()
-        mock_get_session_context.return_value.__enter__.return_value = mock_session
-
-        config = DatabaseConfig(
-            username="test_user", password="test_password", database="test_db"
-        )
-
-        result = check_database_connection(config)
-        assert result is True
-
-    @patch("vgnc_internal_orm.sessions.factory.get_session_context")
-    def test_database_connection_failure(self, mock_get_session_context):
-        """Test connection test failure."""
-        mock_get_session_context.side_effect = Exception("Connection failed")
-
-        config = DatabaseConfig(
-            username="test_user", password="test_password", database="test_db"
-        )
-
-        result = check_database_connection(config)
-        assert result is False
-
-    @pytest.mark.asyncio
-    @patch("vgnc_internal_orm.sessions.factory.get_async_session_context")
-    async def test_async_database_connection_success(
-        self, mock_get_async_session_context
-    ):
-        """Test successful async connection test."""
-        mock_session = AsyncMock()
-        mock_get_async_session_context.return_value.__aenter__.return_value = (
-            mock_session
-        )
-
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL_ASYNC,
-            username="test_user",
-            password="test_password",
-            database="test_db",
-        )
-
-        result = await check_async_database_connection(config)
-        assert result is True
-
-    @pytest.mark.asyncio
-    @patch("vgnc_internal_orm.sessions.factory.get_async_session_context")
-    async def test_async_database_connection_failure(
-        self, mock_get_async_session_context
-    ):
-        """Test async connection test failure."""
-        mock_get_async_session_context.side_effect = Exception("Connection failed")
-
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL_ASYNC,
-            username="test_user",
-            password="test_password",
-            database="test_db",
-        )
-
-        result = await check_async_database_connection(config)
-        assert result is False
-
-
-class TestEngineEvents:
-    """Test cases for engine event listeners."""
-
-    @patch("vgnc_internal_orm.sessions.factory.create_engine")
-    def test_sqlite_pragma_events(self, mock_create_engine):
-        """Test SQLite pragma event listeners."""
-        mock_engine = Mock(spec=Engine)
-        mock_engine.pool = Mock()  # Add pool attribute for event registration
-        mock_create_engine.return_value = mock_engine
-
-        config = DatabaseConfig(driver=DatabaseDriver.SQLITE, database="test.db")
-        factory = SessionFactory(config)
-
-        # Trigger engine creation to register events
-        _ = factory.engine
-
-        # Verify event listeners were registered
-        assert mock_create_engine.called
-
-    @patch("vgnc_internal_orm.sessions.factory.create_engine")
-    def test_mysql_charset_events(self, mock_create_engine):
-        """Test MySQL charset event listeners."""
-        mock_engine = Mock(spec=Engine)
-        mock_engine.pool = Mock()  # Add pool attribute for event registration
-        mock_create_engine.return_value = mock_engine
-
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
-            username="test_user",
-            password="test_password",
-            database="test_db",
-        )
-        factory = SessionFactory(config)
-
-        # Trigger engine creation to register events
-        _ = factory.engine
-
-        # Verify event listeners were registered
-        assert mock_create_engine.called
-
-    def test_development_mode_logging(self):
-        """Test enhanced logging in development mode."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
-            username="test_user",
-            password="test_password",
-            database="test_db",
-            environment=Environment.DEVELOPMENT,
-            echo=True,
-            _env_file=None,  # Disable environment file loading for tests
-        )
-        factory = SessionFactory(config)
-
-        # Test that development mode config is properly set
-        pool_config = factory._get_pool_config()
-        assert (
-            pool_config["pool_timeout"] <= 10
-        )  # Development should have shorter timeouts
-        assert pool_config["pool_recycle"] == 3600  # 1 hour for development
-
-
-class TestMultiEnvironmentSupport:
-    """Test cases for multi-environment support."""
-
-    def test_staging_environment_config(self):
-        """Test staging environment specific configuration."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
-            username="test_user",
-            password="test_password",
-            database="test_db",
-            environment=Environment.STAGING,
-            _env_file=None,  # Disable environment file loading for tests
-        )
-        factory = SessionFactory(config)
-
-        pool_config = factory._get_pool_config()
-        assert pool_config["pool_recycle"] == 7200  # 2 hours for staging
-
-    def test_isolation_level_support(self):
-        """Test isolation level configuration."""
-        config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
-            username="test_user",
-            password="test_password",
-            database="test_db",
-            isolation_level="REPEATABLE_READ",
-        )
-        factory = SessionFactory(config)
-
-        connect_args = factory._get_connect_args()
-        assert connect_args["isolation_level"] == "REPEATABLE_READ"
+    def test_session_factory_without_config_raises(self):
+        factory = SessionFactory(None)
+        with pytest.raises(ValueError, match="Database configuration is required"):
+            _ = factory.session_factory
+
+    def test_health_check_without_config_returns_false(self):
+        # health_check is a probe, so it reports False rather than raising;
+        # it must never succeed or silently pretend connectivity.
+        factory = SessionFactory(None)
+        assert factory.health_check() is False

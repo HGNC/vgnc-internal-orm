@@ -5,7 +5,6 @@ This module provides the foundation for load testing the VGNC ORM with
 concurrent access patterns, simulating real-world usage scenarios.
 """
 
-import asyncio
 import statistics
 import time
 from collections.abc import Callable
@@ -207,11 +206,11 @@ def populated_load_test_db(load_test_db):
         for species in species_data[:50]:  # 50 species with assemblies
             for j in range(3):  # 3 assemblies per species
                 assembly = Assembly(
-                    name=f"{species.genefam_prefix}_assembly_{j+1}",
+                    name=f"{species.genefam_prefix}_assembly_{j + 1}",
                     taxon_id=species.taxon_id,
                     source="Ensembl" if j == 0 else "NCBI",
-                    genbank_assembly_accession=f"GCA_{species.taxon_id:08d}_{j+1:010d}",
-                    refseq_assembly_accession=f"GCF_{species.taxon_id:08d}_{j+1:010d}",
+                    genbank_assembly_accession=f"GCA_{species.taxon_id:08d}_{j + 1:010d}",
+                    refseq_assembly_accession=f"GCF_{species.taxon_id:08d}_{j + 1:010d}",
                     is_current=True if j == 0 else False,
                     is_vgnc_default=True if j == 0 else False,
                 )
@@ -224,7 +223,7 @@ def populated_load_test_db(load_test_db):
         for species in species_data:
             for j in range(chromosomes_per_species):
                 chromosome = Chromosomes(
-                    display_name=f"chr{j+1}",
+                    display_name=f"chr{j + 1}",
                     taxon_id=species.taxon_id,
                     coord_system=f"{species.genefam_prefix}_coord_system",
                 )
@@ -378,114 +377,6 @@ class LoadTestRunner:
             total_duration=total_duration,
             response_times=results["response_times"],
             errors=results["errors"],
-        )
-
-        self.results.append(load_test_result)
-        return load_test_result
-
-    def run_async_test(
-        self, test_func: Callable, num_users: int, duration: int, **kwargs
-    ) -> LoadTestResult:
-        """Run a test function asynchronously with multiple users."""
-
-        async def async_worker(worker_id: int):
-            """Async worker function."""
-            # Create a fresh session for each async worker to ensure thread safety
-            session = self.session_factory()
-            worker_results = {
-                "requests": 0,
-                "successful": 0,
-                "failed": 0,
-                "response_times": [],
-                "errors": [],
-            }
-
-            try:
-                end_time = time.time() + duration
-
-                while time.time() < end_time:
-                    start_time = time.time()
-                    try:
-                        # Run sync function in thread pool for async compatibility
-                        loop = asyncio.get_event_loop()
-                        await loop.run_in_executor(
-                            None, test_func, session, worker_id, **kwargs
-                        )
-                        end_time_req = time.time()
-
-                        response_time = end_time_req - start_time
-                        worker_results["requests"] += 1
-                        worker_results["successful"] += 1
-                        worker_results["response_times"].append(response_time)
-
-                    except Exception as e:
-                        end_time_req = time.time()
-                        response_time = end_time_req - start_time
-
-                        worker_results["requests"] += 1
-                        worker_results["failed"] += 1
-                        worker_results["response_times"].append(response_time)
-                        worker_results["errors"].append(str(e))
-
-                        try:
-                            session.rollback()
-                        except Exception:
-                            # Ignore rollback errors during cleanup
-                            pass
-
-                    await asyncio.sleep(0.01)  # Longer async delay for SQLite safety
-
-            finally:
-                try:
-                    session.close()
-                except Exception:
-                    # Ignore session close errors during cleanup
-                    pass
-
-            return worker_results
-
-        async def run_async_workers():
-            """Run all async workers."""
-            tasks = [async_worker(i) for i in range(num_users)]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-
-            # Aggregate results
-            total_results = {
-                "total_requests": 0,
-                "successful_requests": 0,
-                "failed_requests": 0,
-                "response_times": [],
-                "errors": [],
-            }
-
-            for result in results:
-                if isinstance(result, Exception):
-                    total_results["errors"].append(str(result))
-                    continue
-
-                total_results["total_requests"] += result["requests"]
-                total_results["successful_requests"] += result["successful"]
-                total_results["failed_requests"] += result["failed"]
-                total_results["response_times"].extend(result["response_times"])
-                total_results["errors"].extend(result["errors"])
-
-            return total_results
-
-        # Run async test
-        start_time = time.time()
-        aggregated_results = asyncio.run(run_async_workers())
-        end_time = time.time()
-
-        total_duration = end_time - start_time
-
-        # Create LoadTestResult
-        load_test_result = LoadTestResult.from_metrics(
-            total_requests=aggregated_results["total_requests"],
-            successful_requests=aggregated_results["successful_requests"],
-            failed_requests=aggregated_results["failed_requests"],
-            total_duration=total_duration,
-            response_times=aggregated_results["response_times"],
-            errors=aggregated_results["errors"],
         )
 
         self.results.append(load_test_result)

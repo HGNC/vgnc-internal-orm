@@ -1,7 +1,9 @@
 """Unit tests for Chromosomes and Assembly models."""
 
-from src.vgnc_internal_orm.models.assembly import Assembly
-from src.vgnc_internal_orm.models.chromosomes import Chromosomes
+import db_common
+
+from vgnc_internal_orm.models.assembly import Assembly
+from vgnc_internal_orm.models.chromosomes import Chromosomes
 
 
 class TestChromosomesModel:
@@ -236,3 +238,11 @@ class TestModelRelationships:
         for i, name in enumerate(chromosome_names):
             assert chromosomes[i].display_name == name
             assert chromosomes[i].taxon_id == 9606
+
+
+class TestDbCommonBaseReparenting:
+    """Pin that mapped models inherit from db_common.DeclarativeBase (Task T2)."""
+
+    def test_mapped_models_subclass_db_common_declarative_base(self):
+        for model in (Assembly, Chromosomes):
+            assert issubclass(model, db_common.DeclarativeBase), model

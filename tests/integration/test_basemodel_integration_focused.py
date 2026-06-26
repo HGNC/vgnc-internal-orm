@@ -7,7 +7,7 @@ tests/unit/test_timestamp_mixin_consolidated.py
 from datetime import UTC, datetime
 from unittest.mock import Mock
 
-from src.vgnc_internal_orm.models.base import BaseCustomModel, BaseModel
+from vgnc_internal_orm.models.base import BaseCustomModel, BaseModel
 
 
 class TestBaseModelUtilityIntegration:
@@ -175,35 +175,22 @@ class TestBaseModelClassMethodIntegration:
     def test_base_model_crud_methods_exist(self):
         """Test that BaseModel CRUD methods exist and are callable."""
 
-        # Test CRUD methods exist
+        # Test CRUD methods exist (async methods removed in db-common migration)
         crud_methods = [
             "save",
-            "asave",
             "delete",
-            "adelete",
             "refresh",
-            "arefresh",
             "expire",
-            "aexpire",
             "get_dirty_fields",
             "find_by_id",
-            "afind_by_id",
             "find_all",
-            "afind_all",
             "find_one",
-            "afind_one",
             "create",
-            "acreate",
             "get_or_create",
-            "aget_or_create",
             "update_by_id",
-            "aupdate_by_id",
             "delete_by_id",
-            "adelete_by_id",
             "count",
-            "acount",
             "exists",
-            "aexists",
         ]
 
         for method_name in crud_methods:
@@ -214,19 +201,17 @@ class TestBaseModelClassMethodIntegration:
     def test_base_model_utility_methods_exist(self):
         """Test that BaseModel utility methods exist and are callable."""
 
-        # Test utility methods exist
+        # Test utility methods exist (async methods removed in db-common migration)
         utility_methods = [
             "to_dict",
             "to_json",
             "update_from_dict",
             "refresh_timestamps",
-            "arefresh_timestamps",
             "validate_utf8mb4_fields",
             "requires_utf8mb4",
             "sanitize_for_basic_utf8",
             "get_utf8mb4_summary",
             "search_with_charset_support",
-            "asearch_with_charset_support",
         ]
 
         for method_name in utility_methods:

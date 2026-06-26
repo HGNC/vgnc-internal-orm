@@ -210,9 +210,9 @@ class TestBaselineMigration:
         # Test model operations
         from datetime import datetime
 
-        from src.vgnc_internal_orm.models.assembly import Assembly
-        from src.vgnc_internal_orm.models.chromosomes import Chromosomes
-        from src.vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
+        from vgnc_internal_orm.models.assembly import Assembly
+        from vgnc_internal_orm.models.chromosomes import Chromosomes
+        from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 
         SessionLocal = sessionmaker(bind=engine)
         session = SessionLocal()

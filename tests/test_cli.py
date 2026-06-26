@@ -8,9 +8,9 @@ from click.testing import CliRunner
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.vgnc_internal_orm.cli.main import cli
-from src.vgnc_internal_orm.models.base import BaseModel
-from src.vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
+from vgnc_internal_orm.cli.main import cli
+from vgnc_internal_orm.models.base import BaseModel
+from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 
 
 @pytest.fixture
@@ -34,7 +34,7 @@ def test_db():
     from sqlalchemy import Column, Integer, String, Table
     from sqlalchemy.schema import MetaData
 
-    from src.vgnc_internal_orm.models.species import BaseCustomModel
+    from vgnc_internal_orm.models.species import BaseCustomModel
 
     unified_metadata = MetaData()
 

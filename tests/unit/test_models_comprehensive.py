@@ -7,13 +7,14 @@ and database table structure for all core models.
 
 from datetime import UTC, datetime
 
+import db_common
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from src.vgnc_internal_orm.models.assembly import Assembly
-from src.vgnc_internal_orm.models.chromosomes import Chromosomes
-from src.vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 from tests.unit.base_test import BaseUnitTest, DatabaseTestMixin, ModelTestMixin
+from vgnc_internal_orm.models.assembly import Assembly
+from vgnc_internal_orm.models.chromosomes import Chromosomes
+from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 
 
 class TestSpecies(BaseUnitTest, ModelTestMixin, DatabaseTestMixin):
@@ -653,3 +654,11 @@ class TestModelQueries:
             .all()
         )
         assert len(species_with_m) == 1  # Only "mouse" starts with 'm'
+
+
+class TestDbCommonBaseReparenting:
+    """Pin that mapped models inherit from db_common.DeclarativeBase (Task T2)."""
+
+    def test_mapped_models_subclass_db_common_declarative_base(self):
+        for model in (Species, Assembly, Chromosomes):
+            assert issubclass(model, db_common.DeclarativeBase), model

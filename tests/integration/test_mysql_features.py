@@ -3,18 +3,18 @@
 from datetime import datetime
 
 import pytest
+from db_common import DatabaseDriver
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from vgnc_internal_orm.config.settings import DatabaseConfig, DatabaseDriver
+from vgnc_internal_orm.config.settings import DatabaseConfig
 from vgnc_internal_orm.models.base import BaseModel
 from vgnc_internal_orm.models.genefam import Genefam
 from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 from vgnc_internal_orm.utils.mysql_features import (
     CharsetValidator,
     FullTextSearch,
-    MySQLConnectionPool,
     MySQLQueryOptimizer,
     UTF8MB4Handler,
 )
@@ -192,22 +192,23 @@ class TestUTF8MB4CharsetFeatures:
         assert UTF8MB4Handler.requires_utf8mb4(four_byte_text)
 
     def test_connection_string_building(self):
-        """Test MySQL connection string building with UTF8MB4 parameters."""
+        """Test MySQL connection string building.
+
+        Note: charset/collation parameters were removed in db-common migration.
+        This test now verifies basic connection string building.
+        """
         config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
+            driver=DatabaseDriver.MYSQL_PYMYSQL,
             host="localhost",
             username="test",
             password="test123",
             database="testdb",
-            charset="utf8mb4",
-            collation="utf8mb4_unicode_ci",
         )
 
-        connection_string = UTF8MB4Handler.build_connection_string(config)
-
-        assert "charset=utf8mb4" in connection_string
-        assert "collation=utf8mb4_unicode_ci" in connection_string
-        assert "use_unicode=1" in connection_string
+        connection_string = str(config.get_url())
+        assert "mysql+pymysql" in connection_string
+        assert "localhost" in connection_string
+        assert "testdb" in connection_string
 
     def test_text_conversion_and_validation(self):
         """Test text encoding conversion and validation."""
@@ -423,24 +424,28 @@ class TestMySQLConnectionPooling:
         assert pool_config["pool_pre_ping"]
 
     def test_engine_creation_with_utf8mb4(self):
-        """Test engine creation with UTF8MB4 support."""
+        """Test engine creation with UTF8MB4 support.
+
+        Note: charset/use_unicode parameters were removed in db-common migration.
+        This test now validates basic MySQL configuration.
+        """
         config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
+            driver=DatabaseDriver.MYSQL_PYMYSQL,
             host="localhost",
             username="test",
             password="test123",
             database="testdb",
-            charset="utf8mb4",
         )
 
-        # Note: This would fail in test environment without MySQL
-        # but validates the configuration structure
-        assert config.charset == "utf8mb4"
-        assert config.use_unicode
+        # Validate the configuration structure
+        assert config.driver == DatabaseDriver.MYSQL_PYMYSQL
+        assert config.host == "localhost"
+        assert config.database == "testdb"
 
         # Test connection string building
-        connection_string = UTF8MB4Handler.build_connection_string(config)
-        assert "charset=utf8mb4" in connection_string
+        connection_string = str(config.get_url())
+        assert "mysql+pymysql" in connection_string
+        assert "localhost" in connection_string
 
 
 class TestCharsetValidationAndIntegration:

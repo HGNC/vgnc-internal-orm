@@ -165,8 +165,8 @@ def test_data(test_db):
     session.commit()
 
     # Query actual ORM instances to return
-    from src.vgnc_internal_orm.models.genefam import Genefam
-    from src.vgnc_internal_orm.models.species import Species
+    from vgnc_internal_orm.models.genefam import Genefam
+    from vgnc_internal_orm.models.species import Species
 
     species_instances = session.query(Species).all()
     genefam_instances = session.query(Genefam).all()
