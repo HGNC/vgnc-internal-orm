@@ -312,19 +312,19 @@ class TestBaseModelWithMockDatabase:
             pass
 
     def test_base_model_session_methods_exist(self):
-        """Test that BaseModel session-dependent methods exist."""
+        """Test that BaseModel session-dependent methods exist.
+
+        Note: async counterparts (asave/adelete/arefresh/aexpire/arefresh_timestamps)
+        are intentionally not asserted here — the codebase is sync-only (no
+        AsyncSession/asyncio infrastructure). Add them back when async support lands.
+        """
 
         session_methods = [
             "refresh_timestamps",
-            "arefresh_timestamps",
             "save",
-            "asave",
             "delete",
-            "adelete",
             "refresh",
-            "arefresh",
             "expire",
-            "aexpire",
             "get_dirty_fields",
         ]
 

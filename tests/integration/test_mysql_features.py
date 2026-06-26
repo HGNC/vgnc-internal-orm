@@ -15,6 +15,7 @@ from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 from vgnc_internal_orm.utils.mysql_features import (
     CharsetValidator,
     FullTextSearch,
+    MySQLConnectionPool,
     MySQLQueryOptimizer,
     UTF8MB4Handler,
 )
@@ -548,7 +549,7 @@ class TestErrorHandlingAndEdgeCases:
         """Test error handling for connection issues."""
         # Test with invalid configuration
         config = DatabaseConfig(
-            driver=DatabaseDriver.MYSQL,
+            driver=DatabaseDriver.MYSQL_PYMYSQL,
             host="invalid-host-name-that-does-not-exist",
             username="invalid",
             password="invalid",
