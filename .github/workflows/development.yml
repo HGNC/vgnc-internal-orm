@@ -35,24 +35,16 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v4
       with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-dev-${{ hashFiles('**/pyproject.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-dev-
-          ${{ runner.os }}-pip-
+        version: "latest"
+        enable-cache: true
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[test]"
+        uv sync --group test
+        uv pip install -e .
 
     - name: Run unit tests (fast feedback)
       run: |
@@ -88,16 +80,16 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v4
       with:
-        python-version: "3.13"
+        version: "latest"
+        enable-cache: true
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[dev]"
-        pip install black isort flake8 mypy bandit
+        uv sync --group dev
+        uv pip install -e . black isort flake8 mypy bandit
 
     - name: Check code formatting
       run: |
