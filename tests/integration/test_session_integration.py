@@ -205,9 +205,14 @@ class TestSessionFactoryLifecycle:
             info1 = factory1.get_engine_info()
             info2 = factory2.get_engine_info()
 
-            # Verify different databases
-            assert db_path1 in info1["database_url"]
-            assert db_path2 in info2["database_url"]
+            # Verify different databases.
+            # get_engine_info() truncates the URL for safety, so compare the
+            # underlying engine URLs directly instead of the truncated info.
+            url1 = str(factory1.engine.url)
+            url2 = str(factory2.engine.url)
+            assert db_path1 in url1
+            assert db_path2 in url2
+            assert url1 != url2
 
         finally:
             for db_path in [db_path1, db_path2]:

@@ -22,6 +22,44 @@ class TestCLIUtilityFunctions:
         """Test ensure_config_loaded function exists."""
         assert callable(ensure_config_loaded)
 
+    def test_ensure_config_loaded_does_not_mutate_process_env(self):
+        """Regression: ensure_config_loaded must not leak DB_DATABASE/DB_DRIVER
+        into os.environ.
+
+        Previously it set os.environ["DB_DATABASE"]/["DB_DRIVER"] as a side
+        effect, which polluted every later DatabaseConfig() in the process and
+        broke test isolation (a later in-memory test resolved to the persistent
+        ``cli_database`` file). Config values are now passed as explicit kwargs.
+        """
+        import os
+
+        import click
+
+        ctx = click.Context(
+            click.Command("test"),
+            obj={
+                "config_loaded": False,
+                "database_url": "sqlite:///:memory:",
+                "config_file": None,
+                "verbose": False,
+            },
+        )
+
+        for key in ("DB_DATABASE", "DB_DRIVER"):
+            os.environ.pop(key, None)
+        try:
+            ensure_config_loaded(ctx)
+            assert "DB_DATABASE" not in os.environ, (
+                "ensure_config_loaded must not leak DB_DATABASE into the process env"
+            )
+            assert "DB_DRIVER" not in os.environ, (
+                "ensure_config_loaded must not leak DB_DRIVER into the process env"
+            )
+            assert ctx.obj["config_loaded"] is True
+        finally:
+            for key in ("DB_DATABASE", "DB_DRIVER"):
+                os.environ.pop(key, None)
+
     def test_format_species_as_xml_basic(self):
         """Test format_species_as_xml function exists."""
         assert callable(format_species_as_xml)

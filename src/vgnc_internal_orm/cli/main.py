@@ -73,16 +73,14 @@ def ensure_config_loaded(ctx: click.Context) -> None:
 
         # Set minimal database config if database URL is provided directly
         if ctx.obj.get("database_url"):
-            # Create minimal config when database URL is provided
-            os.environ["DB_DATABASE"] = "cli_database"  # Minimal required field
-            os.environ["DB_DRIVER"] = (
-                "sqlite"  # Set SQLite driver to avoid auth requirements
-            )
-            db_config = DatabaseConfig(database="cli_database")
+            # Minimal config: pass values explicitly instead of mutating
+            # os.environ, which would otherwise leak into every later
+            # DatabaseConfig() in the process (and break test isolation).
+            db_config = DatabaseConfig(database="cli_database", driver="sqlite")
             # Override the database_url property by storing it separately
             ctx.obj["database_url"] = ctx.obj["database_url"]
         else:
-            db_config = DatabaseConfig(database="cli_database")
+            db_config = DatabaseConfig(database="cli_database", driver="sqlite")
             ctx.obj["database_url"] = None
 
         ctx.obj["db_config"] = db_config
@@ -92,11 +90,7 @@ def ensure_config_loaded(ctx: click.Context) -> None:
         # Fallback to minimal config if configuration loading fails
         if ctx.obj.get("database_url"):
             try:
-                os.environ["DB_DATABASE"] = "cli_database"
-                os.environ["DB_DRIVER"] = (
-                    "sqlite"  # Set SQLite driver to avoid auth requirements
-                )
-                db_config = DatabaseConfig(database="cli_database")
+                db_config = DatabaseConfig(database="cli_database", driver="sqlite")
                 ctx.obj["database_url"] = ctx.obj["database_url"]
                 ctx.obj["db_config"] = db_config
                 ctx.obj["config_loaded"] = True
