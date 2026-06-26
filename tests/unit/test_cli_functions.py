@@ -1,8 +1,15 @@
 """Targeted tests for CLI functions to improve coverage."""
 
+from datetime import datetime
 from unittest.mock import Mock
 
 from vgnc_internal_orm.cli.main import (
+    display_genefam_species_csv,
+    display_genefam_species_json,
+    display_genefam_species_table,
+    display_genefams_csv,
+    display_genefams_json,
+    display_genefams_table,
     display_species_csv,
     display_species_json,
     display_species_table,
@@ -13,6 +20,10 @@ from vgnc_internal_orm.cli.main import (
     format_species_as_xml,
     get_session,
 )
+from vgnc_internal_orm.models.assembly import Assembly
+from vgnc_internal_orm.models.chromosomes import Chromosomes
+from vgnc_internal_orm.models.genefam import Genefam
+from vgnc_internal_orm.models.species import Species, SpeciesLiveStatus
 
 
 class TestCLIUtilityFunctions:
@@ -49,12 +60,12 @@ class TestCLIUtilityFunctions:
             os.environ.pop(key, None)
         try:
             ensure_config_loaded(ctx)
-            assert "DB_DATABASE" not in os.environ, (
-                "ensure_config_loaded must not leak DB_DATABASE into the process env"
-            )
-            assert "DB_DRIVER" not in os.environ, (
-                "ensure_config_loaded must not leak DB_DRIVER into the process env"
-            )
+            assert (
+                "DB_DATABASE" not in os.environ
+            ), "ensure_config_loaded must not leak DB_DATABASE into the process env"
+            assert (
+                "DB_DRIVER" not in os.environ
+            ), "ensure_config_loaded must not leak DB_DRIVER into the process env"
             assert ctx.obj["config_loaded"] is True
         finally:
             for key in ("DB_DATABASE", "DB_DRIVER"):
@@ -278,3 +289,200 @@ class TestGetSessionFunction:
         # This should create a session without errors
         session = get_session(db_config)
         assert session is not None
+
+
+class TestCLIDisplayAndFormatExercised:
+    """Exercise the CLI format/display functions with real model instances.
+
+    These cover the full formatting branches (every field, including the
+    ``created.isoformat()`` path and enum ``.value`` access) and the
+    table/json/csv display paths that the existence-only tests above leave
+    uncovered.
+    """
+
+    @staticmethod
+    def _species(**overrides):
+        defaults = {
+            "taxon_id": 9606,
+            "genefam_prefix": "HGNC",
+            "display_name": "Homo sapiens",
+            "scientific_name": "Homo sapiens",
+            "ensembl_species_name": "homo_sapiens",
+            "vgnc_prefix": "HSA",
+            "is_live": SpeciesLiveStatus.YES,
+            "created": datetime(2026, 1, 2, 3, 4, 5),
+            "primary_db_table": "species_data",
+        }
+        defaults.update(overrides)
+        return Species(**defaults)
+
+    @staticmethod
+    def _genefam(**overrides):
+        defaults = {
+            "genefam_id": 1,
+            "taxon_id": 9606,
+            "assigned_id": "GF1",
+            "assigned_symbol": "SYM",
+            "assigned_name": "A family",
+            "status_id": 2,
+            "editor_id": 3,
+            "hcop_support_level": "high",
+        }
+        defaults.update(overrides)
+        return Genefam(**defaults)
+
+    @staticmethod
+    def _assembly(**overrides):
+        defaults = {
+            "id": 1,
+            "taxon_id": 9606,
+            "source": "src",
+            "name": "GRCh38",
+            "genbank_assembly_accession": "GCA_000001405",
+            "refseq_assembly_accession": "GCF_000001405",
+            "is_current": True,
+            "is_vgnc_default": False,
+        }
+        defaults.update(overrides)
+        return Assembly(**defaults)
+
+    @staticmethod
+    def _chromosomes(**overrides):
+        defaults = {
+            "chr_id": 1,
+            "taxon_id": 9606,
+            "display_name": "1",
+            "coord_system": "chromosome",
+            "refseq_accession": "NC_000001",
+            "genbank_accession": "CM000001",
+            "ensembl_accession": "EN000001",
+        }
+        defaults.update(overrides)
+        return Chromosomes(**defaults)
+
+    # -- XML format functions (with real instances) ------------------------
+
+    def test_format_species_as_xml_populated(self):
+        result = format_species_as_xml([self._species()])
+        assert 'taxon_id="9606"' in result
+        assert "Homo sapiens" in result
+        assert "<is_live>Y</is_live>" in result  # SpeciesLiveStatus.YES.value
+        assert "2026-01-02T03:04:05" in result  # created.isoformat() path
+
+    def test_format_genefam_as_xml_populated(self):
+        result = format_genefam_as_xml([self._genefam()])
+        assert 'genefam_id="1"' in result
+        assert "GF1" in result
+        assert "SYM" in result
+
+    def test_format_assembly_as_xml_populated(self):
+        result = format_assembly_as_xml([self._assembly()])
+        assert 'id="1"' in result
+        assert "GRCh38" in result
+        assert "GCA_000001405" in result
+
+    def test_format_chromosomes_as_xml_populated(self):
+        result = format_chromosomes_as_xml([self._chromosomes()])
+        assert 'chr_id="1"' in result
+        assert "NC_000001" in result
+
+    # -- species display functions (table/json/csv) ------------------------
+
+    def test_display_species_table_populated(self, capsys):
+        display_species_table([self._species()])
+        out = capsys.readouterr().out
+        assert "Taxon ID" in out
+        assert "9606" in out
+        assert "Homo sapiens" in out
+
+    def test_display_species_table_empty(self, capsys):
+        display_species_table([])
+        assert "No species found." in capsys.readouterr().out
+
+    def test_display_species_json_populated(self, capsys):
+        import json
+
+        display_species_json([self._species()])
+        parsed = json.loads(capsys.readouterr().out)
+        assert parsed[0]["taxon_id"] == 9606
+        assert parsed[0]["is_active"] is True
+        assert parsed[0]["created"] == "2026-01-02T03:04:05"
+
+    def test_display_species_csv_populated(self, capsys):
+        display_species_csv([self._species()])
+        out = capsys.readouterr().out
+        assert "Taxon ID" in out
+        assert "9606" in out
+
+    def test_display_species_csv_empty(self, capsys):
+        display_species_csv([])
+        assert capsys.readouterr().out == ""
+
+    # -- genefam display functions -----------------------------------------
+
+    def test_display_genefams_table_populated(self, capsys):
+        display_genefams_table([self._genefam()])
+        out = capsys.readouterr().out
+        assert "Assigned ID" in out
+        assert "GF1" in out
+
+    def test_display_genefams_table_empty(self, capsys):
+        display_genefams_table([])
+        assert "No gene families found." in capsys.readouterr().out
+
+    def test_display_genefams_json_populated(self, capsys):
+        import json
+
+        display_genefams_json([self._genefam()])
+        parsed = json.loads(capsys.readouterr().out)
+        assert parsed[0]["assigned_id"] == "GF1"
+        assert parsed[0]["hcop_support_level"] == "high"
+
+    def test_display_genefams_csv_populated(self, capsys):
+        display_genefams_csv([self._genefam()])
+        out = capsys.readouterr().out
+        assert "GeneFamily ID" in out
+        assert "GF1" in out
+
+    def test_display_genefams_csv_empty(self, capsys):
+        display_genefams_csv([])
+        assert capsys.readouterr().out == ""
+
+    # -- genefam-species association display functions ---------------------
+
+    def test_display_genefam_species_table_with_species(self, capsys):
+        display_genefam_species_table(self._genefam(), [self._species()])
+        out = capsys.readouterr().out
+        assert "Gene Family: GF1" in out
+        assert "9606" in out
+
+    def test_display_genefam_species_table_empty(self, capsys):
+        display_genefam_species_table(self._genefam(), [])
+        out = capsys.readouterr().out
+        assert "No species associations found." in out
+
+    def test_display_genefam_species_json_with_species(self, capsys):
+        import json
+
+        display_genefam_species_json(self._genefam(), self._species())
+        parsed = json.loads(capsys.readouterr().out)
+        assert parsed["genefam"]["assigned_id"] == "GF1"
+        assert parsed["species"]["taxon_id"] == 9606
+
+    def test_display_genefam_species_json_without_species(self, capsys):
+        import json
+
+        display_genefam_species_json(self._genefam(), None)
+        parsed = json.loads(capsys.readouterr().out)
+        assert parsed["species"] == {}
+
+    def test_display_genefam_species_csv_with_species(self, capsys):
+        display_genefam_species_csv(self._genefam(), self._species())
+        out = capsys.readouterr().out
+        assert "GeneFamily ID" in out
+        assert "9606" in out
+
+    def test_display_genefam_species_csv_without_species(self, capsys):
+        display_genefam_species_csv(self._genefam(), None)
+        out = capsys.readouterr().out
+        assert "N/A" in out

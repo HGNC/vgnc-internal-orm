@@ -191,19 +191,11 @@ class TestSessionFactoryLifecycle:
 
         try:
             # echo parameter was removed in db-common migration
-            config1 = DatabaseConfig(
-                driver=DatabaseDriver.SQLITE, database=db_path1
-            )
-            config2 = DatabaseConfig(
-                driver=DatabaseDriver.SQLITE, database=db_path2
-            )
+            config1 = DatabaseConfig(driver=DatabaseDriver.SQLITE, database=db_path1)
+            config2 = DatabaseConfig(driver=DatabaseDriver.SQLITE, database=db_path2)
 
             factory1 = SessionFactory(config1)
             factory2 = SessionFactory(config2)
-
-            # Both should work independently
-            info1 = factory1.get_engine_info()
-            info2 = factory2.get_engine_info()
 
             # Verify different databases.
             # get_engine_info() truncates the URL for safety, so compare the
