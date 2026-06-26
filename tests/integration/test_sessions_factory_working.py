@@ -1,11 +1,9 @@
 """Working SessionFactory comprehensive tests based on actual module structure."""
 
+from db_common import DatabaseDriver
 from sqlalchemy import text
 
-from vgnc_internal_orm.config.settings import (
-    DatabaseConfig,
-    DatabaseDriver,
-)
+from vgnc_internal_orm.config.settings import DatabaseConfig
 from vgnc_internal_orm.sessions.factory import (
     SessionFactory,
     check_database_connection,
@@ -59,7 +57,7 @@ class TestSessionFactoryCoreFunctionality:
             database="test_database",
             host="localhost",
             port=3306,
-            driver=DatabaseDriver.MYSQL,
+            driver=DatabaseDriver.MYSQL_PYMYSQL,
             _env_file=None,
         )
         factory = SessionFactory(config)
