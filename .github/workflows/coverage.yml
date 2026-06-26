@@ -35,10 +35,10 @@ jobs:
     - name: Run all tests with coverage
       run: |
         # Initialize coverage data
-        python -m coverage erase
+        uv run python -m coverage erase
 
         # Run all test types with coverage
-        python -m pytest tests/ \
+        uv run python -m pytest tests/ \
           --cov=src/vgnc_internal_orm \
           --cov-report=xml:coverage.xml \
           --cov-report=html:htmlcov \
@@ -48,11 +48,11 @@ jobs:
 
     - name: Generate coverage summary
       run: |
-        python .github/scripts/generate_coverage_summary.py > $GITHUB_STEP_SUMMARY
+        uv run python .github/scripts/generate_coverage_summary.py > $GITHUB_STEP_SUMMARY
 
     - name: Check coverage thresholds
       run: |
-        python .github/scripts/check_coverage_threshold.py
+        uv run python .github/scripts/check_coverage_threshold.py
 
     - name: Upload coverage reports
       uses: actions/upload-artifact@v4
