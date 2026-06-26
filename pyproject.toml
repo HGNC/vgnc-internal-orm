@@ -190,4 +190,4 @@ dev = [
 ]
 
 [tool.uv.sources]
-db-common = { git = "https://github.com/HGNC/db-common.git", tag = "v0.1.0" }
+db-common = { git = "https://github.com/HGNC/db-common.git" }
