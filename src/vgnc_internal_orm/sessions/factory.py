@@ -10,7 +10,7 @@ The session layer delegates engine/session creation to ``db_common``:
   :class:`db_common.ReadOnlySessionError`).
 * :func:`db_common.health_check` owns the connectivity probe.
 
-The vgnc :class:`SessionFactory` is a thin adapter over those singletons,
+The vgnc :class:`SessionFactory` is a thin wrapper over those singletons,
 preserving the public sync function names that existing callers
 (``SessionManager``, the CLI, the tests) rely on.
 
@@ -25,73 +25,12 @@ from contextlib import contextmanager
 from typing import Any
 
 import db_common
-from sqlalchemy import URL, Engine, text
+from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from ..config.settings import DatabaseConfig
 
 logger = logging.getLogger(__name__)
-
-
-class _DbCommonSettingsAdapter:
-    """Bridge the (not-yet-migrated) vgnc ``DatabaseConfig`` onto the surface
-    that :class:`db_common.EngineFactory` reads.
-
-    ``db_common.EngineFactory`` duck-types its settings for ``get_url()``,
-    ``driver`` and the flat pool fields. The vgnc ``DatabaseConfig`` still
-    exposes ``database_url`` (``SecretStr``), a nested ``pool`` model and a
-    local ``DatabaseDriver`` enum, so this adapter translates between them.
-
-    This adapter is intentional scaffolding for the session migration: when
-    ``DatabaseConfig`` itself becomes a ``db_common.DatabaseSettings`` subclass
-    (a later task), it gains a real ``get_url()``/flat pool fields and this
-    bridge is deleted.
-    """
-
-    def __init__(self, config: DatabaseConfig) -> None:
-        self._config = config
-
-    @property
-    def driver(self) -> str:
-        return self._config.driver.value
-
-    def get_url(self) -> URL:
-        """Build a SQLAlchemy URL from the config's fields.
-
-        Constructed from individual fields (rather than reusing the config's
-        ``database_url`` string) so file-based SQLite paths are preserved
-        verbatim — ``db_common.DatabaseSettings.get_url()`` hardcodes
-        ``:memory:`` for SQLite, which would discard a file path.
-        """
-        config = self._config
-        if config.driver.value.startswith("sqlite"):
-            return URL.create(drivername="sqlite", database=config.database)
-        return URL.create(
-            drivername=config.driver.value,
-            username=config.username,
-            password=(config.password.get_secret_value() if config.password else None),
-            host=config.host,
-            port=config.port,
-            database=config.database,
-        )
-
-    # -- Flat pool fields (db_common.EngineFactory reads these for non-SQLite) --
-
-    @property
-    def pool_size(self) -> int:
-        return self._config.pool.pool_size
-
-    @property
-    def max_overflow(self) -> int:
-        return self._config.pool.max_overflow
-
-    @property
-    def pool_recycle(self) -> int:
-        return self._config.pool.pool_recycle
-
-    @property
-    def pool_pre_ping(self) -> bool:
-        return self._config.pool.pool_pre_ping
 
 
 class SessionFactory:
@@ -102,6 +41,10 @@ class SessionFactory:
     sync surface (``engine``, ``create_session``, ``health_check``,
     ``get_readonly_session``, ``get_engine_info``, ``get_pool_status``,
     ``dispose_engine``) is preserved so existing callers keep working.
+
+    Note:
+        DatabaseConfig is now a db_common.DatabaseSettings subclass, so it
+        can be passed directly to db_common.EngineFactory without an adapter.
     """
 
     def __init__(self, config: DatabaseConfig | None = None) -> None:
@@ -120,9 +63,9 @@ class SessionFactory:
 
     def _get_engine_factory(self) -> db_common.EngineFactory:
         if self._engine_factory is None:
-            self._engine_factory = db_common.EngineFactory(
-                _DbCommonSettingsAdapter(self._require_config())
-            )
+            # DatabaseConfig is now a db_common.DatabaseSettings subclass
+            # so it can be passed directly to db_common.EngineFactory
+            self._engine_factory = db_common.EngineFactory(self._require_config())
         return self._engine_factory
 
     def _get_db_session_factory(self) -> db_common.SessionFactory:
@@ -204,9 +147,8 @@ class SessionFactory:
         config = self.config
         database_url = config.database_url.get_secret_value()
         return {
-            "driver": config.driver.value,
+            "driver": config.driver,
             "database_url": database_url[:50] + "...",  # truncated for safety
-            "echo": config.echo,
             "pool": {"class": self.engine.pool.__class__.__name__},
         }
 

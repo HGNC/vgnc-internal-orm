@@ -394,34 +394,22 @@ class TestRealBaseModelCRUDMethods:
 
     def test_basemodel_crud_methods_exist_and_callable(self):
         """Test that BaseModel CRUD methods exist and are callable."""
+        # Async methods removed in db-common migration
         crud_methods = [
             "save",
-            "asave",
             "delete",
-            "adelete",
             "refresh",
-            "arefresh",
             "expire",
-            "aexpire",
             "get_dirty_fields",
             "find_by_id",
-            "afind_by_id",
             "find_all",
-            "afind_all",
             "find_one",
-            "afind_one",
             "create",
-            "acreate",
             "get_or_create",
-            "aget_or_create",
             "update_by_id",
-            "aupdate_by_id",
             "delete_by_id",
-            "adelete_by_id",
             "count",
-            "acount",
             "exists",
-            "aexists",
         ]
 
         for method_name in crud_methods:

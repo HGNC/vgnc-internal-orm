@@ -190,11 +190,12 @@ class TestSessionFactoryLifecycle:
             db_path2 = tmp_file2.name
 
         try:
+            # echo parameter was removed in db-common migration
             config1 = DatabaseConfig(
-                driver=DatabaseDriver.SQLITE, database=db_path1, echo=False
+                driver=DatabaseDriver.SQLITE, database=db_path1
             )
             config2 = DatabaseConfig(
-                driver=DatabaseDriver.SQLITE, database=db_path2, echo=True
+                driver=DatabaseDriver.SQLITE, database=db_path2
             )
 
             factory1 = SessionFactory(config1)
@@ -204,8 +205,9 @@ class TestSessionFactoryLifecycle:
             info1 = factory1.get_engine_info()
             info2 = factory2.get_engine_info()
 
-            assert info1["echo"] is False
-            assert info2["echo"] is True
+            # Verify different databases
+            assert db_path1 in info1["database_url"]
+            assert db_path2 in info2["database_url"]
 
         finally:
             for db_path in [db_path1, db_path2]:
