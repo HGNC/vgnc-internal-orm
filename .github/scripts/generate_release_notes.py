@@ -7,8 +7,8 @@ Follows conventional commits specification for structured release notes.
 import argparse
 import json
 import sys
-from typing import Dict, Any, List
 from datetime import datetime
+from typing import Any
 
 
 class ReleaseNotesGenerator:
@@ -16,36 +16,38 @@ class ReleaseNotesGenerator:
 
     def __init__(self):
         self.emojis = {
-            'breaking': '💥',
-            'feat': '✨',
-            'fix': '🐛',
-            'docs': '📚',
-            'style': '💎',
-            'refactor': '🔨',
-            'perf': '⚡',
-            'test': '🧪',
-            'build': '📦',
-            'ci': '🤖',
-            'chore': '🧹',
-            'revert': '⏪'
+            "breaking": "💥",
+            "feat": "✨",
+            "fix": "🐛",
+            "docs": "📚",
+            "style": "💎",
+            "refactor": "🔨",
+            "perf": "⚡",
+            "test": "🧪",
+            "build": "📦",
+            "ci": "🤖",
+            "chore": "🧹",
+            "revert": "⏪",
         }
 
         self.descriptions = {
-            'feat': 'New Features',
-            'fix': 'Bug Fixes',
-            'breaking': '⚠️ BREAKING CHANGES',
-            'docs': 'Documentation',
-            'style': 'Style Changes',
-            'refactor': 'Code Refactoring',
-            'perf': 'Performance Improvements',
-            'test': 'Tests',
-            'build': 'Build System',
-            'ci': 'Continuous Integration',
-            'chore': 'Chores',
-            'revert': 'Reverts'
+            "feat": "New Features",
+            "fix": "Bug Fixes",
+            "breaking": "⚠️ BREAKING CHANGES",
+            "docs": "Documentation",
+            "style": "Style Changes",
+            "refactor": "Code Refactoring",
+            "perf": "Performance Improvements",
+            "test": "Tests",
+            "build": "Build System",
+            "ci": "Continuous Integration",
+            "chore": "Chores",
+            "revert": "Reverts",
         }
 
-    def generate_release_notes(self, analysis_data: Dict[str, Any], current_version: str, new_version: str) -> str:
+    def generate_release_notes(
+        self, analysis_data: dict[str, Any], current_version: str, new_version: str
+    ) -> str:
         """
         Generate comprehensive release notes.
 
@@ -57,29 +59,29 @@ class ReleaseNotesGenerator:
         Returns:
             Formatted release notes string
         """
-        categorized_commits = analysis_data.get('categorized_commits', {})
-        stats = analysis_data.get('stats', {})
+        categorized_commits = analysis_data.get("categorized_commits", {})
+        stats = analysis_data.get("stats", {})
 
         # Generate header
         notes = self._generate_header(new_version, current_version)
 
         # Add breaking changes section first (most important)
-        breaking_changes = categorized_commits.get('breaking_changes', [])
+        breaking_changes = categorized_commits.get("breaking_changes", [])
         if breaking_changes:
             notes += self._generate_breaking_changes_section(breaking_changes)
 
         # Add new features
-        features = categorized_commits.get('features', [])
+        features = categorized_commits.get("features", [])
         if features:
             notes += self._generate_features_section(features)
 
         # Add bug fixes
-        fixes = categorized_commits.get('fixes', [])
+        fixes = categorized_commits.get("fixes", [])
         if fixes:
             notes += self._generate_fixes_section(fixes)
 
         # Add other changes
-        other_changes = categorized_commits.get('other', [])
+        other_changes = categorized_commits.get("other", [])
         if other_changes:
             notes += self._generate_other_section(other_changes)
 
@@ -90,7 +92,7 @@ class ReleaseNotesGenerator:
 
     def _generate_header(self, new_version: str, current_version: str) -> str:
         """Generate release notes header."""
-        today = datetime.now().strftime('%Y-%m-%d')
+        today = datetime.now().strftime("%Y-%m-%d")
 
         header = f"# Release v{new_version}\n\n"
         header += f"**Released:** {today}\n"
@@ -102,20 +104,20 @@ class ReleaseNotesGenerator:
 
         return header
 
-    def _generate_breaking_changes_section(self, breaking_changes: List[Dict]) -> str:
+    def _generate_breaking_changes_section(self, breaking_changes: list[dict]) -> str:
         """Generate breaking changes section."""
         section = f"## {self.descriptions['breaking']}\n\n"
 
         for change in breaking_changes:
-            commit_hash = change.get('hash', '')
-            description = change.get('description', '')
-            scope = change.get('scope', '')
+            commit_hash = change.get("hash", "")
+            description = change.get("description", "")
+            scope = change.get("scope", "")
 
             # Handle None values safely
             if description is None:
-                description = ''
+                description = ""
             if commit_hash is None:
-                commit_hash = ''
+                commit_hash = ""
 
             if scope:
                 line = f"- **({scope})** {description} ({commit_hash})\n"
@@ -127,7 +129,7 @@ class ReleaseNotesGenerator:
         section += "\n"
         return section
 
-    def _generate_features_section(self, features: List[Dict]) -> str:
+    def _generate_features_section(self, features: list[dict]) -> str:
         """Generate new features section."""
         section = f"## {self.descriptions['feat']}\n\n"
 
@@ -136,15 +138,15 @@ class ReleaseNotesGenerator:
         uncategorized_features = []
 
         for feature in features:
-            scope = feature.get('scope')
-            description = feature.get('description', '')
-            commit_hash = feature.get('hash', '')
+            scope = feature.get("scope")
+            description = feature.get("description", "")
+            commit_hash = feature.get("hash", "")
 
             # Handle None values safely
             if description is None:
-                description = ''
+                description = ""
             if commit_hash is None:
-                commit_hash = ''
+                commit_hash = ""
 
             if scope:
                 if scope not in features_by_scope:
@@ -168,7 +170,7 @@ class ReleaseNotesGenerator:
 
         return section
 
-    def _generate_fixes_section(self, fixes: List[Dict]) -> str:
+    def _generate_fixes_section(self, fixes: list[dict]) -> str:
         """Generate bug fixes section."""
         section = f"## {self.descriptions['fix']}\n\n"
 
@@ -177,15 +179,15 @@ class ReleaseNotesGenerator:
         uncategorized_fixes = []
 
         for fix in fixes:
-            scope = fix.get('scope')
-            description = fix.get('description', '')
-            commit_hash = fix.get('hash', '')
+            scope = fix.get("scope")
+            description = fix.get("description", "")
+            commit_hash = fix.get("hash", "")
 
             # Handle None values safely
             if description is None:
-                description = ''
+                description = ""
             if commit_hash is None:
-                commit_hash = ''
+                commit_hash = ""
 
             if scope:
                 if scope not in fixes_by_scope:
@@ -209,23 +211,23 @@ class ReleaseNotesGenerator:
 
         return section
 
-    def _generate_other_section(self, other_changes: List[Dict]) -> str:
+    def _generate_other_section(self, other_changes: list[dict]) -> str:
         """Generate other changes section."""
         # Group other changes by type
         changes_by_type = {}
 
         for change in other_changes:
-            commit_type = change.get('type', 'other')
-            commit_hash = change.get('hash', '')
-            description = change.get('description', '')
+            commit_type = change.get("type", "other")
+            commit_hash = change.get("hash", "")
+            description = change.get("description", "")
 
             # Handle None values safely
             if description is None:
-                description = ''
+                description = ""
             if commit_hash is None:
-                commit_hash = ''
+                commit_hash = ""
             if commit_type is None:
-                commit_type = 'other'
+                commit_type = "other"
 
             if commit_type not in changes_by_type:
                 changes_by_type[commit_type] = []
@@ -237,7 +239,11 @@ class ReleaseNotesGenerator:
         sorted_keys = sorted([str(k) for k in changes_by_type.keys() if k is not None])
         for commit_type in sorted_keys:
             changes = changes_by_type[commit_type]
-            if commit_type in self.descriptions and commit_type not in ['feat', 'fix', 'breaking']:
+            if commit_type in self.descriptions and commit_type not in [
+                "feat",
+                "fix",
+                "breaking",
+            ]:
                 section += f"## {self.descriptions[commit_type]}\n\n"
                 for description, commit_hash in changes:
                     section += f"- {description} ({commit_hash})\n"
@@ -245,24 +251,26 @@ class ReleaseNotesGenerator:
 
         return section
 
-    def _generate_footer(self, stats: Dict[str, Any], current_version: str, new_version: str) -> str:
+    def _generate_footer(
+        self, stats: dict[str, Any], current_version: str, new_version: str
+    ) -> str:
         """Generate release notes footer with statistics."""
         footer = "---\n\n"
         footer += "## 📊 Release Statistics\n\n"
 
-        total_commits = stats.get('total_commits', 0)
-        conventional_commits = sum(stats.get('conventional_commits', {}).values())
+        total_commits = stats.get("total_commits", 0)
+        conventional_commits = sum(stats.get("conventional_commits", {}).values())
 
         footer += f"- **Total commits:** {total_commits}\n"
         footer += f"- **Conventional commits:** {conventional_commits}\n"
 
-        if stats.get('breaking_changes', 0) > 0:
+        if stats.get("breaking_changes", 0) > 0:
             footer += f"- **Breaking changes:** {stats['breaking_changes']}\n"
 
-        if stats.get('features', 0) > 0:
+        if stats.get("features", 0) > 0:
             footer += f"- **New features:** {stats['features']}\n"
 
-        if stats.get('fixes', 0) > 0:
+        if stats.get("fixes", 0) > 0:
             footer += f"- **Bug fixes:** {stats['fixes']}\n"
 
         # Add version change info
@@ -270,8 +278,11 @@ class ReleaseNotesGenerator:
             try:
                 # Try to import version bumper for proper comparison
                 from packaging import version as pkg_version
+
                 if pkg_version.parse(new_version) > pkg_version.parse(current_version):
-                    footer += f"\n**Version bump:** v{current_version} → v{new_version}\n"
+                    footer += (
+                        f"\n**Version bump:** v{current_version} → v{new_version}\n"
+                    )
             except ImportError:
                 # Fallback: just show the version change
                 footer += f"\n**Version change:** v{current_version} → v{new_version}\n"
@@ -279,25 +290,32 @@ class ReleaseNotesGenerator:
         footer += "\n"
         return footer
 
-    def generate_simple_summary(self, analysis_data: Dict[str, Any], current_version: str, new_version: str) -> str:
+    def generate_simple_summary(
+        self, analysis_data: dict[str, Any], current_version: str, new_version: str
+    ) -> str:
         """Generate a simple summary for short release notes."""
-        stats = analysis_data.get('stats', {})
-        categorized = analysis_data.get('categorized_commits', {})
+        categorized = analysis_data.get("categorized_commits", {})
 
-        breaking_count = len(categorized.get('breaking_changes', []))
-        feature_count = len(categorized.get('features', []))
-        fix_count = len(categorized.get('fixes', []))
+        breaking_count = len(categorized.get("breaking_changes", []))
+        feature_count = len(categorized.get("features", []))
+        fix_count = len(categorized.get("fixes", []))
 
         summary_parts = []
 
         if breaking_count > 0:
-            summary_parts.append(f"**{breaking_count} breaking change{'s' if breaking_count != 1 else ''}**")
+            summary_parts.append(
+                f"**{breaking_count} breaking change{'s' if breaking_count != 1 else ''}**"
+            )
 
         if feature_count > 0:
-            summary_parts.append(f"**{feature_count} new feature{'s' if feature_count != 1 else ''}**")
+            summary_parts.append(
+                f"**{feature_count} new feature{'s' if feature_count != 1 else ''}**"
+            )
 
         if fix_count > 0:
-            summary_parts.append(f"**{fix_count} bug fix{'es' if fix_count != 1 else ''}**")
+            summary_parts.append(
+                f"**{fix_count} bug fix{'es' if fix_count != 1 else ''}**"
+            )
 
         if not summary_parts:
             return f"Release v{new_version} - Internal changes and improvements"
@@ -306,19 +324,29 @@ class ReleaseNotesGenerator:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Generate release notes from commit analysis')
-    parser.add_argument('--analysis-file', required=True, help='JSON file with commit analysis')
-    parser.add_argument('--current-version', required=True, help='Current version')
-    parser.add_argument('--new-version', required=True, help='New version')
-    parser.add_argument('--output', help='Output file (default: stdout)')
-    parser.add_argument('--simple', action='store_true', help='Generate simple summary only')
-    parser.add_argument('--format', choices=['markdown', 'text'], default='markdown',
-                       help='Output format')
+    parser = argparse.ArgumentParser(
+        description="Generate release notes from commit analysis"
+    )
+    parser.add_argument(
+        "--analysis-file", required=True, help="JSON file with commit analysis"
+    )
+    parser.add_argument("--current-version", required=True, help="Current version")
+    parser.add_argument("--new-version", required=True, help="New version")
+    parser.add_argument("--output", help="Output file (default: stdout)")
+    parser.add_argument(
+        "--simple", action="store_true", help="Generate simple summary only"
+    )
+    parser.add_argument(
+        "--format",
+        choices=["markdown", "text"],
+        default="markdown",
+        help="Output format",
+    )
 
     args = parser.parse_args()
 
     try:
-        with open(args.analysis_file, 'r') as f:
+        with open(args.analysis_file) as f:
             analysis_data = json.load(f)
     except FileNotFoundError:
         print(f"Error: Analysis file not found: {args.analysis_file}", file=sys.stderr)
@@ -331,18 +359,23 @@ def main():
 
     try:
         if args.simple:
-            notes = generator.generate_simple_summary(analysis_data, args.current_version, args.new_version)
+            notes = generator.generate_simple_summary(
+                analysis_data, args.current_version, args.new_version
+            )
         else:
-            notes = generator.generate_release_notes(analysis_data, args.current_version, args.new_version)
+            notes = generator.generate_release_notes(
+                analysis_data, args.current_version, args.new_version
+            )
 
         if args.output:
-            with open(args.output, 'w') as f:
+            with open(args.output, "w") as f:
                 f.write(notes)
         else:
             print(notes)
 
     except Exception as e:
         import traceback
+
         print(f"Error generating release notes: {e}", file=sys.stderr)
         print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
         return 1
@@ -350,5 +383,5 @@ def main():
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
