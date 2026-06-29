@@ -181,6 +181,7 @@ exclude_lines = [
 
 [dependency-groups]
 dev = [
+    "anybadge>=1.14.0",
     "mysql-connector-python>=9.5.0",
     "myst-parser>=4.0.1",
     "pytest-benchmark>=5.2.1",
