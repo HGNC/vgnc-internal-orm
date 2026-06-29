@@ -42,6 +42,7 @@ jobs:
           --cov=src/vgnc_internal_orm \
           --cov-report=xml:coverage.xml \
           --cov-report=html:htmlcov \
+          --cov-report=json:coverage.json \
           --cov-report=term-missing \
           --cov-context=test \
           --cov-fail-under=70
@@ -53,6 +54,20 @@ jobs:
     - name: Check coverage thresholds
       run: |
         uv run --extra test python .github/scripts/check_coverage_threshold.py
+
+    - name: Generate coverage badge
+      run: |
+        # anybadge lives in the dev dependency group
+        uv run --group dev python .github/scripts/generate_coverage_badge.py coverage.json
+        # Surface the badge for download / inspection
+        cat coverage-badge.svg
+
+    - name: Upload coverage badge
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-badge-python${{ matrix.python-version }}
+        path: coverage-badge.svg
+        retention-days: 30
 
     - name: Upload coverage reports
       uses: actions/upload-artifact@v4
