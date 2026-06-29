@@ -61,19 +61,21 @@ class VersionReferenceUpdater:
         docs_path = root_path / "docs"
         if docs_path.exists():
             for md_file in docs_path.glob("*.md"):
-                if not self.should_exclude_file(md_file) and md_file not in files_to_check:
+                if (
+                    not self.should_exclude_file(md_file)
+                    and md_file not in files_to_check
+                ):
                     files_to_check.append(md_file)
 
         return sorted(files_to_check)
 
     def update_file(self, file_path: Path, old_version: str, new_version: str):
         """Update version references in a single file."""
-        file_str = str(file_path)
         changes = 0
         errors = []
 
         try:
-            content = file_path.read_text(encoding='utf-8')
+            content = file_path.read_text(encoding="utf-8")
             original_content = content
 
             # Update README.md version line
@@ -82,7 +84,7 @@ class VersionReferenceUpdater:
                     r"^\*\*Version:\*\s*[0-9]+\.[0-9]+\.[0-9]+",
                     f"**Version:** {new_version}",
                     content,
-                    flags=re.MULTILINE
+                    flags=re.MULTILINE,
                 )
 
             # Update documentation version headers
@@ -91,40 +93,32 @@ class VersionReferenceUpdater:
                     r"^\*\*Version:\*\s*[0-9]+\.[0-9]+\.[0-9]+",
                     f"**Version:** {new_version}",
                     content,
-                    flags=re.MULTILINE
+                    flags=re.MULTILINE,
                 )
 
             # Update project titles
             content = re.sub(
                 r"\*\*VGNC Internal ORM v[0-9]+\.[0-9]+\.[0-9]+\*\*",
                 f"**VGNC Internal ORM v{new_version}**",
-                content
+                content,
             )
 
             # Update version tags
-            content = re.sub(
-                r"v[0-9]+\.[0-9]+\.[0-9]+",
-                f"v{new_version}",
-                content
-            )
+            content = re.sub(r"v[0-9]+\.[0-9]+\.[0-9]+", f"v{new_version}", content)
 
             # Update standalone version numbers
             content = re.sub(
                 r"(?<!v)[0-9]+\.[0-9]+\.[0-9]+(?=\*\*|\n|`|$|s)",
                 f"{new_version}",
-                content
+                content,
             )
 
             # Update version numbers in code blocks
-            content = re.sub(
-                r"`[0-9]+\.[0-9]+\.[0-9]+`",
-                f"`{new_version}`",
-                content
-            )
+            content = re.sub(r"`[0-9]+\.[0-9]+\.[0-9]+`", f"`{new_version}`", content)
 
             # Check if content was actually changed
             if content != original_content:
-                file_path.write_text(content, encoding='utf-8')
+                file_path.write_text(content, encoding="utf-8")
                 changes += 1
                 return changes
 
@@ -136,7 +130,9 @@ class VersionReferenceUpdater:
 
         return changes
 
-    def update_all_references(self, old_version: str, new_version: str, root_dir: str = "."):
+    def update_all_references(
+        self, old_version: str, new_version: str, root_dir: str = "."
+    ):
         """Update version references across all relevant files."""
         files_to_update = self.find_files_to_update(root_dir)
 
@@ -160,7 +156,7 @@ class VersionReferenceUpdater:
     def get_current_version(self, pyproject_path: str = "pyproject.toml"):
         """Get current version from pyproject.toml."""
         try:
-            with open(pyproject_path, 'r') as f:
+            with open(pyproject_path) as f:
                 content = f.read()
                 # Look for version = "x.x.x" pattern
                 match = re.search(r'version\s*=\s*"([^"]+)"', content)
@@ -172,12 +168,18 @@ class VersionReferenceUpdater:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Update version references in documentation and other files')
-    parser.add_argument('--old-version', help='Old version to replace')
-    parser.add_argument('--new-version', required=True, help='New version to set')
-    parser.add_argument('--root', default='.', help='Root directory to search')
-    parser.add_argument('--from-pyproject', action='store_true', help='Get old version from pyproject.toml')
-    parser.add_argument('--verbose', '-v', action='store_true', help='Verbose output')
+    parser = argparse.ArgumentParser(
+        description="Update version references in documentation and other files"
+    )
+    parser.add_argument("--old-version", help="Old version to replace")
+    parser.add_argument("--new-version", required=True, help="New version to set")
+    parser.add_argument("--root", default=".", help="Root directory to search")
+    parser.add_argument(
+        "--from-pyproject",
+        action="store_true",
+        help="Get old version from pyproject.toml",
+    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
 
     args = parser.parse_args()
 
@@ -199,12 +201,14 @@ def main():
 
     # Perform actual updates
     try:
-        changes = updater.update_all_references(old_version, args.new_version, args.root)
+        changes = updater.update_all_references(
+            old_version, args.new_version, args.root
+        )
 
         if changes > 0:
             print(f"\n✅ Successfully updated {changes} version references!")
         else:
-            print(f"\n✅ No version references needed updating")
+            print("\n✅ No version references needed updating")
 
         return 0
 
@@ -213,5 +217,5 @@ def main():
         return 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

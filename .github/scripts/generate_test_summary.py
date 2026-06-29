@@ -4,15 +4,14 @@ Generate test summary from JUnit XML files for CI workflow.
 This script parses test results from various test jobs and creates a markdown summary.
 """
 
+import glob
 import os
 import sys
-import glob
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 
-def parse_junit_xml(file_path: str) -> Tuple[int, int, int, int, List[str]]:
+def parse_junit_xml(file_path: str) -> tuple[int, int, int, int, list[str]]:
     """Parse JUnit XML file and return (tests, failures, errors, skipped, failed_tests)"""
     if not os.path.exists(file_path):
         return 0, 0, 0, 0, []
@@ -28,22 +27,22 @@ def parse_junit_xml(file_path: str) -> Tuple[int, int, int, int, List[str]]:
         failed_tests = []
 
         # Handle both pytest and standard JUnit format
-        for testcase in root.findall('.//testcase'):
+        for testcase in root.findall(".//testcase"):
             total_tests += 1
 
-            failure = testcase.find('failure')
-            error = testcase.find('error')
-            skipped_elem = testcase.find('skipped')
+            failure = testcase.find("failure")
+            error = testcase.find("error")
+            skipped_elem = testcase.find("skipped")
 
             if failure is not None:
                 failures += 1
-                class_name = testcase.get('classname', 'unknown')
-                test_name = testcase.get('name', 'unknown')
+                class_name = testcase.get("classname", "unknown")
+                test_name = testcase.get("name", "unknown")
                 failed_tests.append(f"{class_name}.{test_name}")
             elif error is not None:
                 errors += 1
-                class_name = testcase.get('classname', 'unknown')
-                test_name = testcase.get('name', 'unknown')
+                class_name = testcase.get("classname", "unknown")
+                test_name = testcase.get("name", "unknown")
                 failed_tests.append(f"{class_name}.{test_name}")
             elif skipped_elem is not None:
                 skipped += 1
@@ -55,7 +54,7 @@ def parse_junit_xml(file_path: str) -> Tuple[int, int, int, int, List[str]]:
         return 0, 0, 0, 0, []
 
 
-def find_test_results() -> List[str]:
+def find_test_results() -> list[str]:
     """Find all test result XML files"""
     results_dir = Path("all-test-results")
     if not results_dir.exists():
@@ -105,7 +104,7 @@ Please check the individual job logs for details.
 """
 
     # Aggregate results by job type
-    job_results: Dict[str, Dict] = {}
+    job_results: dict[str, dict] = {}
     total_tests = 0
     total_failures = 0
     total_errors = 0
@@ -118,18 +117,18 @@ Please check the individual job logs for details.
 
         if job_name not in job_results:
             job_results[job_name] = {
-                'tests': 0,
-                'failures': 0,
-                'errors': 0,
-                'skipped': 0,
-                'files': []
+                "tests": 0,
+                "failures": 0,
+                "errors": 0,
+                "skipped": 0,
+                "files": [],
             }
 
-        job_results[job_name]['tests'] += tests
-        job_results[job_name]['failures'] += failures
-        job_results[job_name]['errors'] += errors
-        job_results[job_name]['skipped'] += skipped
-        job_results[job_name]['files'].append(xml_file)
+        job_results[job_name]["tests"] += tests
+        job_results[job_name]["failures"] += failures
+        job_results[job_name]["errors"] += errors
+        job_results[job_name]["skipped"] += skipped
+        job_results[job_name]["files"].append(xml_file)
 
         total_tests += tests
         total_failures += failures
@@ -155,7 +154,11 @@ Please check the individual job logs for details.
     summary_lines.append("|-----|-------|--------|--------|---------|--------|")
 
     for job_name, results in sorted(job_results.items()):
-        status = "✅ PASSED" if results['failures'] == 0 and results['errors'] == 0 else "❌ FAILED"
+        status = (
+            "✅ PASSED"
+            if results["failures"] == 0 and results["errors"] == 0
+            else "❌ FAILED"
+        )
         summary_lines.append(
             f"| {job_name} | {results['tests']} | {results['failures']} | "
             f"{results['errors']} | {results['skipped']} | {status} |"
@@ -179,24 +182,32 @@ Please check the individual job logs for details.
         summary_lines.append("")
 
     # Performance results (if available)
-    perf_files = [f for f in xml_files if "performance" in f.lower() or "benchmark" in f.lower()]
+    perf_files = [
+        f for f in xml_files if "performance" in f.lower() or "benchmark" in f.lower()
+    ]
     if perf_files:
         summary_lines.append("## 🚀 Performance Tests")
-        summary_lines.append("Performance benchmarks were executed and results are available in the artifacts.")
+        summary_lines.append(
+            "Performance benchmarks were executed and results are available in the artifacts."
+        )
         summary_lines.append("")
 
     # Load test results (if available)
     load_files = [f for f in xml_files if "load" in f.lower()]
     if load_files:
         summary_lines.append("## ⚡ Load Tests")
-        summary_lines.append("Load tests were executed and results are available in the artifacts.")
+        summary_lines.append(
+            "Load tests were executed and results are available in the artifacts."
+        )
         summary_lines.append("")
 
     # Coverage information
     coverage_files = [f for f in xml_files if "coverage" in f.lower()]
     if coverage_files:
         summary_lines.append("## 📈 Code Coverage")
-        summary_lines.append("Coverage reports were generated and are available in the artifacts.")
+        summary_lines.append(
+            "Coverage reports were generated and are available in the artifacts."
+        )
         summary_lines.append("")
 
     return "\n".join(summary_lines)
