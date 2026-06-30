@@ -7,7 +7,7 @@ import sys
 
 def main():
     """Check if coverage meets minimum thresholds."""
-    with open("coverage-combined.json") as f:
+    with open("coverage.json") as f:
         data = json.load(f)
 
     coverage_pct = data["totals"]["percent_covered"]

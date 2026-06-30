@@ -12,7 +12,7 @@ class DatabaseConfig(DatabaseSettings):
 
     This class extends db_common.DatabaseSettings to provide the VGNC ORM
     configuration interface. It keeps the environment variable loading behavior
-    with the DB_ prefix and adds a compatibility shim for database_url.
+    with the ``DB_`` prefix and adds a compatibility shim for ``database_url``.
 
     Attributes:
         driver: Database driver (from db_common.DatabaseDriver).
@@ -29,7 +29,7 @@ class DatabaseConfig(DatabaseSettings):
         collation: Optional connection collation (MySQL only).
 
     Note:
-        Configuration can be loaded from environment variables with the DB_ prefix,
+        Configuration can be loaded from environment variables with the ``DB_`` prefix,
         from .env files, or programmatically. This class is a thin wrapper around
         db_common.DatabaseSettings to maintain compatibility.
 

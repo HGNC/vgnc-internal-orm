@@ -8,7 +8,7 @@ import sys
 def main():
     """Compare current PR coverage with main branch."""
     # Get current coverage
-    with open("./coverage-artifacts/coverage-combined.json") as f:
+    with open("./coverage-artifacts/coverage.json") as f:
         current_data = json.load(f)
 
     current_coverage = current_data["totals"]["percent_covered"]
