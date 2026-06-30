@@ -6,7 +6,7 @@ import json
 
 def main():
     """Generate coverage summary."""
-    with open("coverage-combined.json") as f:
+    with open("coverage.json") as f:
         data = json.load(f)
 
     totals = data["totals"]
