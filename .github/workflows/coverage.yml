@@ -106,28 +106,28 @@ jobs:
           const branchesTotal = totals.num_branches || 0;
 
           // Generate coverage comment
-          const comment = \`## 📊 Code Coverage Report
+          const comment = `## 📊 Code Coverage Report
 
-          **Overall Coverage:** \${coverage.toFixed(1)}%
+          **Overall Coverage:** ${coverage.toFixed(1)}%
 
           ### 📈 Coverage Details
-          - **Lines:** \${linesCovered}/${linesTotal} (\${coverage.toFixed(1)}%)
-          - **Branches:** \${branchesCovered}/${branchesTotal} (\${((branchesCovered/branchesTotal)*100).toFixed(1)}%)
+          - **Lines:** ${linesCovered}/${linesTotal} (${coverage.toFixed(1)}%)
+          - **Branches:** ${branchesCovered}/${branchesTotal} (${((branchesCovered/branchesTotal)*100).toFixed(1)}%)
 
           ### 📁 Module Coverage
-          \${Object.entries(coverageData.files)
+          ${Object.entries(coverageData.files)
             .filter(([filename]) => filename.includes('vgnc_internal_orm'))
             .map(([filename, data]) => {
               const moduleName = filename.replace('vgnc_internal_orm/', '');
               const coverage = data.summary.percent_covered;
               const covered = data.summary.covered_lines;
               const total = data.summary.num_statements;
-              return \`- **\${moduleName}**: \${coverage.toFixed(1)}% (\${covered}/${total})\`;
+              return `- **${moduleName}**: ${coverage.toFixed(1)}% (${covered}/${total})`;
             })
-            .join('\\n')}
+            .join('\n')}
 
           ### 📋 Coverage Quality
-          \${coverage >= 90 ? '🎉 Excellent coverage!' :
+          ${coverage >= 90 ? '🎉 Excellent coverage!' :
             coverage >= 80 ? '✅ Good coverage!' :
             coverage >= 70 ? '⚠️ Acceptable coverage' :
             '❌ Coverage needs improvement'}
