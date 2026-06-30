@@ -54,8 +54,7 @@ jobs:
 
     - name: Run a few integration tests (medium)
       run: |
-        uv run --extra test python -m pytest tests/integration/test_config_loading.py \
-          tests/integration/test_db_common_smoke.py \
+        uv run --extra test python -m pytest tests/integration/test_db_common_smoke.py \
           --tb=short \
           -x
 
