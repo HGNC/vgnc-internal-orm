@@ -1,6 +1,6 @@
 # VGNC Internal ORM
 
-![Coverage](coverage-badge.svg) [Test Summary](test-summary.md)
+[![CI](https://github.com/HGNC/vgnc-internal-orm/actions/workflows/ci.yml/badge.svg)](https://github.com/HGNC/vgnc-internal-orm/actions/workflows/ci.yml) [![Coverage](https://codecov.io/gh/HGNC/vgnc-internal-orm/branch/main/graph/badge.svg)](https://codecov.io/gh/HGNC/vgnc-internal-orm) [Test Summary](test-summary.md)
 
 Comprehensive SQLAlchemy 2.0 ORM toolkit for VGNC-style gene nomenclature data: typed models, robust configuration, optimized sessions, performance/index utilities, migration workflow & safety validation, and a flexible querying/export CLI.
 
