@@ -4,7 +4,7 @@
 
 Comprehensive SQLAlchemy 2.0 ORM toolkit for VGNC-style gene nomenclature data: typed models, robust configuration, optimized sessions, performance/index utilities, migration workflow & safety validation, and a flexible querying/export CLI.
 
-**Version:** 0.5.0
+**Version:** 0.5.1
 **Python:** 3.11+
 **License:** MIT
 
