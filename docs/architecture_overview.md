@@ -2,7 +2,7 @@
 
 This library implements a SQLAlchemy 2.0 ORM for VGNC domain data with strong typing, environment-aware configuration, optimized session handling, performance/index utilities, and migration safety tooling.
 
-**Version:** 0.5.1
+**Version:** 0.5.2
 **License:** MIT
 
 ## High-Level Components
