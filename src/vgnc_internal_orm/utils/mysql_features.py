@@ -341,7 +341,7 @@ class MySQLConnectionPool:
         # Create engine with MySQL-specific settings
         engine = create_engine(
             connection_string,
-            echo=config.echo,
+            echo=False,
             future=True,
             **pool_config,
             # MySQL-specific options
