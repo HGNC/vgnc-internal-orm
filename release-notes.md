@@ -1,22 +1,26 @@
-# Release v0.5.2
+# Release v0.5.3
 
-**Released:** 2026-06-30
-**From:** v0.5.1
+**Released:** 2026-07-01
+**From:** v0.5.2
 
 ---
 
 ## Bug Fixes
 
-### ci
+### deps
 
-- drop stale reference to deleted test_config_loading.py (6271cb5e)
+- adopt psycopg 3 as the PostgreSQL driver (9476ba5c)
+
+## Documentation
+
+- docs(readme): fix broken coverage badge with hosted CI + Codecov badges (a512daf2)
 
 ---
 
 ## 📊 Release Statistics
 
-- **Total commits:** 11
-- **Conventional commits:** 1
+- **Total commits:** 15
+- **Conventional commits:** 2
 - **Bug fixes:** 1
 
-**Version bump:** v0.5.1 → v0.5.2
+**Version bump:** v0.5.2 → v0.5.3
