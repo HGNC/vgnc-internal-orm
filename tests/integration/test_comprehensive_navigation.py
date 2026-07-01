@@ -32,27 +32,19 @@ def test_db(integrated_test_db):
     # Create basic data for supporting tables that are referenced by foreign keys
     with engine.connect() as conn:
         # Create gene_status table data
-        conn.execute(
-            text(
-                """
+        conn.execute(text("""
             INSERT INTO gene_status (id, status) VALUES
             (1, 'Approved'),
             (2, 'Pending'),
             (3, 'Rejected')
-        """
-            )
-        )
+        """))
 
         # Create editor table data
-        conn.execute(
-            text(
-                """
+        conn.execute(text("""
             INSERT INTO editor (id, display_name, email, current, connected) VALUES
             (1, 'Test Editor', 'test@example.com', true, true),
             (2, 'Senior Editor', 'senior@example.com', true, true)
-        """
-            )
-        )
+        """))
 
         conn.commit()
 
@@ -227,41 +219,25 @@ def comprehensive_test_data(test_db):
     session.execute(text("DROP TABLE IF EXISTS status"))
     session.execute(text("DROP TABLE IF EXISTS editor"))
 
-    session.execute(
-        text(
-            """
+    session.execute(text("""
         CREATE TABLE status (
             id INTEGER PRIMARY KEY,
             name VARCHAR(50)
         )
-    """
-        )
-    )
-    session.execute(
-        text(
-            """
+    """))
+    session.execute(text("""
         INSERT INTO status (id, name) VALUES (1, 'Active')
-    """
-        )
-    )
+    """))
 
-    session.execute(
-        text(
-            """
+    session.execute(text("""
         CREATE TABLE editor (
             id INTEGER PRIMARY KEY,
             name VARCHAR(100)
         )
-    """
-        )
-    )
-    session.execute(
-        text(
-            """
+    """))
+    session.execute(text("""
         INSERT INTO editor (id, name) VALUES (1, 'Test Editor')
-    """
-        )
-    )
+    """))
     session.flush()
 
     # Use raw SQL approach to create genefams and commit everything
@@ -273,8 +249,7 @@ def comprehensive_test_data(test_db):
 
         # Insert using raw SQL to avoid foreign key resolution issues during creation
         result = session.execute(
-            text(
-                """
+            text("""
             INSERT INTO genefam (
                 taxon_id, assigned_id, assigned_symbol, assigned_name,
                 status_id, editor_id, hcop_support_level
@@ -282,8 +257,7 @@ def comprehensive_test_data(test_db):
                 :taxon_id, :assigned_id, :assigned_symbol, :assigned_name,
                 :status_id, :editor_id, :hcop_support_level
             )
-        """
-            ),
+        """),
             {
                 "taxon_id": target_species.taxon_id,
                 "assigned_id": data["name"],

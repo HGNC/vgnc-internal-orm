@@ -457,9 +457,7 @@ class IndexManager:
                     ] += f"ALTER TABLE {table_name} ADD CONSTRAINT {constraint.name} CHECK ({constraint.sqltext});\n\n"
 
         # Create performance analysis script
-        migrations[
-            "performance_analysis.sql"
-        ] = """
+        migrations["performance_analysis.sql"] = """
 -- Performance analysis queries
 SELECT
     schemaname,
@@ -497,13 +495,11 @@ ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
         try:
             with engine.connect() as conn:
                 # Get database indexes
-                result = conn.execute(
-                    """
+                result = conn.execute("""
                     SELECT schemaname, tablename, indexname, indexdef
                     FROM pg_indexes
                     WHERE schemaname = 'public'
-                """
-                ).fetchall()
+                """).fetchall()
 
                 for row in result:
                     table_name = row.tablename
@@ -594,8 +590,7 @@ ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
                     # Get database-specific index information
                     if engine.dialect.name == "mysql":
                         # MySQL index analysis
-                        result = conn.execute(
-                            """
+                        result = conn.execute("""
                             SELECT
                                 table_name,
                                 index_name,
@@ -605,8 +600,7 @@ ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
                             FROM information_schema.statistics
                             WHERE table_schema = DATABASE()
                             ORDER BY table_name, index_name, seq_in_index
-                        """
-                        ).fetchall()
+                        """).fetchall()
 
                         current_indexes: dict[str, Any] = {}
                         for row in result:
@@ -651,8 +645,7 @@ ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
 
                     elif engine.dialect.name == "sqlite":
                         # SQLite index analysis
-                        result = conn.execute(
-                            """
+                        result = conn.execute("""
                             SELECT
                                 m.tbl_name as table_name,
                                 i.name as index_name,
@@ -662,8 +655,7 @@ ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
                             JOIN pragma_index_info(i.name) p ON 1=1
                             WHERE m.type = 'table'
                             ORDER BY m.tbl_name, i.name, p.cid
-                        """
-                        ).fetchall()
+                        """).fetchall()
 
                         current_indexes = {}
                         for row in result:

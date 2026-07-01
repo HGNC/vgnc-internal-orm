@@ -60,22 +60,18 @@ def test_db(integrated_test_db):
     }
 
     session.execute(
-        text(
-            """
+        text("""
         INSERT INTO species (taxon_id, genefam_prefix, display_name, primary_db_table, ensembl_species_name, is_live, created)
         VALUES (:taxon_id, :genefam_prefix, :display_name, :primary_db_table, :ensembl_species_name, :is_live, :created)
-    """
-        ),
+    """),
         human_data,
     )
 
     session.execute(
-        text(
-            """
+        text("""
         INSERT INTO species (taxon_id, genefam_prefix, display_name, primary_db_table, ensembl_species_name, is_live, created)
         VALUES (:taxon_id, :genefam_prefix, :display_name, :primary_db_table, :ensembl_species_name, :is_live, :created)
-    """
-        ),
+    """),
         mouse_data,
     )
 
@@ -103,22 +99,18 @@ def test_db(integrated_test_db):
     }
 
     session.execute(
-        text(
-            """
+        text("""
         INSERT INTO genefam (taxon_id, assigned_id, assigned_symbol, assigned_name, status_id, editor_id, hcop_support_level)
         VALUES (:taxon_id, :assigned_id, :assigned_symbol, :assigned_name, :status_id, :editor_id, :hcop_support_level)
-    """
-        ),
+    """),
         hox_data,
     )
 
     session.execute(
-        text(
-            """
+        text("""
         INSERT INTO genefam (taxon_id, assigned_id, assigned_symbol, assigned_name, status_id, editor_id, hcop_support_level)
         VALUES (:taxon_id, :assigned_id, :assigned_symbol, :assigned_name, :status_id, :editor_id, :hcop_support_level)
-    """
-        ),
+    """),
         gpcr_data,
     )
 
@@ -134,12 +126,10 @@ def test_db(integrated_test_db):
     }
 
     session.execute(
-        text(
-            """
+        text("""
         INSERT INTO genefam (taxon_id, assigned_id, assigned_symbol, assigned_name, status_id, editor_id, hcop_support_level)
         VALUES (:taxon_id, :assigned_id, :assigned_symbol, :assigned_name, :status_id, :editor_id, :hcop_support_level)
-    """
-        ),
+    """),
         mouse_genefam_data,
     )
 
@@ -185,12 +175,10 @@ def test_db(integrated_test_db):
 
     for chr_data in chromosomes_data:
         session.execute(
-            text(
-                """
+            text("""
             INSERT INTO chromosomes (taxon_id, display_name, coord_system, genbank_accession)
             VALUES (:taxon_id, :display_name, :coord_system, :genbank_accession)
-        """
-            ),
+        """),
             chr_data,
         )
 
@@ -236,12 +224,10 @@ def test_db(integrated_test_db):
 
     for asm_data in assemblies_data:
         session.execute(
-            text(
-                """
+            text("""
             INSERT INTO assembly (taxon_id, name, genbank_assembly_accession, refseq_assembly_accession, source, is_current, is_vgnc_default)
             VALUES (:taxon_id, :name, :genbank_assembly_accession, :refseq_assembly_accession, :source, :is_current, :is_vgnc_default)
-        """
-            ),
+        """),
             asm_data,
         )
 

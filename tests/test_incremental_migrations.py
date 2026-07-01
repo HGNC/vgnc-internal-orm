@@ -91,8 +91,7 @@ class TestIncrementalMigrations:
         """Test detection of dangerous operations in migrations."""
         # Create a temporary migration file with dangerous operations
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
-            tmp.write(
-                '''
+            tmp.write('''
 """Test migration with dangerous operations."""
 from alembic import op
 import sqlalchemy as sa
@@ -105,8 +104,7 @@ def upgrade():
 
 def downgrade():
     pass
-'''
-            )
+''')
             tmp_path = tmp.name
 
         try:

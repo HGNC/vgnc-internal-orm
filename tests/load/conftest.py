@@ -167,23 +167,15 @@ def populated_load_test_db(load_test_db):
 
     try:
         # Create supporting data directly via SQL to avoid relationship resolution issues
-        session.execute(
-            text(
-                """
+        session.execute(text("""
             INSERT INTO gene_status (id, status) VALUES (1, 'Approved'), (2, 'Pending'), (3, 'Rejected')
-        """
-            )
-        )
+        """))
 
-        session.execute(
-            text(
-                """
+        session.execute(text("""
             INSERT INTO editor (id, display_name, email, current, connected)
             VALUES (1, 'Test Editor', 'test@example.com', 1, 1),
                    (2, 'Senior Editor', 'senior@example.com', 1, 1)
-        """
-            )
-        )
+        """))
 
         session.commit()
 
@@ -249,12 +241,10 @@ def populated_load_test_db(load_test_db):
         # Batch insert genefams
         for genefam_data in genefam_records:
             session.execute(
-                text(
-                    """
+                text("""
                 INSERT INTO genefam (genefam_id, taxon_id, assigned_id, assigned_symbol, assigned_name, status_id, editor_id, hcop_support_level)
                 VALUES (:genefam_id, :taxon_id, :assigned_id, :assigned_symbol, :assigned_name, :status_id, :editor_id, :hcop_support_level)
-            """
-                ),
+            """),
                 genefam_data,
             )
 

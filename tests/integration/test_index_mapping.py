@@ -108,12 +108,10 @@ def test_data(test_db):
     species_list = []
     for data in species_data:
         session.execute(
-            text(
-                """
+            text("""
             INSERT INTO species (taxon_id, genefam_prefix, display_name, primary_db_table, ensembl_species_name, is_live, created)
             VALUES (:taxon_id, :genefam_prefix, :display_name, :primary_db_table, :ensembl_species_name, :is_live, :created)
-        """
-            ),
+        """),
             data,
         )
         species_list.append(data)
@@ -152,12 +150,10 @@ def test_data(test_db):
     genefam_list = []
     for data in genefam_data:
         session.execute(
-            text(
-                """
+            text("""
             INSERT INTO genefam (taxon_id, assigned_id, assigned_symbol, assigned_name, status_id, editor_id, hcop_support_level)
             VALUES (:taxon_id, :assigned_id, :assigned_symbol, :assigned_name, :status_id, :editor_id, :hcop_support_level)
-        """
-            ),
+        """),
             data,
         )
         genefam_list.append(data)
