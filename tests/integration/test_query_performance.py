@@ -118,12 +118,10 @@ def performance_test_data(test_db):
             "created": datetime.now(),
         }
         session.execute(
-            text(
-                """
+            text("""
             INSERT INTO species (taxon_id, genefam_prefix, display_name, primary_db_table, ensembl_species_name, is_live, created)
             VALUES (:taxon_id, :genefam_prefix, :display_name, :primary_db_table, :ensembl_species_name, :is_live, :created)
-        """
-            ),
+        """),
             data,
         )
         species_data.append(data)
@@ -140,12 +138,10 @@ def performance_test_data(test_db):
                 "refseq_accession": f"NC_{species['taxon_id']}.{i+1}",
             }
             session.execute(
-                text(
-                    """
+                text("""
                 INSERT INTO chromosomes (taxon_id, display_name, coord_system, genbank_accession, refseq_accession)
                 VALUES (:taxon_id, :display_name, :coord_system, :genbank_accession, :refseq_accession)
-            """
-                ),
+            """),
                 chr_data,
             )
             chromosome_data.append(chr_data)
@@ -162,12 +158,10 @@ def performance_test_data(test_db):
             "source": "Test Source",
         }
         session.execute(
-            text(
-                """
+            text("""
             INSERT INTO assembly (taxon_id, genbank_assembly_accession, refseq_assembly_accession, is_current, is_vgnc_default, name, source)
             VALUES (:taxon_id, :genbank_assembly_accession, :refseq_assembly_accession, :is_current, :is_vgnc_default, :name, :source)
-        """
-            ),
+        """),
             assembly_data,
         )
 
@@ -185,12 +179,10 @@ def performance_test_data(test_db):
             "hcop_support_level": 2,
         }
         session.execute(
-            text(
-                """
+            text("""
             INSERT INTO genefam (taxon_id, assigned_id, assigned_symbol, assigned_name, status_id, editor_id, hcop_support_level)
             VALUES (:taxon_id, :assigned_id, :assigned_symbol, :assigned_name, :status_id, :editor_id, :hcop_support_level)
-        """
-            ),
+        """),
             genefam_data,
         )
 

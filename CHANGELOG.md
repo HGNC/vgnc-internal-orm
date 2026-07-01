@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- Resolved all 24 open Dependabot alerts by upgrading transitive and direct dependencies (`uv lock --upgrade`): `cryptography` 46→49, `starlette` 0.50→1.3.1, `urllib3` 2.5→2.7, `black` 25.9→26.5.1, `pytest` 8.4→9.1.1, and `mako`/`idna`/`pygments`/`requests`/`virtualenv`/`filelock`/`python-dotenv` to their fixed-in versions.
+
 # Release v0.5.3
 
 **Released:** 2026-07-01
@@ -62,11 +68,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Bug fixes:** 1
 
 **Version bump:** v0.5.3 → v0.5.4
-## [Unreleased]
-
-### Changed
-
-- Replaced the `psycopg2-binary` dependency with `psycopg` (v3) so the PostgreSQL driver matches `db_common`'s canonical `postgresql+psycopg` dialect; removed the now-unused `psycopg2.*` mypy override.
 
 # Release v0.3.0
 

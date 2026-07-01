@@ -323,28 +323,20 @@ class TestMySQLQueryPerformance:
 
             # Test basic SQL with JSON-like operations
             # Note: This tests SQL functionality, not actual JSON fields
-            result = session.execute(
-                text(
-                    """
+            result = session.execute(text("""
                 SELECT COUNT(*) as count
                 FROM species
                 WHERE genefam_prefix LIKE 'JSON%'
-            """
-                )
-            )
+            """))
             count = result.fetchone()[0]
 
             # Test aggregation
-            result = session.execute(
-                text(
-                    """
+            result = session.execute(text("""
                 SELECT genefam_prefix, COUNT(*) as cnt
                 FROM species
                 WHERE genefam_prefix LIKE 'JSON%'
                 GROUP BY genefam_prefix
-            """
-                )
-            )
+            """))
             groups = result.fetchall()
 
             return count + len(groups)
@@ -387,9 +379,7 @@ class TestMySQLQueryPerformance:
             session.commit()
 
             # UNION query
-            result = session.execute(
-                text(
-                    """
+            result = session.execute(text("""
                 SELECT genefam_prefix, display_name
                 FROM species
                 WHERE genefam_prefix LIKE 'UN%'
@@ -397,9 +387,7 @@ class TestMySQLQueryPerformance:
                 SELECT genefam_prefix, display_name
                 FROM species
                 WHERE genefam_prefix LIKE 'UN%' AND display_name LIKE '%5%'
-            """
-                )
-            )
+            """))
             rows = result.fetchall()
 
             return len(rows)

@@ -841,14 +841,10 @@ class FullTextSearch:
 
         # Check if full-text index exists
         try:
-            index_result = session.execute(
-                text(
-                    f"""
+            index_result = session.execute(text(f"""
                 SHOW INDEX FROM {table_name}
                 WHERE Index_type LIKE '%FULLTEXT%'
-            """
-                )
-            ).fetchall()
+            """)).fetchall()
 
             results["index_exists"] = len(index_result) > 0
 
@@ -1154,8 +1150,7 @@ class MySQLQueryOptimizer:
             # Get slow queries (this is a simplified example)
             # In practice, you might need to parse the slow query log file
             # Using parameterized query to prevent SQL injection
-            slow_queries_sql = text(
-                """
+            slow_queries_sql = text("""
                 SELECT
                     sql_text,
                     exec_count,
@@ -1165,8 +1160,7 @@ class MySQLQueryOptimizer:
                 WHERE timer_wait/1000000000 > :min_execution_time
                 ORDER BY timer_wait DESC
                 LIMIT :limit
-            """
-            )
+            """)
 
             slow_queries = session.execute(
                 slow_queries_sql,

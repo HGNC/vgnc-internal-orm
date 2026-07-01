@@ -133,12 +133,10 @@ def utf8mb4_test_data(mysql_test_db):
     for i, data in enumerate(genefam_data, 1):
         assigned_id = data["name"].split(" ")[0]  # Use first part before emoji as ID
         session.execute(
-            text(
-                """
+            text("""
             INSERT INTO genefam (genefam_id, taxon_id, assigned_id, assigned_name, status_id, editor_id, hcop_support_level)
             VALUES (:genefam_id, :taxon_id, :assigned_id, :assigned_name, :status_id, :editor_id, :hcop_support_level)
-        """
-            ),
+        """),
             {
                 "genefam_id": i,
                 "taxon_id": species_list[i % len(species_list)].taxon_id,

@@ -23,8 +23,7 @@ class TestMigrationSafetyValidator:
 
         # Create temporary migration with dangerous operations
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
-            tmp.write(
-                """
+            tmp.write("""
 def upgrade():
     op.drop_table('old_table')
     op.drop_column('users', 'password')
@@ -33,8 +32,7 @@ def upgrade():
 
 def downgrade():
     pass
-"""
-            )
+""")
             tmp_path = tmp.name
 
         try:
@@ -70,14 +68,12 @@ def downgrade():
         validator = MigrationSafetyValidator()
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
-            tmp.write(
-                """
+            tmp.write("""
 def upgrade():
     op.create_table('new_table', sa.Column('id', sa.Integer(), nullable=False))
 
 # Missing downgrade function
-"""
-            )
+""")
             tmp_path = tmp.name
 
         try:
@@ -105,15 +101,13 @@ def upgrade():
         validator = MigrationSafetyValidator()
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
-            tmp.write(
-                """
+            tmp.write("""
 def upgrade():
     op.create_table('new_table', sa.Column('id', sa.Integer(), nullable=False))
 
 def downgrade():
     pass
-"""
-            )
+""")
             tmp_path = tmp.name
 
         try:
@@ -133,8 +127,7 @@ def downgrade():
         validator = MigrationSafetyValidator()
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
-            tmp.write(
-                """
+            tmp.write("""
 def upgrade():
     # Broad UPDATE without LIMIT
     connection = op.get_bind()
@@ -145,8 +138,7 @@ def upgrade():
 
 def downgrade():
     pass
-"""
-            )
+""")
             tmp_path = tmp.name
 
         try:
@@ -168,8 +160,7 @@ def downgrade():
         validator = MigrationSafetyValidator()
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
-            tmp.write(
-                """
+            tmp.write("""
 def upgrade():
     # Safe operations
     op.add_column('users', sa.Column('email', sa.String(255), nullable=True))
@@ -178,8 +169,7 @@ def upgrade():
 def downgrade():
     op.drop_index('idx_users_email', table_name='users')
     op.drop_column('users', 'email')
-"""
-            )
+""")
             tmp_path = tmp.name
 
         try:
@@ -205,8 +195,7 @@ def downgrade():
 
         # Test with production keywords
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
-            tmp.write(
-                """
+            tmp.write("""
 def upgrade():
     # Dangerous operation in production context
     op.drop_column('users', 'old_password', schema='PROD')
@@ -214,8 +203,7 @@ def upgrade():
 
 def downgrade():
     pass
-"""
-            )
+""")
             tmp_path = tmp.name
 
         try:
@@ -237,15 +225,13 @@ def downgrade():
         validator = MigrationSafetyValidator()
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
-            tmp.write(
-                """
+            tmp.write("""
 def upgrade():
     op.drop_table('legacy_data')
 
 def downgrade():
     pass
-"""
-            )
+""")
             tmp_path = tmp.name
 
         try:
@@ -275,8 +261,7 @@ def downgrade():
         validator = MigrationSafetyValidator()
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
-            tmp.write(
-                """
+            tmp.write("""
 
 def upgrade():
     # Line 5 - dangerous operation
@@ -287,8 +272,7 @@ def upgrade():
 
 def downgrade():
     pass
-"""
-            )
+""")
             tmp_path = tmp.name
 
         try:
@@ -400,15 +384,13 @@ class TestProductionSafetyValidator:
         """Test production mode validation integration."""
         # Create a temporary migration with dangerous operations
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
-            tmp.write(
-                """
+            tmp.write("""
 def upgrade():
     op.drop_table('users')
 
 def downgrade():
     pass
-"""
-            )
+""")
             tmp_path = tmp.name
 
         try:

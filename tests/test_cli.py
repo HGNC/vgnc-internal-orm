@@ -130,12 +130,10 @@ def test_db():
         hcop_support_level,
     ) in genefam_data:
         session.execute(
-            text(
-                """
+            text("""
             INSERT INTO genefam (genefam_id, taxon_id, assigned_id, assigned_symbol, assigned_name, status_id, editor_id, hcop_support_level)
             VALUES (:genefam_id, :taxon_id, :assigned_id, :assigned_symbol, :assigned_name, :status_id, :editor_id, :hcop_support_level)
-        """
-            ),
+        """),
             {
                 "genefam_id": genefam_id,
                 "taxon_id": taxon_id,
