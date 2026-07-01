@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Replaced the `psycopg2-binary` dependency with `psycopg` (v3) so the PostgreSQL driver matches `db_common`'s canonical `postgresql+psycopg` dialect; removed the now-unused `psycopg2.*` mypy override.
+
 # Release v0.3.0
 
 **Released:** 2025-11-14
