@@ -1,26 +1,30 @@
-# Release v0.5.3
+# Release v0.5.4
 
 **Released:** 2026-07-01
-**From:** v0.5.2
+**From:** v0.5.3
 
 ---
 
 ## Bug Fixes
 
-### deps
+### mysql
 
-- adopt psycopg 3 as the PostgreSQL driver (9476ba5c)
+- stop referencing dropped DatabaseConfig.echo (d3d9c9eb)
 
-## Documentation
+## Chores
 
-- docs(readme): fix broken coverage badge with hosted CI + Codecov badges (a512daf2)
+- chore: sync uv.lock with 0.5.3 (d8e03fb9)
+
+## Style Changes
+
+- style(test): reformat test_postgres_driver for black/ruff (c2203615)
 
 ---
 
 ## 📊 Release Statistics
 
-- **Total commits:** 15
-- **Conventional commits:** 2
+- **Total commits:** 10
+- **Conventional commits:** 3
 - **Bug fixes:** 1
 
-**Version bump:** v0.5.2 → v0.5.3
+**Version bump:** v0.5.3 → v0.5.4
