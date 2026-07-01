@@ -42,7 +42,9 @@ class TestPostgresDriverIsPsycopg3:
         import psycopg  # noqa: PLC0415 — intentional runtime import
 
         major = str(psycopg.__version__).split(".", 1)[0]
-        assert major == "3", f"expected psycopg 3.x, got psycopg {psycopg.__version__!r}"
+        assert (
+            major == "3"
+        ), f"expected psycopg 3.x, got psycopg {psycopg.__version__!r}"
 
     def test_legacy_psycopg2_is_not_installed(self):
         """The legacy psycopg2 package must not be a project dependency.
@@ -67,16 +69,17 @@ class TestPostgresDriverIsPsycopg3:
         psycopg 3 is absent (the RED state) and returns the ``psycopg`` module
         once it is installed.
         """
+        import psycopg
         from sqlalchemy import create_engine
         from sqlalchemy.pool import NullPool
-
-        import psycopg
 
         engine = create_engine(
             "postgresql+psycopg://test:test@localhost:5432/test",
             poolclass=NullPool,
         )
-        assert type(engine.dialect).__module__ == "sqlalchemy.dialects.postgresql.psycopg"
+        assert (
+            type(engine.dialect).__module__ == "sqlalchemy.dialects.postgresql.psycopg"
+        )
         # Accessing .dbapi forces the dialect to import its driver module.
         assert engine.dialect.dbapi is psycopg, (
             "postgresql+psycopg must be backed by the psycopg 3 module, "
