@@ -1,6 +1,6 @@
 # Migration Workflow
 
-**VGNC Internal ORM v0.5.4** - MIT License
+**VGNC Internal ORM v0.5.5** - MIT License
 
 `.github/scripts/migration_workflow.py` orchestrates Alembic tasks for a safer and repeatable migration lifecycle.
 
