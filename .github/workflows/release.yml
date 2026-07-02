@@ -235,6 +235,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install packaging toml
 
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+        enable-cache: true
+
     - name: Download analysis artifacts
       uses: actions/download-artifact@v4
       with:
@@ -279,6 +285,13 @@ jobs:
         python .github/scripts/update_version.py \
           --version "$NEW_VERSION" \
           --file pyproject.toml
+
+    - name: Sync uv.lock with new version
+      # update_version.py only edits pyproject.toml; the project's own version
+      # is also embedded in uv.lock (under [[package]] name = "vgnc-internal-orm"),
+      # so the lockfile must be re-resolved or it drifts out of sync with every
+      # release. `uv lock` deterministically updates only that version line.
+      run: uv lock
 
     - name: Update CHANGELOG.md
       run: |
@@ -353,7 +366,7 @@ jobs:
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
 
-        git add pyproject.toml CHANGELOG.md README.md docs/ release-notes.md
+        git add pyproject.toml uv.lock CHANGELOG.md README.md docs/ release-notes.md
 
         # Check if there are changes to commit
         if git diff --staged --quiet; then
@@ -372,7 +385,7 @@ jobs:
         git commit -F- <<EOF
         chore: bump version to $VERSION_FOR_COMMIT
 
-        - Update version in pyproject.toml
+        - Update version in pyproject.toml and uv.lock
         - Add changelog entry for $VERSION_FOR_COMMIT
         - Update version references in documentation files
         - Add release-notes.md for $VERSION_FOR_COMMIT

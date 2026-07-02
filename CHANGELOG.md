@@ -59,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Resolved the Sphinx 9 Docs Build failure: the builtin `type` cross-reference collided ambiguously with four model `.type` column attributes. Excluded the `type` member from the `chromosomes` and `supporting` autodoc directives so the builtin resolves cleanly (modern `type[T]` annotations and all signature typehints are preserved).
+- Fixed the semantic-release workflow leaving `uv.lock` out of sync after each version bump. The `create-release` job now re-resolves `uv.lock` (via `uv lock`) after bumping `pyproject.toml` and includes it in the release commit, so the lockfile no longer drifts a version behind on every release.
 
 ### Security
 
