@@ -26,6 +26,7 @@ Chromosome & Assembly
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: type
 
 .. automodule:: vgnc_internal_orm.models.assembly
    :members:
@@ -50,3 +51,4 @@ Supporting Models
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: type

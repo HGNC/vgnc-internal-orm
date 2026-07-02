@@ -29,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **Version bump:** v0.5.4 → v0.5.5
 ## [Unreleased]
 
+### Fixed
+
+- Resolved the Sphinx 9 Docs Build failure: the builtin `type` cross-reference collided ambiguously with four model `.type` column attributes. Excluded the `type` member from the `chromosomes` and `supporting` autodoc directives so the builtin resolves cleanly (modern `type[T]` annotations and all signature typehints are preserved).
+
 ### Security
 
 - Resolved all 24 open Dependabot alerts by upgrading transitive and direct dependencies (`uv lock --upgrade`): `cryptography` 46→49, `starlette` 0.50→1.3.1, `urllib3` 2.5→2.7, `black` 25.9→26.5.1, `pytest` 8.4→9.1.1, and `mako`/`idna`/`pygments`/`requests`/`virtualenv`/`filelock`/`python-dotenv` to their fixed-in versions.
