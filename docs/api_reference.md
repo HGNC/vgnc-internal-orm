@@ -2,7 +2,7 @@
 
 This page catalogs key modules, classes, and helpers with links to conceptual docs. For full details, consult source files under `src/vgnc_internal_orm/`.
 
-**Version:** 0.5.4
+**Version:** 0.5.5
 
 ## Configuration (`config`)
 
