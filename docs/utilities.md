@@ -1,6 +1,6 @@
 # Utilities & Performance Toolkit
 
-**VGNC Internal ORM v0.5.6** - MIT License
+**VGNC Internal ORM v0.5.7** - MIT License
 
 ## Index Ecosystem
 

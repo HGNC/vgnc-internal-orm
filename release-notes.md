@@ -1,26 +1,22 @@
-# Release v0.5.6
+# Release v0.5.7
 
 **Released:** 2026-07-02
-**From:** v0.5.5
+**From:** v0.5.6
 
 ---
 
 ## Bug Fixes
 
-### docs
+### ci
 
-- resolve Sphinx 9 ambiguous 'type' cross-reference (c3bed26e)
-
-## Chores
-
-- chore: sync uv.lock with 0.5.5 (1a6227fd)
+- keep uv.lock in sync in semantic-release (9a4e7973)
 
 ---
 
 ## 📊 Release Statistics
 
-- **Total commits:** 11
-- **Conventional commits:** 2
+- **Total commits:** 10
+- **Conventional commits:** 1
 - **Bug fixes:** 1
 
-**Version bump:** v0.5.5 → v0.5.6
+**Version bump:** v0.5.6 → v0.5.7

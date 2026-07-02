@@ -1503,7 +1503,7 @@ wheels = [
 
 [[package]]
 name = "vgnc-internal-orm"
-version = "0.5.5"
+version = "0.5.7"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
