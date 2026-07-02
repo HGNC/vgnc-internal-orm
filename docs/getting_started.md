@@ -1,6 +1,6 @@
 # Getting Started
 
-**VGNC Internal ORM v0.5.5** - MIT License
+**VGNC Internal ORM v0.5.6** - MIT License
 
 ## Installation
 
